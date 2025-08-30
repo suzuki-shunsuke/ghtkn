@@ -1,0 +1,57 @@
+---
+# the configuration file of cmdx - task runner
+# https://github.com/suzuki-shunsuke/cmdx
+tasks:
+- name: test
+  short: t
+  description: test
+  usage: test
+  script: go test ./... -race -covermode=atomic
+- name: vet
+  short: v
+  description: go vet
+  usage: go vet
+  script: go vet ./...
+- name: lint
+  short: l
+  description: lint the go code
+  usage: lint the go code
+  script: golangci-lint run
+- name: coverage
+  short: c
+  description: coverage test
+  usage: coverage test
+  script: "bash scripts/coverage.sh {{.target}}"
+  args:
+  - name: target
+- name: install
+  short: i
+  description: Build and install ghtkn
+  usage: Build and install ghtkn by "go install" command
+  script: |
+    sha=""
+    if git diff --quiet; then
+      sha=$(git rev-parse HEAD)
+    fi
+    go install \
+      -ldflags "-X main.version=v3.0.0-local -X main.commit=$sha -X main.date=$(date +"%Y-%m-%dT%H:%M:%SZ%:z" | tr -d '+')" \
+      ./cmd/ghtkn
+- name: run
+  description: Run ghtkn via go run
+  usage: Run ghtkn via go run
+  script: |
+    go run ./cmd/ghtkn {{._builtin.args_string}}
+- name: usage
+  description: Generate USAGE.md
+  usage: Generate USAGE.md
+  script: bash scripts/generate-usage.sh
+- name: js
+  description: Generate JSON Schema
+  usage: Generate JSON Schema
+  script: "go run ./cmd/gen-jsonschema"
+- name: fmt
+  description: Format code
+  usage: Format code
+  script: |
+    git ls-files --modified --others --exclude-standard | (grep -E "\.go$" || true) | xargs -r gofumpt -l -w
+    git ls-files --modified --others --exclude-standard | xargs -r nllint -s
