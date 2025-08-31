@@ -23,14 +23,3 @@ func GetPath(env *Env) (string, error) {
 	}
 	return "", errors.New("XDG_CONFIG_HOME or HOME is required on Linux and macOS")
 }
-
-// Windows
-// local app data
-// user profile
-// %USERPROFILE (C:\Users\<user>)
-// %APPDATA% C:\Users\<user>\AppData\Roaming
-// C:\Users\<user>\
-//    .ghtkn/ghtkn.yaml
-//    AppData\
-//      Local\ghtkn\ghtkn.yaml
-//      Roaming\ghtkn\ghtkn.yaml
