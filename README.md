@@ -125,8 +125,7 @@ exec gh "$@"
 
 ```ini
 [credential "https://github.com"]
-	helper = 
-	helper = /Users/shunsukesuzuki/bin/ghtkn-gh auth git-credential
+	helper = !/Users/shunsukesuzuki/bin/ghtkn-gh auth git-credential
 ```
 
 ### Specifying an App
