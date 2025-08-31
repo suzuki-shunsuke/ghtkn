@@ -1,3 +1,6 @@
+// Package get implements the 'ghtkn get' command.
+// This command retrieves or creates GitHub App User Access Tokens and outputs them to stdout.
+// It handles token persistence, expiration checking, and automatic renewal when needed.
 package get
 
 import (
@@ -14,6 +17,8 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// New creates a new get command instance with the provided logger and version.
+// It returns a CLI command that can be registered with the main CLI application.
 func New(logger *slog.Logger, version string) *cli.Command {
 	r := &runner{
 		logger:  logger,
@@ -22,11 +27,14 @@ func New(logger *slog.Logger, version string) *cli.Command {
 	return r.Command()
 }
 
+// runner encapsulates the state and behavior for the get command.
 type runner struct {
 	logger  *slog.Logger
 	version string
 }
 
+// Command returns the CLI command definition for the get subcommand.
+// It defines the command name, usage, action handler, and available flags.
 func (r *runner) Command() *cli.Command {
 	return &cli.Command{
 		Name:   "get",
@@ -41,6 +49,9 @@ func (r *runner) Command() *cli.Command {
 	}
 }
 
+// action implements the main logic for the get command.
+// It configures the controller with flags and arguments, then executes the token retrieval.
+// Returns an error if configuration is invalid or token retrieval fails.
 func (r *runner) action(ctx context.Context, c *cli.Command) error {
 	logger := r.logger
 	if lvlS := flag.LogLevelValue(c); lvlS != "" {

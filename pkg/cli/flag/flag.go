@@ -1,9 +1,15 @@
+// Package flag provides common command-line flags for ghtkn CLI.
+// It defines reusable flag definitions and value accessors for consistent
+// flag handling across all commands.
 package flag
 
 import (
 	"github.com/urfave/cli/v3"
 )
 
+// LogLevel returns a flag for setting the logging level.
+// Supported values are: debug, info, warn, error.
+// Can be set via GHTKN_LOG_LEVEL environment variable.
 func LogLevel() *cli.StringFlag {
 	return &cli.StringFlag{
 		Name:    "log-level",
@@ -12,10 +18,14 @@ func LogLevel() *cli.StringFlag {
 	}
 }
 
+// LogLevelValue retrieves the log level value from the command context.
 func LogLevelValue(c *cli.Command) string {
 	return c.String("log-level")
 }
 
+// Config returns a flag for specifying the configuration file path.
+// Can be set via GHTKN_CONFIG environment variable.
+// Alias: -c
 func Config() *cli.StringFlag {
 	return &cli.StringFlag{
 		Name:    "config",
@@ -25,10 +35,15 @@ func Config() *cli.StringFlag {
 	}
 }
 
+// ConfigValue retrieves the config file path from the command context.
 func ConfigValue(c *cli.Command) string {
 	return c.String("config")
 }
 
+// Format returns a flag for specifying the output format.
+// Currently supports: json.
+// Can be set via GHTKN_OUTPUT_FORMAT environment variable.
+// Alias: -f
 func Format() *cli.StringFlag {
 	return &cli.StringFlag{
 		Name:    "format",
@@ -38,10 +53,14 @@ func Format() *cli.StringFlag {
 	}
 }
 
+// FormatValue retrieves the output format value from the command context.
 func FormatValue(c *cli.Command) string {
 	return c.String("format")
 }
 
+// MinExpiration returns a flag for specifying the minimum token expiration duration.
+// Accepts duration strings like "1h", "30m", "30s".
+// Alias: -m
 func MinExpiration() *cli.StringFlag {
 	return &cli.StringFlag{
 		Name:    "min-expiration",
@@ -50,6 +69,7 @@ func MinExpiration() *cli.StringFlag {
 	}
 }
 
+// MinExpirationValue retrieves the minimum expiration duration from the command context.
 func MinExpirationValue(c *cli.Command) string {
 	return c.String("min-expiration")
 }
