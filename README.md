@@ -30,9 +30,13 @@ All that's needed is the GitHub App's Client ID, and User Access Tokens only hav
 > As a prerequisite, Windows Credential Manager, macOS KeyChain, or GNOME Keyring is required.
 > It will work without them, but in that case, you'll need to generate access tokens every time.
 
-First, install ghtkn.
+First, [install ghtkn](INSTALL.md).
 Then create a GitHub App with issues:write permission (This permission is just an example).
 Generate a configuration file at `${XDG_CONFIG_HOME:-${HOME}/.config}/ghtkn/ghtkn.yaml` with `ghtkn init` and modify it.
+
+```sh
+ghtkn init
+```
 
 ```yaml
 persist: true # false if Windows Credential Manager, macOS KeyChain, or GNOME Keyring is not available

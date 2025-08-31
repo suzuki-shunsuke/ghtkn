@@ -29,6 +29,8 @@ scoop install ghtkn
 
 ## aqua
 
+[aqua-registry >= v4.407.0 is required](https://github.com/aquaproj/aqua-registry/releases/tag/v4.407.0).
+
 You can install ghtkn using [aqua](https://aquaproj.github.io/).
 
 ```sh
