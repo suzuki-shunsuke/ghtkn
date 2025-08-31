@@ -45,8 +45,7 @@ func TestNew(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			ctrl := initcmd.New(tt.fs, tt.env)
-			if ctrl == nil {
+			if ctrl := initcmd.New(tt.fs, tt.env); ctrl == nil {
 				t.Fatal("New() returned nil controller")
 			}
 		})

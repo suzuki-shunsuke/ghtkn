@@ -19,6 +19,7 @@ linters:
     - wsl
     - wsl_v5
     - noinlineerr
+    - embeddedstructfieldcheck
   exclusions:
     generated: lax
     presets:
