@@ -54,7 +54,7 @@ func TestClient_getDeviceCode(t *testing.T) { //nolint:cyclop,funlen
 					Interval:        5,
 				}
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(resp) //nolint:errcheck
+				json.NewEncoder(w).Encode(resp) //nolint:errchkjson,errcheck
 			},
 			want: &DeviceCodeResponse{
 				DeviceCode:      "device123",
@@ -127,21 +127,19 @@ func TestClient_getDeviceCode(t *testing.T) { //nolint:cyclop,funlen
 			client.input.HTTPClient = &http.Client{Transport: transport}
 
 			got, err := client.getDeviceCode(ctx, tt.clientID)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Fatalf("expected error but got nil")
+			if err != nil {
+				if !tt.wantErr {
+					t.Fatalf("unexpected error: %v", err)
 				}
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("error = %v, want error containing %v", err, tt.errContains)
 				}
 				return
 			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
+			if tt.wantErr {
+				t.Fatalf("expected error but got nil")
+				return
 			}
-
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("DeviceCodeResponse mismatch (-want +got):\n%s", diff)
 			}
@@ -149,7 +147,7 @@ func TestClient_getDeviceCode(t *testing.T) { //nolint:cyclop,funlen
 	}
 }
 
-func TestClient_checkAccessToken(t *testing.T) {
+func TestClient_checkAccessToken(t *testing.T) { //nolint:gocognit,cyclop,funlen
 	t.Parallel()
 	tests := []struct {
 		name       string
@@ -193,7 +191,7 @@ func TestClient_checkAccessToken(t *testing.T) {
 					ExpiresIn:   28800,
 				}
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(resp) //nolint:errcheck
+				json.NewEncoder(w).Encode(resp) //nolint:errchkjson,errcheck
 			},
 			want: &AccessTokenResponse{
 				AccessToken: "gho_testtoken123",
@@ -210,7 +208,7 @@ func TestClient_checkAccessToken(t *testing.T) {
 					Error: "authorization_pending",
 				}
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(resp) //nolint:errcheck
+				json.NewEncoder(w).Encode(resp) //nolint:errchkjson,errcheck
 			},
 			want:    nil,
 			wantErr: true,
@@ -225,7 +223,7 @@ func TestClient_checkAccessToken(t *testing.T) {
 					Error: "slow_down",
 				}
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(resp)
+				json.NewEncoder(w).Encode(resp) //nolint:errcheck,errchkjson
 			},
 			want:    nil,
 			wantErr: true,
@@ -240,7 +238,7 @@ func TestClient_checkAccessToken(t *testing.T) {
 					Error: "access_denied",
 				}
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(resp)
+				json.NewEncoder(w).Encode(resp) //nolint:errcheck,errchkjson
 			},
 			want:    nil,
 			wantErr: true,
@@ -275,12 +273,10 @@ func TestClient_checkAccessToken(t *testing.T) {
 			input.HTTPClient = &http.Client{Transport: transport}
 			client := NewClient(input)
 
-			ctx := t.Context()
-			got, err := client.checkAccessToken(ctx, tt.clientID, tt.deviceCode)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Fatalf("expected error but got nil")
+			got, err := client.checkAccessToken(t.Context(), tt.clientID, tt.deviceCode)
+			if err != nil {
+				if !tt.wantErr {
+					t.Fatalf("unexpected error: %v", err)
 				}
 				if tt.errMsg != "" && err.Error() != tt.errMsg {
 					t.Errorf("error = %v, want %v", err.Error(), tt.errMsg)
@@ -288,8 +284,9 @@ func TestClient_checkAccessToken(t *testing.T) {
 				return
 			}
 
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
+			if tt.wantErr {
+				t.Fatalf("expected error but got nil")
+				return
 			}
 
 			if diff := cmp.Diff(tt.want, got); diff != "" {
@@ -323,21 +320,21 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 			},
 			handler: func() http.HandlerFunc {
 				callCount := 0
-				return func(w http.ResponseWriter, r *http.Request) {
+				return func(w http.ResponseWriter, _ *http.Request) {
 					callCount++
 					if callCount == 1 {
 						// First call returns pending
 						resp := AccessTokenResponse{
 							Error: "authorization_pending",
 						}
-						json.NewEncoder(w).Encode(resp)
+						json.NewEncoder(w).Encode(resp) //nolint:errcheck
 					} else {
 						// Second call returns success
 						resp := AccessTokenResponse{
 							AccessToken: "gho_testtoken123",
 							ExpiresIn:   28800,
 						}
-						json.NewEncoder(w).Encode(resp)
+						json.NewEncoder(w).Encode(resp) //nolint:errcheck
 					}
 				}
 			}(),
@@ -358,11 +355,11 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 				ExpiresIn:       10,
 				Interval:        1,
 			},
-			handler: func(w http.ResponseWriter, r *http.Request) {
+			handler: func(w http.ResponseWriter, _ *http.Request) {
 				resp := AccessTokenResponse{
 					Error: "authorization_pending",
 				}
-				json.NewEncoder(w).Encode(resp)
+				json.NewEncoder(w).Encode(resp) //nolint:errcheck,errchkjson
 			},
 			want:        nil,
 			wantErr:     true,
@@ -432,21 +429,19 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 			}
 
 			got, err := client.pollForAccessToken(ctx, tt.clientID, tt.deviceCode)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Fatalf("expected error but got nil")
+			if err != nil {
+				if !tt.wantErr {
+					t.Fatalf("unexpected error: %v", err)
 				}
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("error = %v, want error containing %v", err, tt.errContains)
 				}
 				return
 			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
+			if tt.wantErr {
+				t.Fatalf("expected error but got nil")
+				return
 			}
-
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("AccessTokenResponse mismatch (-want +got):\n%s", diff)
 			}
@@ -454,7 +449,7 @@ func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 	}
 }
 
-func TestClient_Create(t *testing.T) {
+func TestClient_Create(t *testing.T) { //nolint:gocognit,cyclop,funlen
 	t.Parallel()
 	tests := []struct {
 		name        string
@@ -488,7 +483,7 @@ func TestClient_Create(t *testing.T) {
 							ExpiresIn:       10,
 							Interval:        1,
 						}
-						json.NewEncoder(w).Encode(resp)
+						json.NewEncoder(w).Encode(resp) //nolint:errcheck
 					} else if r.URL.Path == "/login/oauth/access_token" {
 						// Access token request
 						if callCount <= 2 {
@@ -496,14 +491,14 @@ func TestClient_Create(t *testing.T) {
 							resp := AccessTokenResponse{
 								Error: "authorization_pending",
 							}
-							json.NewEncoder(w).Encode(resp)
+							json.NewEncoder(w).Encode(resp) //nolint:errcheck
 						} else {
 							// Second call returns success
 							resp := AccessTokenResponse{
 								AccessToken: "gho_testtoken123",
 								ExpiresIn:   28800,
 							}
-							json.NewEncoder(w).Encode(resp)
+							json.NewEncoder(w).Encode(resp) //nolint:errcheck
 						}
 					}
 				}
@@ -540,14 +535,12 @@ func TestClient_Create(t *testing.T) {
 			input.Stderr = &bytes.Buffer{}
 			client := NewClient(input)
 
-			ctx := t.Context()
-			logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+			logger := slog.New(slog.DiscardHandler)
 
-			got, err := client.Create(ctx, logger, tt.clientID)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Fatalf("expected error but got nil")
+			got, err := client.Create(t.Context(), logger, tt.clientID)
+			if err != nil {
+				if !tt.wantErr {
+					t.Fatalf("unexpected error: %v", err)
 				}
 				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("error = %v, want error containing %v", err, tt.errContains)
@@ -555,8 +548,9 @@ func TestClient_Create(t *testing.T) {
 				return
 			}
 
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
+			if tt.wantErr {
+				t.Fatalf("expected error but got nil")
+				return
 			}
 
 			// Compare without ExpirationDate first
