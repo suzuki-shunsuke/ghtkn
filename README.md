@@ -104,15 +104,6 @@ ghtkn get -m 1h
 
 `2h`, `30m`, `30s` etc. are also valid. Units are required.
 
-## :warning: Limitation
-
-ghtkn doesn't support some operations that require Client Secrets as the risk of Client Secret leakage is high:
-
-- [Refresh Token via GitHub API](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/refreshing-user-access-tokens#refreshing-a-user-access-token-with-a-refresh-token)
-- [Revoke Access Tokens via GitHub API](https://docs.github.com/en/rest/apps/oauth-applications?apiVersion=2022-11-28#delete-an-app-token)
-
-Instead, if the validity has expired, the access token is regenerated through Device Flow.
-
 ## Creating GitHub Apps
 
 Create one or two GitHub Apps for each Organization and User you manage.
@@ -155,6 +146,29 @@ While no permissions are needed to read Public Repositories, without an access t
 In such cases, it's convenient to be able to generate an access token with no permissions.
 So, create a GitHub App with no permissions.
 You don't need to install the App either.
+
+## Configuration file path
+
+> [!WARNING]
+> The file extension `.yml` isn't supported as there is no reason to support it.
+> Please use `.yaml`.
+
+1. `-c` option
+1. `$GHTKN_CONFIG`
+1. (macOS, Linux) `${XDG_CONFIG_HOME}/ghtkn/ghtkn.yaml`
+1. (macOS, Linux) `${HOME}/.config/ghtkn/ghtkn.yaml`
+1. (Windows) `${APPDATA}/ghtkn/ghtkn.yaml`
+
+## Environment Variables
+
+All environment variables are optional.
+
+- GHTKN_LOG_LEVEL: Log level. One of `debug`, `info` (default), `warn`, `error`.
+- GHTKN_OUTPUT_FORMAT: The output format of `ghtkn get` command
+  - `json`: JSON Format
+- GHTKN_APP: The app identifier to get an access token
+- GHTKN_CONFIG: The configuration file path
+- XDG_CONFIG_HOME
 
 ## Comparison between GitHub App User Access Token and other access tokens
 
@@ -200,7 +214,7 @@ https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-githu
   - Private Key management is cumbersome
   - High risk when Private Key is leaked
 
-## Note
+## :memo: Note
 
 ### API rate limit
 
@@ -213,6 +227,15 @@ https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api?
 The rate limit for authenticated users is 5,000 per hour, so it should be fine for normal use.
 
 > All of these requests count towards your personal rate limit of 5,000 requests per hour.
+
+## :warning: Limitation
+
+ghtkn doesn't support some operations that require Client Secrets as the risk of Client Secret leakage is high:
+
+- [Refresh Token via GitHub API](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/refreshing-user-access-tokens#refreshing-a-user-access-token-with-a-refresh-token)
+- [Revoke Access Tokens via GitHub API](https://docs.github.com/en/rest/apps/oauth-applications?apiVersion=2022-11-28#delete-an-app-token)
+
+Instead, if the validity has expired, the access token is regenerated through Device Flow.
 
 ## LICENSE
 
