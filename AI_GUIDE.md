@@ -65,16 +65,14 @@ Both commands should pass before committing changes.
 
 ```
 ghtkn/
-├── cmd/           # Main applications
-├── pkg/           # Go packages
-│   ├── cli/       # CLI interface layer
-│   ├── config/    # Configuration management
-│   ├── controller/# Business logic
-│   ├── github/    # GitHub API integration
-│   └── util/      # Utility functions
-├── testdata/      # Test fixtures
-├── json-schema/   # JSON schema definitions
-└── scripts/       # Build and utility scripts
+├── cmd/            # Main applications
+├── pkg/            # Go packages
+│   ├── cli/        # CLI interface layer
+│   ├── config/     # Configuration management
+│   └── controller/ # Utility functions
+├── testdata/       # Test fixtures
+├── json-schema/    # JSON schema definitions
+└── scripts/        # Build and utility scripts
 ```
 
 ## Package Responsibilities
@@ -87,24 +85,17 @@ Configuration management including reading, parsing, and validating .ghtkn.yaml 
 
 ### pkg/controller
 Business logic layer containing:
-- `run`: Core pinning logic for GitHub Actions
-- `migrate`: Configuration schema migration
-
-### pkg/github
-GitHub API client integration and authentication management.
-
-### pkg/util
-Common utility functions used across the codebase.
 
 ## Testing
 
 - Run all tests: `cmdx t` or `go test ./...`
-- Run specific package tests: `go test ./pkg/controller/run`
+- Run specific package tests: `go test ./pkg/controller/initcmd`
 - Generate coverage: `./scripts/coverage.sh`
 
 ## Dependencies
 
 This project uses:
+
 - [aqua](https://aquaproj.github.io/) for tool version management
 - [cmdx](https://github.com/suzuki-shunsuke/cmdx) for task runner
 - [goreleaser](https://goreleaser.com/) for releases
@@ -150,6 +141,7 @@ go run ./cmd/ghtkn run
 ## GitHub Actions Integration
 
 The project includes GitHub Actions for:
+
 - Testing on multiple platforms
 - Linting and validation
 - Release automation
@@ -157,24 +149,14 @@ The project includes GitHub Actions for:
 
 ## Configuration
 
-ghtkn supports configuration via:
-- `.ghtkn.yaml` or `.github/ghtkn.yaml`
-- Command-line flags
-- Environment variables
-
 ## Environment Variables
-
-- `GITHUB_TOKEN`: GitHub access token for API calls
-- `PINACT_LOG_LEVEL`: Log level (debug, info, warn, error)
-- `PINACT_CONFIG`: Path to configuration file
-- `PINACT_KEYRING_ENABLED`: Enable keyring for token storage
 
 ## Debugging
 
 Enable debug logging:
+
 ```bash
-export PINACT_LOG_LEVEL=debug
-ghtkn run
+export GHTKN_LOG_LEVEL=debug
 ```
 
 ## Common Tasks
@@ -187,13 +169,6 @@ ghtkn run
 4. Register command in `pkg/cli/runner.go`
 5. Add tests for new functionality
 
-### Updating Schema
-
-1. Modify `pkg/config/config.go`
-2. Update JSON schema: `cmdx js`
-3. Update documentation in `docs/schema_v*.md`
-4. Add migration logic if needed
-
 ## File Naming Conventions
 
 - Go source files: lowercase with underscores (e.g., `parse_line.go`)
@@ -205,7 +180,7 @@ ghtkn run
 - Always check and handle errors explicitly
 - Use `fmt.Errorf` with `%w` for wrapping errors
 - Add context to errors to aid debugging
-- Use structured logging with logrus
+- Use structured logging with slog
 
 ## Documentation
 

@@ -5,6 +5,7 @@ This document contains Claude-specific guidelines. For general project guideline
 ## Core Guidelines
 
 All general project guidelines are documented in [AI_GUIDE.md](AI_GUIDE.md). Please refer to that document for:
+
 - Language conventions
 - Commit message format
 - Code validation and testing
