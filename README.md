@@ -72,6 +72,42 @@ gh() {
 
 This way, when you run the gh command normally, the access token will be automatically passed to the gh command.
 
+## :bulb: Git Credential Helper
+
+> [!NOTE]
+> See also [#11](https://github.com/suzuki-shunsuke/ghtkn/issues/11).
+
+You can build a Git Credential Helper using ghtkn and GitHub CLI:
+
+1. Create a script:
+
+```sh
+vi ~/bin/ghtkn-gh
+chmod +x ~/bin/ghtkn-gh
+```
+
+~/bin/ghtkn-gh:
+
+```sh
+#!/usr/bin/env bash
+
+set -eu
+
+GH_TOKEN=$(ghtkn get)
+export GH_TOKEN
+exec gh "$@"
+```
+
+2. Update `~/.gitconfig` and execute the script as Git Credential Helper:
+
+~/.gitconfig
+
+```ini
+[credential "https://github.com"]
+	helper = 
+	helper = /Users/shunsukesuzuki/bin/ghtkn-gh auth git-credential
+```
+
 ### Specifying an App
 
 You can configure multiple GitHub Apps in the `apps` section of the configuration file and create and use different Apps for each Organization or User.
