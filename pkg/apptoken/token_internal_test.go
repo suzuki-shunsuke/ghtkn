@@ -474,7 +474,8 @@ func TestClient_Create(t *testing.T) { //nolint:gocognit,cyclop,funlen
 				callCount := 0
 				return func(w http.ResponseWriter, r *http.Request) {
 					callCount++
-					if r.URL.Path == "/login/device/code" {
+					switch r.URL.Path {
+					case "/login/device/code":
 						// Device code request
 						resp := DeviceCodeResponse{
 							DeviceCode:      "device123",
@@ -484,7 +485,7 @@ func TestClient_Create(t *testing.T) { //nolint:gocognit,cyclop,funlen
 							Interval:        1,
 						}
 						json.NewEncoder(w).Encode(resp) //nolint:errcheck
-					} else if r.URL.Path == "/login/oauth/access_token" {
+					case "/login/oauth/access_token":
 						// Access token request
 						if callCount <= 2 {
 							// First call returns pending
@@ -492,14 +493,14 @@ func TestClient_Create(t *testing.T) { //nolint:gocognit,cyclop,funlen
 								Error: "authorization_pending",
 							}
 							json.NewEncoder(w).Encode(resp) //nolint:errcheck
-						} else {
-							// Second call returns success
-							resp := AccessTokenResponse{
-								AccessToken: "gho_testtoken123",
-								ExpiresIn:   28800,
-							}
-							json.NewEncoder(w).Encode(resp) //nolint:errcheck
+							return
 						}
+						// Second call returns success
+						resp := AccessTokenResponse{
+							AccessToken: "gho_testtoken123",
+							ExpiresIn:   28800,
+						}
+						json.NewEncoder(w).Encode(resp) //nolint:errcheck
 					}
 				}
 			}(),
