@@ -10,18 +10,15 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 )
 
+// File and directory permissions for created configuration files
 const (
-	filePermission os.FileMode = 0o644
-	dirPermission  os.FileMode = 0o755
+	filePermission os.FileMode = 0o644 // Standard file permissions (rw-r--r--)
+	dirPermission  os.FileMode = 0o755 // Standard directory permissions (rwxr-xr-x)
 )
 
 // Init creates a new ghtkn configuration file if it doesn't exist.
 // It checks if the configuration file already exists and creates it with
 // a template configuration if it doesn't exist.
-//
-// Parameters:
-//   - configFilePath: path where the configuration file should be created
-//
 // Returns an error if file operations fail, nil if successful or file already exists.
 func (c *Controller) Init(logger *slog.Logger, configFilePath string) error {
 	f, err := afero.Exists(c.fs, configFilePath)
