@@ -72,6 +72,27 @@ gh() {
 
 This way, when you run the gh command normally, the access token will be automatically passed to the gh command.
 
+We can define multiple shell functions using for loop:
+
+```sh
+for name in gh aqua; do
+  eval "
+  ${name}() {
+    local token=\"\$(ghtkn get)\"
+    env GH_TOKEN=\"\$token\" command ${name} \"\$@\"
+  }
+  "
+done
+```
+
+```console
+$ which gh               
+gh () {
+        local token="$(ghtkn get)" 
+        env GH_TOKEN="$token" command gh "$@"
+}
+```
+
 ## :bulb: Git Credential Helper
 
 > [!NOTE]
