@@ -1,3 +1,4 @@
+//nolint:funlen,gocognit,goconst,gocritic,nestif
 package get
 
 import (

@@ -1,3 +1,4 @@
+//nolint:forcetypeassert,funlen,maintidx
 package get_test
 
 import (
@@ -22,11 +23,11 @@ func TestController_Run(t *testing.T) {
 	futureTime := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
 
 	tests := []struct {
-		name           string
-		setupInput     func() *get.Input
-		wantErr        bool
-		wantOutput     string
-		checkKeyring   bool
+		name         string
+		setupInput   func() *get.Input
+		wantErr      bool
+		wantOutput   string
+		checkKeyring bool
 	}{
 		{
 			name: "successful token creation without persistence",

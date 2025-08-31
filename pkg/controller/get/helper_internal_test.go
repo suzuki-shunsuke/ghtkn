@@ -1,3 +1,4 @@
+//nolint:cyclop,funlen,revive
 package get
 
 import (
@@ -19,7 +20,7 @@ type testConfigReader struct {
 	err error
 }
 
-func (m *testConfigReader) Read(cfg *config.Config, configFilePath string) error {
+func (m *testConfigReader) Read(cfg *config.Config, _ string) error {
 	if m.err != nil {
 		return m.err
 	}
@@ -34,7 +35,7 @@ type testAppTokenClient struct {
 	err   error
 }
 
-func (m *testAppTokenClient) Create(ctx context.Context, logger *slog.Logger, clientID string) (*apptoken.AccessToken, error) {
+func (m *testAppTokenClient) Create(_ context.Context, logger *slog.Logger, clientID string) (*apptoken.AccessToken, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
