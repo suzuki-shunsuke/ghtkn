@@ -1,0 +1,278 @@
+package get_test
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"log/slog"
+	"testing"
+	"time"
+
+	"github.com/spf13/afero"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
+)
+
+func TestController_Run(t *testing.T) {
+	t.Parallel()
+
+	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	futureTime := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+
+	tests := []struct {
+		name           string
+		setupInput     func() *get.Input
+		wantErr        bool
+		wantOutput     string
+		checkKeyring   bool
+	}{
+		{
+			name: "successful token creation without persistence",
+			setupInput: func() *get.Input {
+				return &get.Input{
+					ConfigFilePath: "test.yaml",
+					OutputFormat:   "",
+					MinExpiration:  time.Hour,
+					FS:             afero.NewMemMapFs(),
+					ConfigReader: &mockConfigReader{
+						cfg: &config.Config{
+							Persist: false,
+							Apps: []*config.App{
+								{
+									ID:       "test-app",
+									ClientID: "test-client-id",
+								},
+							},
+						},
+					},
+					Env: &config.Env{App: "test-app"},
+					AppTokenClient: &mockAppTokenClient{
+						token: &apptoken.AccessToken{
+							AccessToken:    "test-token-123",
+							ExpirationDate: keyring.FormatDate(futureTime),
+						},
+					},
+					Stdout:  &bytes.Buffer{},
+					Keyring: &mockKeyring{},
+					Now:     func() time.Time { return fixedTime },
+				}
+			},
+			wantErr:    false,
+			wantOutput: "test-token-123\n",
+		},
+		{
+			name: "successful token retrieval from keyring",
+			setupInput: func() *get.Input {
+				return &get.Input{
+					ConfigFilePath: "test.yaml",
+					OutputFormat:   "",
+					MinExpiration:  time.Hour,
+					FS:             afero.NewMemMapFs(),
+					ConfigReader: &mockConfigReader{
+						cfg: &config.Config{
+							Persist: true,
+							Apps: []*config.App{
+								{
+									ID:       "test-app",
+									ClientID: "test-client-id",
+								},
+							},
+						},
+					},
+					Env: &config.Env{App: "test-app"},
+					AppTokenClient: &mockAppTokenClient{
+						token: &apptoken.AccessToken{
+							AccessToken:    "new-token",
+							ExpirationDate: keyring.FormatDate(futureTime),
+						},
+					},
+					Stdout: &bytes.Buffer{},
+					Keyring: &mockKeyring{
+						tokens: map[string]*keyring.AccessToken{
+							"test-client-id": {
+								App:            "test-app",
+								AccessToken:    "cached-token",
+								ExpirationDate: keyring.FormatDate(futureTime),
+							},
+						},
+					},
+					Now: func() time.Time { return fixedTime },
+				}
+			},
+			wantErr:    false,
+			wantOutput: "cached-token\n",
+		},
+		{
+			name: "expired token in keyring triggers new token creation",
+			setupInput: func() *get.Input {
+				expiredTime := fixedTime.Add(30 * time.Minute)
+				return &get.Input{
+					ConfigFilePath: "test.yaml",
+					OutputFormat:   "",
+					MinExpiration:  time.Hour,
+					FS:             afero.NewMemMapFs(),
+					ConfigReader: &mockConfigReader{
+						cfg: &config.Config{
+							Persist: true,
+							Apps: []*config.App{
+								{
+									ID:       "test-app",
+									ClientID: "test-client-id",
+								},
+							},
+						},
+					},
+					Env: &config.Env{App: "test-app"},
+					AppTokenClient: &mockAppTokenClient{
+						token: &apptoken.AccessToken{
+							AccessToken:    "new-token",
+							ExpirationDate: keyring.FormatDate(futureTime),
+						},
+					},
+					Stdout: &bytes.Buffer{},
+					Keyring: &mockKeyring{
+						tokens: map[string]*keyring.AccessToken{
+							"test-client-id": {
+								App:            "test-app",
+								AccessToken:    "expired-token",
+								ExpirationDate: keyring.FormatDate(expiredTime),
+							},
+						},
+					},
+					Now: func() time.Time { return fixedTime },
+				}
+			},
+			wantErr:      false,
+			wantOutput:   "new-token\n",
+			checkKeyring: true,
+		},
+		{
+			name: "config read error",
+			setupInput: func() *get.Input {
+				return &get.Input{
+					ConfigFilePath: "test.yaml",
+					FS:             afero.NewMemMapFs(),
+					ConfigReader: &mockConfigReader{
+						err: errors.New("config read error"),
+					},
+					Stdout: &bytes.Buffer{},
+				}
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid config",
+			setupInput: func() *get.Input {
+				return &get.Input{
+					ConfigFilePath: "test.yaml",
+					FS:             afero.NewMemMapFs(),
+					ConfigReader: &mockConfigReader{
+						cfg: &config.Config{
+							Apps: []*config.App{}, // No apps configured
+						},
+					},
+					Stdout: &bytes.Buffer{},
+				}
+			},
+			wantErr: true,
+		},
+		{
+			name: "token creation error",
+			setupInput: func() *get.Input {
+				return &get.Input{
+					ConfigFilePath: "test.yaml",
+					OutputFormat:   "",
+					MinExpiration:  time.Hour,
+					FS:             afero.NewMemMapFs(),
+					ConfigReader: &mockConfigReader{
+						cfg: &config.Config{
+							Persist: false,
+							Apps: []*config.App{
+								{
+									ID:       "test-app",
+									ClientID: "test-client-id",
+								},
+							},
+						},
+					},
+					Env: &config.Env{App: "test-app"},
+					AppTokenClient: &mockAppTokenClient{
+						err: errors.New("token creation failed"),
+					},
+					Stdout:  &bytes.Buffer{},
+					Keyring: &mockKeyring{},
+					Now:     func() time.Time { return fixedTime },
+				}
+			},
+			wantErr: true,
+		},
+		{
+			name: "JSON output format",
+			setupInput: func() *get.Input {
+				return &get.Input{
+					ConfigFilePath: "test.yaml",
+					OutputFormat:   "json",
+					MinExpiration:  time.Hour,
+					FS:             afero.NewMemMapFs(),
+					ConfigReader: &mockConfigReader{
+						cfg: &config.Config{
+							Persist: false,
+							Apps: []*config.App{
+								{
+									ID:       "test-app",
+									ClientID: "test-client-id",
+								},
+							},
+						},
+					},
+					Env: &config.Env{App: "test-app"},
+					AppTokenClient: &mockAppTokenClient{
+						token: &apptoken.AccessToken{
+							AccessToken:    "test-token-json",
+							ExpirationDate: keyring.FormatDate(futureTime),
+						},
+					},
+					Stdout:  &bytes.Buffer{},
+					Keyring: &mockKeyring{},
+					Now:     func() time.Time { return fixedTime },
+				}
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			input := tt.setupInput()
+			controller := get.New(input)
+			ctx := context.Background()
+			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
+
+			err := controller.Run(ctx, logger)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Run() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !tt.wantErr && input.OutputFormat != "json" {
+				output := input.Stdout.(*bytes.Buffer).String()
+				if output != tt.wantOutput {
+					t.Errorf("Run() output = %v, want %v", output, tt.wantOutput)
+				}
+			}
+
+			if tt.checkKeyring {
+				kr := input.Keyring.(*mockKeyring)
+				if kr.tokens["test-client-id"] == nil {
+					t.Error("Token was not stored in keyring")
+				} else if kr.tokens["test-client-id"].AccessToken != "new-token" {
+					t.Errorf("Stored token = %v, want new-token", kr.tokens["test-client-id"].AccessToken)
+				}
+			}
+		})
+	}
+}

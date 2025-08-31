@@ -1,0 +1,396 @@
+package get
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"log/slog"
+	"testing"
+	"time"
+
+	"github.com/spf13/afero"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
+)
+
+type testConfigReader struct {
+	cfg *config.Config
+	err error
+}
+
+func (m *testConfigReader) Read(cfg *config.Config, configFilePath string) error {
+	if m.err != nil {
+		return m.err
+	}
+	if m.cfg != nil {
+		*cfg = *m.cfg
+	}
+	return nil
+}
+
+type testAppTokenClient struct {
+	token *apptoken.AccessToken
+	err   error
+}
+
+func (m *testAppTokenClient) Create(ctx context.Context, logger *slog.Logger, clientID string) (*apptoken.AccessToken, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.token, nil
+}
+
+type testKeyring struct {
+	tokens map[string]*keyring.AccessToken
+	getErr error
+	setErr error
+}
+
+func (m *testKeyring) Get(key string) (*keyring.AccessToken, error) {
+	if m.getErr != nil {
+		return nil, m.getErr
+	}
+	return m.tokens[key], nil
+}
+
+func (m *testKeyring) Set(key string, token *keyring.AccessToken) error {
+	if m.setErr != nil {
+		return m.setErr
+	}
+	if m.tokens == nil {
+		m.tokens = make(map[string]*keyring.AccessToken)
+	}
+	m.tokens[key] = token
+	return nil
+}
+
+func TestController_checkExpired(t *testing.T) {
+	t.Parallel()
+
+	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+
+	tests := []struct {
+		name          string
+		exDate        string
+		minExpiration time.Duration
+		now           time.Time
+		want          bool
+		wantErr       bool
+	}{
+		{
+			name:          "not expired - future date",
+			exDate:        keyring.FormatDate(fixedTime.Add(2 * time.Hour)),
+			minExpiration: time.Hour,
+			now:           fixedTime,
+			want:          false,
+			wantErr:       false,
+		},
+		{
+			name:          "expired - within min expiration",
+			exDate:        keyring.FormatDate(fixedTime.Add(30 * time.Minute)),
+			minExpiration: time.Hour,
+			now:           fixedTime,
+			want:          true,
+			wantErr:       false,
+		},
+		{
+			name:          "expired - past date",
+			exDate:        keyring.FormatDate(fixedTime.Add(-time.Hour)),
+			minExpiration: time.Hour,
+			now:           fixedTime,
+			want:          true,
+			wantErr:       false,
+		},
+		{
+			name:          "exactly at threshold",
+			exDate:        keyring.FormatDate(fixedTime.Add(time.Hour)),
+			minExpiration: time.Hour,
+			now:           fixedTime,
+			want:          false,
+			wantErr:       false,
+		},
+		{
+			name:          "invalid date format",
+			exDate:        "invalid-date",
+			minExpiration: time.Hour,
+			now:           fixedTime,
+			want:          false,
+			wantErr:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			input := &Input{
+				MinExpiration: tt.minExpiration,
+				Now:           func() time.Time { return tt.now },
+			}
+			controller := &Controller{input: input}
+
+			got, err := controller.checkExpired(tt.exDate)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("checkExpired() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("checkExpired() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestController_readConfig(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		configReader   ConfigReader
+		configFilePath string
+		wantErr        bool
+	}{
+		{
+			name: "successful config read",
+			configReader: &testConfigReader{
+				cfg: &config.Config{
+					Apps: []*config.App{
+						{
+							ID:       "app1",
+							ClientID: "client1",
+						},
+					},
+				},
+			},
+			configFilePath: "test.yaml",
+			wantErr:        false,
+		},
+		{
+			name: "config read error",
+			configReader: &testConfigReader{
+				err: errors.New("read error"),
+			},
+			configFilePath: "test.yaml",
+			wantErr:        true,
+		},
+		{
+			name: "invalid config - no apps",
+			configReader: &testConfigReader{
+				cfg: &config.Config{
+					Apps: []*config.App{},
+				},
+			},
+			configFilePath: "test.yaml",
+			wantErr:        true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			input := &Input{
+				ConfigReader:   tt.configReader,
+				ConfigFilePath: tt.configFilePath,
+			}
+			controller := &Controller{input: input}
+
+			cfg := &config.Config{}
+			err := controller.readConfig(cfg)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("readConfig() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestController_createToken(t *testing.T) {
+	t.Parallel()
+
+	futureTime := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+
+	tests := []struct {
+		name    string
+		app     *config.App
+		client  AppTokenClient
+		want    *keyring.AccessToken
+		wantErr bool
+	}{
+		{
+			name: "successful token creation",
+			app: &config.App{
+				ID:       "test-app",
+				ClientID: "test-client-id",
+			},
+			client: &testAppTokenClient{
+				token: &apptoken.AccessToken{
+					AccessToken:    "new-token",
+					ExpirationDate: keyring.FormatDate(futureTime),
+				},
+			},
+			want: &keyring.AccessToken{
+				App:            "test-app",
+				AccessToken:    "new-token",
+				ExpirationDate: keyring.FormatDate(futureTime),
+			},
+			wantErr: false,
+		},
+		{
+			name: "token creation error",
+			app: &config.App{
+				ID:       "test-app",
+				ClientID: "test-client-id",
+			},
+			client: &testAppTokenClient{
+				err: errors.New("creation failed"),
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			input := &Input{
+				AppTokenClient: tt.client,
+			}
+			controller := &Controller{input: input}
+
+			ctx := context.Background()
+			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
+
+			got, err := controller.createToken(ctx, logger, tt.app)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("createToken() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr {
+				if got.App != tt.want.App || got.AccessToken != tt.want.AccessToken || got.ExpirationDate != tt.want.ExpirationDate {
+					t.Errorf("createToken() = %v, want %v", got, tt.want)
+				}
+			}
+		})
+	}
+}
+
+func TestController_getAccessTokenFromKeyring(t *testing.T) {
+	t.Parallel()
+
+	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+	futureTime := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+	expiredTime := fixedTime.Add(30 * time.Minute)
+
+	tests := []struct {
+		name          string
+		app           *config.App
+		keyring       Keyring
+		minExpiration time.Duration
+		now           time.Time
+		want          *keyring.AccessToken
+		wantErr       bool
+	}{
+		{
+			name: "valid token from keyring",
+			app: &config.App{
+				ID:       "test-app",
+				ClientID: "test-client-id",
+			},
+			keyring: &testKeyring{
+				tokens: map[string]*keyring.AccessToken{
+					"test-client-id": {
+						AccessToken:    "cached-token",
+						ExpirationDate: keyring.FormatDate(futureTime),
+					},
+				},
+			},
+			minExpiration: time.Hour,
+			now:           fixedTime,
+			want: &keyring.AccessToken{
+				App:            "test-app",
+				AccessToken:    "cached-token",
+				ExpirationDate: keyring.FormatDate(futureTime),
+			},
+			wantErr: false,
+		},
+		{
+			name: "expired token in keyring",
+			app: &config.App{
+				ID:       "test-app",
+				ClientID: "test-client-id",
+			},
+			keyring: &testKeyring{
+				tokens: map[string]*keyring.AccessToken{
+					"test-client-id": {
+						AccessToken:    "expired-token",
+						ExpirationDate: keyring.FormatDate(expiredTime),
+					},
+				},
+			},
+			minExpiration: time.Hour,
+			now:           fixedTime,
+			want:          nil,
+			wantErr:       false,
+		},
+		{
+			name: "token not found in keyring",
+			app: &config.App{
+				ID:       "test-app",
+				ClientID: "test-client-id",
+			},
+			keyring: &testKeyring{
+				tokens: map[string]*keyring.AccessToken{},
+			},
+			minExpiration: time.Hour,
+			now:           fixedTime,
+			want:          nil,
+			wantErr:       false,
+		},
+		{
+			name: "keyring error",
+			app: &config.App{
+				ID:       "test-app",
+				ClientID: "test-client-id",
+			},
+			keyring: &testKeyring{
+				getErr: errors.New("keyring error"),
+			},
+			minExpiration: time.Hour,
+			now:           fixedTime,
+			want:          nil,
+			wantErr:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			input := &Input{
+				Keyring:       tt.keyring,
+				MinExpiration: tt.minExpiration,
+				Now:           func() time.Time { return tt.now },
+				FS:            afero.NewMemMapFs(),
+			}
+			controller := &Controller{input: input}
+
+			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
+
+			got, err := controller.getAccessTokenFromKeyring(logger, tt.app)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getAccessTokenFromKeyring() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && got != nil {
+				if got.App != tt.want.App || got.AccessToken != tt.want.AccessToken || got.ExpirationDate != tt.want.ExpirationDate {
+					t.Errorf("getAccessTokenFromKeyring() = %v, want %v", got, tt.want)
+				}
+			}
+			if !tt.wantErr && got == nil && tt.want != nil {
+				t.Error("getAccessTokenFromKeyring() returned nil, expected token")
+			}
+		})
+	}
+}
