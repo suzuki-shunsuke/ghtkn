@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/suzuki-shunsuke/ghtkn/pkg/config/config",
+  "$ref": "#/$defs/Config",
+  "$defs": {
+    "App": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "client_id": {
+          "type": "string"
+        },
+        "default": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "name",
+        "client_id"
+      ]
+    },
+    "Config": {
+      "properties": {
+        "persist": {
+          "type": "boolean"
+        },
+        "apps": {
+          "items": {
+            "$ref": "#/$defs/App"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "apps"
+      ]
+    }
+  }
+}

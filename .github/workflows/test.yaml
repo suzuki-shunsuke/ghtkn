@@ -1,0 +1,22 @@
+---
+name: test
+on: pull_request
+permissions: {}
+concurrency:
+  group: ${{ github.workflow }}--${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  status-check:
+    runs-on: ubuntu-24.04
+    if: always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled'))
+    timeout-minutes: 10
+    permissions: {}
+    needs:
+      - test
+    steps:
+      - run: exit 1
+  test:
+    uses: ./.github/workflows/workflow_call_test.yaml
+    permissions:
+      pull-requests: write
+      contents: read

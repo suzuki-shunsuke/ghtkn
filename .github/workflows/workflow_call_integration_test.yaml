@@ -1,0 +1,24 @@
+---
+name: integration test
+on: workflow_call
+jobs:
+  integration-test:
+    permissions: {}
+    timeout-minutes: 20
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      matrix:
+        runs-on:
+          - windows-latest
+          - ubuntu-24.04
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.mod
+      - run: |
+          go install -ldflags "-X main.version=v1.0.0 -X main.commit=$GITHUB_SHA -X main.date=$(date +"%Y-%m-%dT%H:%M:%SZ%:z" | tr -d '+')" ./cmd/ghtkn
+      - run: ghtkn -v
+      - run: ghtkn init
