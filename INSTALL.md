@@ -15,7 +15,7 @@ There are some ways to install ghtkn.
 You can install ghtkn using [Homebrew](https://brew.sh/).
 
 ```sh
-brew install suzuki-shunsuke/ghtkn/ghtkn
+brew install suzuki-shunsuke/ghtkn/ghtkn --cask
 ```
 
 ## Scoop
