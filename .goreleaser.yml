@@ -10,6 +10,8 @@ archives:
     format_overrides:
       - goos: windows
         formats: [zip]
+checksum:
+  name_template: "{{ .ProjectName }}_checksums.txt"
 builds:
   - binary: ghtkn
     main: cmd/ghtkn/main.go
