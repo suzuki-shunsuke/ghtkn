@@ -7,6 +7,8 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 )
 
+// output writes the access token to stdout in the configured format.
+// It outputs either the raw token string (default) or a JSON object based on OutputFormat.
 func (c *Controller) output(token *keyring.AccessToken) error {
 	// Output access token
 	if c.input.IsJSON() {
@@ -20,6 +22,8 @@ func (c *Controller) output(token *keyring.AccessToken) error {
 	return nil
 }
 
+// outputJSON encodes the given data as formatted JSON and writes it to stdout.
+// The JSON is indented with two spaces for readability.
 func (c *Controller) outputJSON(data any) error {
 	encoder := json.NewEncoder(c.input.Stdout)
 	encoder.SetIndent("", "  ")
