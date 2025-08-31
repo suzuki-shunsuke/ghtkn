@@ -157,7 +157,7 @@ You don't need to install the App either.
 1. `$GHTKN_CONFIG`
 1. (macOS, Linux) `${XDG_CONFIG_HOME}/ghtkn/ghtkn.yaml`
 1. (macOS, Linux) `${HOME}/.config/ghtkn/ghtkn.yaml`
-1. (Windows) `${APPDATA}/ghtkn/ghtkn.yaml`
+1. (Windows) `%APPDATA%\ghtkn\ghtkn.yaml`
 
 ## Environment Variables
 
