@@ -1,4 +1,4 @@
-# ghtkn - *G*it*H*ub *T*o*K*e*N*
+# ghtkn
 
 [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn/main/LICENSE)
 
