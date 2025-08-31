@@ -63,7 +63,7 @@ aqua g -i cli/cli
 ```
 
 ```sh
-version=v0.1.0-1
+version=v0.1.0
 asset=ghtkn_darwin_arm64.tar.gz
 gh release download -R suzuki-shunsuke/ghtkn "$version" -p "$asset"
 gh attestation verify "$asset" \
@@ -80,7 +80,7 @@ aqua g -i slsa-framework/slsa-verifier
 ```
 
 ```sh
-version=v0.1.0-1
+version=v0.1.0
 asset=ghtkn_darwin_arm64.tar.gz
 gh release download -R suzuki-shunsuke/ghtkn "$version" -p "$asset" -p multiple.intoto.jsonl
 slsa-verifier verify-artifact "$asset" \
@@ -98,7 +98,7 @@ aqua g -i sigstore/cosign
 ```
 
 ```sh
-version=v0.1.0-1
+version=v0.1.0
 checksum_file="ghtkn_checksums.txt"
 asset=ghtkn_darwin_arm64.tar.gz
 gh release download "$version" \
