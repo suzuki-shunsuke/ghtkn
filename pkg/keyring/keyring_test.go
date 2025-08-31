@@ -1,3 +1,4 @@
+//nolint:cyclop,funlen
 package keyring_test
 
 import (
