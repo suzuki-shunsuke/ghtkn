@@ -2,7 +2,6 @@ package get
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 
@@ -18,7 +17,7 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	}
 
 	// Select the app config
-	app := c.selectApp(cfg)
+	app := cfg.SelectApp(c.input.Env.App)
 	logFields := []any{"app", app.ID}
 	logger = logger.With(logFields...)
 
@@ -58,19 +57,6 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	return nil
 }
 
-func (c *Controller) output(token *keyring.AccessToken) error {
-	// Output access token
-	if c.input.IsJSON() {
-		// JSON format
-		if err := c.outputJSON(token); err != nil {
-			return fmt.Errorf("output access token: %w", err)
-		}
-		return nil
-	}
-	fmt.Fprintln(c.input.Stdout, token.AccessToken)
-	return nil
-}
-
 func (c *Controller) createToken(ctx context.Context, logger *slog.Logger, app *config.App) (*keyring.AccessToken, error) {
 	tk, err := c.input.AppTokenClient.Create(ctx, logger, app.ClientID)
 	if err != nil {
@@ -89,15 +75,6 @@ func (c *Controller) readConfig(cfg *config.Config) error {
 	}
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("validate config: %w", err)
-	}
-	return nil
-}
-
-func (c *Controller) outputJSON(data any) error {
-	encoder := json.NewEncoder(c.input.Stdout)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(data); err != nil {
-		return fmt.Errorf("encode as JSON: %w", err)
 	}
 	return nil
 }
@@ -134,24 +111,4 @@ func (c *Controller) checkExpired(exDate string) (bool, error) {
 	// Expiration Date - Now < Min Expiration
 	// Now + Min Expiration > Expiration Date
 	return c.input.Now().Add(c.input.MinExpiration).After(t), nil
-}
-
-func (c *Controller) selectApp(cfg *config.Config) *config.App {
-	if cfg == nil || len(cfg.Apps) == 0 {
-		return nil
-	}
-	var app *config.App
-	appID := c.input.Env.App
-	for _, a := range cfg.Apps {
-		if appID != "" && a.ID == appID {
-			return a
-		}
-		if app == nil && a.Default {
-			app = a
-		}
-	}
-	if app != nil {
-		return app
-	}
-	return cfg.Apps[0]
 }
