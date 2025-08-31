@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/spf13/afero"
@@ -53,7 +54,7 @@ func NewInput(configFilePath string) *Input {
 		ConfigFilePath: configFilePath,
 		FS:             fs,
 		ConfigReader:   config.NewReader(fs),
-		Env:            config.NewEnv(os.Getenv),
+		Env:            config.NewEnv(os.Getenv, runtime.GOOS),
 		AppTokenClient: apptoken.NewClient(&apptoken.Input{
 			HTTPClient: http.DefaultClient,
 			Now:        time.Now,

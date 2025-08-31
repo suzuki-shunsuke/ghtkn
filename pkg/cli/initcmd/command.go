@@ -7,8 +7,10 @@ package initcmd
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
+	"runtime"
 
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
@@ -62,9 +64,13 @@ func (r *runner) action(_ context.Context, c *cli.Command) error {
 	if configFilePath == "" {
 		configFilePath = flag.ConfigValue(c)
 	}
-	env := config.NewEnv(os.Getenv)
+	env := config.NewEnv(os.Getenv, runtime.GOOS)
 	if configFilePath == "" {
-		configFilePath = config.GetPath(env)
+		p, err := config.GetPath(env)
+		if err != nil {
+			return fmt.Errorf("get the config path: %w", err)
+		}
+		configFilePath = p
 	}
 	fs := afero.NewOsFs()
 	ctrl := initcmd.New(fs, env)

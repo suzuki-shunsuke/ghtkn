@@ -63,7 +63,11 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error {
 	}
 	input := get.NewInput(flag.ConfigValue(c))
 	if input.ConfigFilePath == "" {
-		input.ConfigFilePath = config.GetPath(input.Env)
+		p, err := config.GetPath(input.Env)
+		if err != nil {
+			return fmt.Errorf("get the config path: %w", err)
+		}
+		input.ConfigFilePath = p
 	}
 	input.OutputFormat = flag.FormatValue(c)
 	if m := flag.MinExpirationValue(c); m != "" {

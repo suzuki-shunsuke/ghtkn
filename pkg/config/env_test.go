@@ -12,58 +12,89 @@ func TestNewEnv(t *testing.T) { //nolint:funlen
 	tests := []struct {
 		name   string
 		envMap map[string]string
+		goos   string
 		want   *config.Env
 	}{
 		{
-			name: "all environment variables set",
+			name: "Linux: all environment variables set",
 			envMap: map[string]string{
 				"XDG_CONFIG_HOME": "/home/user/.config",
 				"GHTKN_APP":       "my-app",
+				"HOME":            "/home/user",
 			},
+			goos: "linux",
 			want: &config.Env{
 				XDGConfigHome: "/home/user/.config",
 				App:           "my-app",
+				Home:          "/home/user",
+				AppData:       "",
+				UserProfile:   "",
+				GOOS:          "linux",
 			},
 		},
 		{
-			name: "XDG_CONFIG_HOME only",
+			name: "macOS: XDG_CONFIG_HOME and HOME",
 			envMap: map[string]string{
 				"XDG_CONFIG_HOME": "/custom/config",
+				"HOME":            "/Users/testuser",
 			},
+			goos: "darwin",
 			want: &config.Env{
 				XDGConfigHome: "/custom/config",
 				App:           "",
+				Home:          "/Users/testuser",
+				AppData:       "",
+				UserProfile:   "",
+				GOOS:          "darwin",
 			},
 		},
 		{
-			name: "GHTKN_APP only",
+			name: "Windows: with APPDATA and USERPROFILE",
 			envMap: map[string]string{
-				"GHTKN_APP": "test-app",
+				"APPDATA":     `C:\Users\testuser\AppData\Roaming`,
+				"USERPROFILE": `C:\Users\testuser`,
+				"GHTKN_APP":   "test-app",
 			},
+			goos: "windows",
 			want: &config.Env{
 				XDGConfigHome: "",
 				App:           "test-app",
+				Home:          "",
+				AppData:       `C:\Users\testuser\AppData\Roaming`,
+				UserProfile:   `C:\Users\testuser`,
+				GOOS:          "windows",
 			},
 		},
 		{
 			name:   "no environment variables set",
 			envMap: map[string]string{},
+			goos:   "linux",
 			want: &config.Env{
 				XDGConfigHome: "",
 				App:           "",
+				Home:          "",
+				AppData:       "",
+				UserProfile:   "",
+				GOOS:          "linux",
 			},
 		},
 		{
-			name: "with other environment variables",
+			name: "mixed environment (Linux with Windows vars ignored)",
 			envMap: map[string]string{
 				"XDG_CONFIG_HOME": "/home/user/.config",
-				"GHTKN_APP":       "app1",
-				"PATH":            "/usr/bin:/bin",
 				"HOME":            "/home/user",
+				"APPDATA":         `C:\Users\testuser\AppData\Roaming`,
+				"USERPROFILE":     `C:\Users\testuser`,
+				"GHTKN_APP":       "app1",
 			},
+			goos: "linux",
 			want: &config.Env{
 				XDGConfigHome: "/home/user/.config",
 				App:           "app1",
+				Home:          "/home/user",
+				AppData:       `C:\Users\testuser\AppData\Roaming`,
+				UserProfile:   `C:\Users\testuser`,
+				GOOS:          "linux",
 			},
 		},
 	}
@@ -74,7 +105,7 @@ func TestNewEnv(t *testing.T) { //nolint:funlen
 			getEnv := func(key string) string {
 				return tt.envMap[key]
 			}
-			got := config.NewEnv(getEnv)
+			got := config.NewEnv(getEnv, tt.goos)
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("NewEnv() mismatch (-want +got):\n%s", diff)
 			}
