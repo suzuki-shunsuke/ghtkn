@@ -367,7 +367,7 @@ func TestClient_pollForAccessToken(t *testing.T) {
 			want:        nil,
 			wantErr:     true,
 			errContains: "context was cancelled",
-			timeout:     100 * time.Millisecond,
+			timeout:     5 * time.Millisecond,
 		},
 		// TODO
 		// {
