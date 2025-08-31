@@ -1,6 +1,6 @@
 # ghtkn
 
-[![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn/main/LICENSE)
+[![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn/main/LICENSE) | [Install](INSTALL.md) | [Usage](USAGE.md)
 
 ghtkn is a CLI that generates User Access Tokens from GitHub Apps using Device Flow.
 
