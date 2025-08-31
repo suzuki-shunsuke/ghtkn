@@ -45,10 +45,14 @@ func NewInput(configFilePath string) *Input {
 		FS:             fs,
 		ConfigReader:   config.NewReader(fs),
 		Env:            config.NewEnv(os.Getenv),
-		AppTokenClient: apptoken.NewClient(http.DefaultClient),
-		Stdout:         os.Stdout,
-		Keyring:        keyring.New("github.com/suzuki-shunsuke/ghtkn"),
-		Now:            time.Now,
+		AppTokenClient: apptoken.NewClient(&apptoken.Input{
+			HttpClient: http.DefaultClient,
+			Now:        time.Now,
+			Stderr:     os.Stderr,
+		}),
+		Stdout:  os.Stdout,
+		Keyring: keyring.New("github.com/suzuki-shunsuke/ghtkn"),
+		Now:     time.Now,
 	}
 }
 

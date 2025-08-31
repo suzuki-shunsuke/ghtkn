@@ -20,18 +20,48 @@ import (
 
 // Client handles GitHub App authentication and access token generation.
 type Client struct {
-	httpClient *http.Client
-	now        func() time.Time
-	stderr     io.Writer
+	input *Input
+}
+
+type Browser interface {
+	Open(ctx context.Context, url string) error
+}
+
+type Input struct {
+	HttpClient *http.Client
+	Now        func() time.Time
+	Stderr     io.Writer
+	Browser    Browser
+	NewTicker  func(d time.Duration) *time.Ticker
+}
+
+func NewInput() *Input {
+	return &Input{
+		HttpClient: http.DefaultClient,
+		Now:        time.Now,
+		Stderr:     os.Stderr,
+		Browser:    NewBrowser(),
+		NewTicker:  time.NewTicker,
+	}
+}
+
+func NewMockInput() *Input {
+	return &Input{
+		HttpClient: http.DefaultClient,
+		Now:        time.Now,
+		Stderr:     io.Discard,
+		Browser:    NewMockBrowser(nil),
+		NewTicker: func(_ time.Duration) *time.Ticker {
+			return time.NewTicker(10 * time.Millisecond)
+		},
+	}
 }
 
 // NewClient creates a new Client with the provided HTTP client.
 // The client uses the provided HTTP client for all API requests.
-func NewClient(httpClient *http.Client) *Client {
+func NewClient(input *Input) *Client {
 	return &Client{
-		httpClient: httpClient,
-		now:        time.Now,
-		stderr:     os.Stderr,
+		input: input,
 	}
 }
 
@@ -74,10 +104,10 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 		return nil, fmt.Errorf("get device code: %w", err)
 	}
 
-	fmt.Fprintf(c.stderr, "Please visit: %s\n", deviceCode.VerificationURI)
-	fmt.Fprintf(c.stderr, "And enter code: %s\n", deviceCode.UserCode)
-	fmt.Fprintf(c.stderr, "Expiration date: %s\n", c.now().Add(time.Duration(deviceCode.ExpiresIn)*time.Second).Format(time.RFC3339))
-	if err := openBrowser(ctx, deviceCode.VerificationURI); err != nil {
+	fmt.Fprintf(c.input.Stderr, "Please visit: %s\n", deviceCode.VerificationURI)
+	fmt.Fprintf(c.input.Stderr, "And enter code: %s\n", deviceCode.UserCode)
+	fmt.Fprintf(c.input.Stderr, "Expiration date: %s\n", c.input.Now().Add(time.Duration(deviceCode.ExpiresIn)*time.Second).Format(time.RFC3339))
+	if err := c.input.Browser.Open(ctx, deviceCode.VerificationURI); err != nil {
 		if !errors.Is(err, errNoCommandFound) {
 			slogerr.WithError(logger, err).Warn("failed to open the browser")
 		}
@@ -87,7 +117,7 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 	if err != nil {
 		return nil, fmt.Errorf("get access token: %w", err)
 	}
-	now := c.now()
+	now := c.input.Now()
 
 	return &AccessToken{
 		AccessToken:    token.AccessToken,
@@ -98,6 +128,9 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 // getDeviceCode requests a device code from GitHub's OAuth device endpoint.
 // It returns the device code response containing the user code and verification URL.
 func (c *Client) getDeviceCode(ctx context.Context, clientID string) (*DeviceCodeResponse, error) {
+	if clientID == "" {
+		return nil, errors.New("client id is required")
+	}
 	jsonData, err := json.Marshal(map[string]string{
 		"client_id": clientID,
 	})
@@ -113,7 +146,7 @@ func (c *Client) getDeviceCode(ctx context.Context, clientID string) (*DeviceCod
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.input.HttpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("send a request for device code: %w", err)
 	}
@@ -151,17 +184,17 @@ func (c *Client) pollForAccessToken(ctx context.Context, clientID string, device
 		interval = additionalInterval
 	}
 
-	ticker := time.NewTicker(interval)
+	ticker := c.input.NewTicker(interval)
 	defer ticker.Stop()
 
-	deadline := time.Now().Add(time.Duration(deviceCode.ExpiresIn) * time.Second)
+	deadline := c.input.Now().Add(time.Duration(deviceCode.ExpiresIn) * time.Second)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil, fmt.Errorf("context was cancelled: %w", ctx.Err())
 		case <-ticker.C:
-			if time.Now().After(deadline) {
+			if c.input.Now().After(deadline) {
 				return nil, errors.New("device code expired")
 			}
 
@@ -206,7 +239,7 @@ func (c *Client) checkAccessToken(ctx context.Context, clientID, deviceCode stri
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.input.HttpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("send a request for access token: %w", err)
 	}

@@ -13,10 +13,28 @@ import (
 // errNoCommandFound is returned when no suitable command is found to open a browser.
 var errNoCommandFound = errors.New("no command found to open the browser")
 
-// openBrowser opens the specified URL in the system's default browser.
+type browser struct{}
+
+func NewBrowser() Browser {
+	return &browser{}
+}
+
+// Open opens the specified URL in the system's default browser.
 // It is platform-specific and delegates to the appropriate implementation.
-func openBrowser(ctx context.Context, url string) error {
+func (b *browser) Open(ctx context.Context, url string) error {
 	return openB(ctx, url)
+}
+
+type mockBrowser struct {
+	err error
+}
+
+func NewMockBrowser(err error) Browser {
+	return &mockBrowser{err: err}
+}
+
+func (b *mockBrowser) Open(ctx context.Context, url string) error {
+	return b.err
 }
 
 // runCmd attempts to open a URL using available browser commands.
