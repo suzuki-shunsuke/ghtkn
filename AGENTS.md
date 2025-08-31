@@ -88,6 +88,14 @@ Business logic layer containing:
 
 ## Testing
 
+### Test Framework Guidelines
+
+- **DO NOT** use `testify` for writing tests
+- **DO** use `google/go-cmp` for comparing expected and actual values
+- Use standard Go testing package (`testing`) for all tests
+
+### Running Tests
+
 - Run all tests: `cmdx t` or `go test ./...`
 - Run specific package tests: `go test ./pkg/controller/initcmd`
 - Generate coverage: `./scripts/coverage.sh`
