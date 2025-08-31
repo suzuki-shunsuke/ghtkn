@@ -276,6 +276,36 @@
       "algorithm": "sha256"
     },
     {
+      "id": "github_release/github.com/suzuki-shunsuke/ghtkn/v0.1.0-1/ghtkn_darwin_amd64.tar.gz",
+      "checksum": "7FA7639F7843878B31BD5AFC3749D2C55981DB73656C91B1CC749C9130FE91E4",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/suzuki-shunsuke/ghtkn/v0.1.0-1/ghtkn_darwin_arm64.tar.gz",
+      "checksum": "0DAFC74AC7011B6879573BFDDDFD46D13B522DDDBF3247817F0F8DB47C35D69A",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/suzuki-shunsuke/ghtkn/v0.1.0-1/ghtkn_linux_amd64.tar.gz",
+      "checksum": "759DD97669B7310A56C6FCE11938A9F4E8881E79DA4D3DD4CC0E83812EA136DA",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/suzuki-shunsuke/ghtkn/v0.1.0-1/ghtkn_linux_arm64.tar.gz",
+      "checksum": "63F4ABE5AD143E57D2D214CEB7909BCE3AF545041911B309A775F5F76C2BA7C8",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/suzuki-shunsuke/ghtkn/v0.1.0-1/ghtkn_windows_amd64.zip",
+      "checksum": "0DA2827FA80E2D1C70CFA158A515B89052B7765A743A991F85BB2402896F0136",
+      "algorithm": "sha256"
+    },
+    {
+      "id": "github_release/github.com/suzuki-shunsuke/ghtkn/v0.1.0-1/ghtkn_windows_arm64.zip",
+      "checksum": "4FB4EA0448F7139EB4D444EF9368A606A5DD35EEBCD540CEA9A48356C70B0165",
+      "algorithm": "sha256"
+    },
+    {
       "id": "github_release/github.com/suzuki-shunsuke/nllint/v0.1.2/nllint_darwin_amd64.tar.gz",
       "checksum": "EAD8931E0F048904E9D85E45E90F4E3BDF13B5D2EE5F2BCCC35782BC3EC4CD8F",
       "algorithm": "sha256"
@@ -336,9 +366,9 @@
       "algorithm": "sha256"
     },
     {
-      "id": "registries/github_content/github.com/aquaproj/aqua-registry/v4.406.0/registry.yaml",
-      "checksum": "1479AF3D9C3B9135B775B312D9E6DD2AB0D0B09B20E0515E18935B090D9E1ED6",
-      "algorithm": "sha256"
+      "id": "registries/github_content/github.com/aquaproj/aqua-registry/v4.407.0/registry.yaml",
+      "checksum": "42EAEACA57BFA53BD71C31B71249137B164C6335D001C50D6C4BB384C47E5E2DE24AF3E85D34801692B86F1C5212CA280CA2B81843F1A684C821820CA1703D38",
+      "algorithm": "sha512"
     }
   ]
 }
