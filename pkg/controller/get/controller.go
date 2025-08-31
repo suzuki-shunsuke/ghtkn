@@ -74,7 +74,7 @@ func (i *Input) IsJSON() bool {
 // Validate checks if the Input configuration is valid.
 // It returns an error if the output format is neither empty nor "json".
 func (i *Input) Validate() error {
-	if i.OutputFormat != "" && i.OutputFormat != "json" {
+	if i.OutputFormat != "" && !i.IsJSON() {
 		return errors.New("output format must be empty or 'json'")
 	}
 	return nil
