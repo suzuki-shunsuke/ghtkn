@@ -13,6 +13,10 @@ import (
 var errNoCommandFound = errors.New("no command found to open the browser")
 
 func openBrowser(ctx context.Context, url string) error {
+	return openB(ctx, url)
+}
+
+func runCmd(ctx context.Context, url string) error {
 	for _, cmd := range cmds() {
 		if _, err := exec.LookPath(cmd); err != nil {
 			continue
