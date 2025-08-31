@@ -32,36 +32,28 @@ sboms:
     disable: false
 
 homebrew_casks:
-  -
-    # NOTE: make sure the url_template, the token and given repo (github or gitlab) owner and name are from the
-    # same kind. We will probably unify this in the next major version like it is done with scoop.
-
-    repository:
+  - repository:
       owner: suzuki-shunsuke
       name: homebrew-ghtkn
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     # The project name and current git tag are used in the format string.
     commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
     homepage: https://github.com/suzuki-shunsuke/ghtkn
-    description: Pin GitHub Actions versions
+    description: Create GitHub App User Access Token for secure local development
     license: MIT
     skip_upload: true
     hooks:
       post:
         install: |
-          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/ghtkn"]
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/pinact"]
           end
 
 scoops:
   -
     description: |
-      Pin GitHub Action versions by full length commit SHA.
-      Edit GitHub Workflow and Composite action files and pin versions of Actions and Reusable Workflows.
-      ghtkn can also update their versions and verify version annotations
+      Create GitHub App User Access Token for secure local development
     license: MIT
     skip_upload: true
     repository:
       owner: suzuki-shunsuke
       name: scoop-bucket
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
