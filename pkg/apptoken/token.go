@@ -1,3 +1,5 @@
+// Package apptoken handles GitHub App access token generation using OAuth device flow.
+// It provides functionality to authenticate GitHub Apps and obtain access tokens.
 package apptoken
 
 import (
@@ -16,12 +18,15 @@ import (
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
+// Client handles GitHub App authentication and access token generation.
 type Client struct {
 	httpClient *http.Client
 	now        func() time.Time
 	stderr     io.Writer
 }
 
+// NewClient creates a new Client with the provided HTTP client.
+// The client uses the provided HTTP client for all API requests.
 func NewClient(httpClient *http.Client) *Client {
 	return &Client{
 		httpClient: httpClient,
@@ -30,6 +35,8 @@ func NewClient(httpClient *http.Client) *Client {
 	}
 }
 
+// DeviceCodeResponse represents the response from GitHub's device code endpoint.
+// It contains the device code and user code needed for authentication.
 type DeviceCodeResponse struct {
 	DeviceCode      string `json:"device_code"`
 	UserCode        string `json:"user_code"`
@@ -38,6 +45,8 @@ type DeviceCodeResponse struct {
 	Interval        int    `json:"interval"`
 }
 
+// AccessTokenResponse represents the response from GitHub's access token endpoint.
+// It contains either an access token or an error message.
 type AccessTokenResponse struct {
 	AccessToken string `json:"access_token"`
 	ExpiresIn   int    `json:"expires_in"`
@@ -45,17 +54,17 @@ type AccessTokenResponse struct {
 	Error string `json:"error"`
 }
 
+// AccessToken represents a GitHub App access token with its metadata.
+// It includes the token value, associated app, and expiration date.
 type AccessToken struct {
 	App            string `json:"app"`
 	AccessToken    string `json:"access_token"`
 	ExpirationDate string `json:"expiration_date"`
 }
 
-type ErrorResponse struct {
-	Error            string `json:"error"`
-	ErrorDescription string `json:"error_description"`
-}
-
+// Create initiates the OAuth device flow and returns an access token.
+// It displays the verification URL and user code, optionally opens a browser,
+// and polls for the access token until the user completes authentication.
 func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID string) (*AccessToken, error) {
 	if clientID == "" {
 		return nil, errors.New("client id is required")
@@ -86,6 +95,8 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 	}, nil
 }
 
+// getDeviceCode requests a device code from GitHub's OAuth device endpoint.
+// It returns the device code response containing the user code and verification URL.
 func (c *Client) getDeviceCode(ctx context.Context, clientID string) (*DeviceCodeResponse, error) {
 	jsonData, err := json.Marshal(map[string]string{
 		"client_id": clientID,
@@ -128,8 +139,12 @@ func (c *Client) getDeviceCode(ctx context.Context, clientID string) (*DeviceCod
 	return deviceCode, nil
 }
 
+// additionalInterval is the minimum polling interval to avoid rate limiting.
 const additionalInterval = 5 * time.Second
 
+// pollForAccessToken continuously polls GitHub for an access token.
+// It respects the polling interval and handles authorization pending and slow down responses.
+// The polling continues until the device code expires or the user completes authentication.
 func (c *Client) pollForAccessToken(ctx context.Context, clientID string, deviceCode *DeviceCodeResponse) (*AccessTokenResponse, error) {
 	interval := time.Duration(deviceCode.Interval) * time.Second
 	if interval < additionalInterval {
@@ -169,6 +184,8 @@ func (c *Client) pollForAccessToken(ctx context.Context, clientID string, device
 	}
 }
 
+// checkAccessToken checks if an access token is available for the given device code.
+// It returns the access token if available, or an error indicating the current status.
 func (c *Client) checkAccessToken(ctx context.Context, clientID, deviceCode string) (*AccessTokenResponse, error) {
 	reqBody := map[string]string{
 		"client_id":   clientID,
