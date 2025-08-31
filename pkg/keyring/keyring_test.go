@@ -1,7 +1,8 @@
-package keyring
+package keyring_test
 
 import (
-	"github.com/zalando/go-keyring"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
+	zkeyring "github.com/zalando/go-keyring"
 )
 
 // mockAPI is a mock implementation of the API interface for testing.
@@ -12,7 +13,7 @@ type mockAPI struct {
 
 // NewMockAPI creates a new mock API instance with the provided initial secrets.
 // If secrets is nil, an empty map will be created when needed.
-func NewMockAPI(secrets map[string]string) API {
+func newMockAPI(secrets map[string]string) keyring.API {
 	return &mockAPI{
 		secrets: secrets,
 	}
@@ -30,7 +31,7 @@ func (m *mockAPI) Get(service, user string) (string, error) {
 	k := mockKey(service, user)
 	s, ok := m.secrets[k]
 	if !ok {
-		return "", keyring.ErrNotFound
+		return "", zkeyring.ErrNotFound
 	}
 	return s, nil
 }
