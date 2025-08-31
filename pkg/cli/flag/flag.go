@@ -66,6 +66,7 @@ func MinExpiration() *cli.StringFlag {
 		Name:    "min-expiration",
 		Aliases: []string{"m"},
 		Usage:   "minimum expiration duration (e.g. 1h, 30m, 30s)",
+		Sources: cli.EnvVars("GHTKN_MIN_EXPIRATION"),
 	}
 }
 

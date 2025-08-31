@@ -167,6 +167,7 @@ All environment variables are optional.
 - GHTKN_OUTPUT_FORMAT: The output format of `ghtkn get` command
   - `json`: JSON Format
 - GHTKN_APP: The app identifier to get an access token
+- GHTKN_MIN_EXPIRATION: The minimum expiration duration of access token. If `ghtkn get` gets the access token from keying but the expiration duration is shorter than the minimum expiratino duration, `ghtkn get` creates a new access token via Device Flow
 - GHTKN_CONFIG: The configuration file path
 - XDG_CONFIG_HOME
 
