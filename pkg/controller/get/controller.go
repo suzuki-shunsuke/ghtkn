@@ -46,12 +46,12 @@ func NewInput(configFilePath string) *Input {
 		ConfigReader:   config.NewReader(fs),
 		Env:            config.NewEnv(os.Getenv),
 		AppTokenClient: apptoken.NewClient(&apptoken.Input{
-			HttpClient: http.DefaultClient,
+			HTTPClient: http.DefaultClient,
 			Now:        time.Now,
 			Stderr:     os.Stderr,
 		}),
 		Stdout:  os.Stdout,
-		Keyring: keyring.New("github.com/suzuki-shunsuke/ghtkn"),
+		Keyring: keyring.New(keyring.NewInput()),
 		Now:     time.Now,
 	}
 }

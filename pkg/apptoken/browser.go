@@ -33,7 +33,7 @@ func NewMockBrowser(err error) Browser {
 	return &mockBrowser{err: err}
 }
 
-func (b *mockBrowser) Open(ctx context.Context, url string) error {
+func (b *mockBrowser) Open(_ context.Context, _ string) error {
 	return b.err
 }
 

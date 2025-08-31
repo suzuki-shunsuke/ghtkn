@@ -28,7 +28,7 @@ type Browser interface {
 }
 
 type Input struct {
-	HttpClient *http.Client
+	HTTPClient *http.Client
 	Now        func() time.Time
 	Stderr     io.Writer
 	Browser    Browser
@@ -37,7 +37,7 @@ type Input struct {
 
 func NewInput() *Input {
 	return &Input{
-		HttpClient: http.DefaultClient,
+		HTTPClient: http.DefaultClient,
 		Now:        time.Now,
 		Stderr:     os.Stderr,
 		Browser:    NewBrowser(),
@@ -47,12 +47,12 @@ func NewInput() *Input {
 
 func NewMockInput() *Input {
 	return &Input{
-		HttpClient: http.DefaultClient,
+		HTTPClient: http.DefaultClient,
 		Now:        time.Now,
 		Stderr:     io.Discard,
 		Browser:    NewMockBrowser(nil),
 		NewTicker: func(_ time.Duration) *time.Ticker {
-			return time.NewTicker(10 * time.Millisecond)
+			return time.NewTicker(10 * time.Millisecond) //nolint:mnd
 		},
 	}
 }
@@ -146,7 +146,7 @@ func (c *Client) getDeviceCode(ctx context.Context, clientID string) (*DeviceCod
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := c.input.HttpClient.Do(req)
+	resp, err := c.input.HTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("send a request for device code: %w", err)
 	}
@@ -239,7 +239,7 @@ func (c *Client) checkAccessToken(ctx context.Context, clientID, deviceCode stri
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := c.input.HttpClient.Do(req)
+	resp, err := c.input.HTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("send a request for access token: %w", err)
 	}

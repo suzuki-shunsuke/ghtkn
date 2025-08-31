@@ -61,7 +61,7 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func TestParseLevel(t *testing.T) {
+func TestParseLevel(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	tests := []struct {
 		name    string
@@ -147,7 +147,7 @@ func TestParseLevel(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got, err := log.ParseLevel(tt.input)
-			
+
 			if tt.wantErr != nil {
 				if err == nil {
 					t.Fatalf("ParseLevel() error = nil, wantErr %v", tt.wantErr)
@@ -157,11 +157,11 @@ func TestParseLevel(t *testing.T) {
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Fatalf("ParseLevel() unexpected error = %v", err)
 			}
-			
+
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("ParseLevel() mismatch (-want +got):\n%s", diff)
 			}

@@ -16,14 +16,32 @@ import (
 // Keyring manages access tokens in the system keychain.
 // It provides methods to get, set, and remove tokens securely.
 type Keyring struct {
-	keyService string
+	input *Input
+}
+
+type Input struct {
+	KeyService string
+	API        API
 }
 
 // New creates a new Keyring instance with the specified service name.
 // The keyService parameter is used as the service identifier in the system keychain.
-func New(keyService string) *Keyring {
+func New(input *Input) *Keyring {
 	return &Keyring{
-		keyService: keyService,
+		input: input,
+	}
+}
+
+type API interface {
+	Get(service, user string) (string, error)
+	Set(service, user, password string) error
+	Delete(service, user string) error
+}
+
+func NewInput() *Input {
+	return &Input{
+		KeyService: "github.com/suzuki-shunsuke/ghtkn",
+		API:        NewAPI(),
 	}
 }
 
@@ -59,7 +77,7 @@ type AccessToken struct {
 // The key parameter identifies the token to retrieve.
 // Returns the token or an error if the token cannot be found or unmarshaled.
 func (kr *Keyring) Get(key string) (*AccessToken, error) {
-	s, err := keyring.Get(kr.keyService, key)
+	s, err := kr.input.API.Get(kr.input.KeyService, key)
 	if err != nil {
 		return nil, fmt.Errorf("get a GitHub Access token in keyring: %w", err)
 	}
@@ -78,7 +96,7 @@ func (kr *Keyring) Set(key string, token *AccessToken) error {
 	if err != nil {
 		return fmt.Errorf("marshal the token as JSON: %w", err)
 	}
-	if err := keyring.Set(kr.keyService, key, string(s)); err != nil {
+	if err := kr.input.API.Set(kr.input.KeyService, key, string(s)); err != nil {
 		return fmt.Errorf("set a GitHub Access token in keyring: %w", err)
 	}
 	return nil
@@ -88,7 +106,7 @@ func (kr *Keyring) Set(key string, token *AccessToken) error {
 // If the token is not found, it logs a warning but returns nil.
 // Returns an error only for unexpected failures.
 func (kr *Keyring) Remove(logger *slog.Logger, key string) error {
-	if err := keyring.Delete(kr.keyService, key); err != nil {
+	if err := kr.input.API.Delete(kr.input.KeyService, key); err != nil {
 		if errors.Is(err, keyring.ErrNotFound) {
 			slogerr.WithError(logger, err).Warn("tried to remove a GitHub Access token from keyring, but the key wasn't found")
 			return nil

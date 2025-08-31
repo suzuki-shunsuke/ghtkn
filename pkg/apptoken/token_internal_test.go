@@ -16,7 +16,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestClient_getDeviceCode(t *testing.T) {
+func TestClient_getDeviceCode(t *testing.T) { //nolint:cyclop,funlen
 	t.Parallel()
 	tests := []struct {
 		name        string
@@ -54,7 +54,7 @@ func TestClient_getDeviceCode(t *testing.T) {
 					Interval:        5,
 				}
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(resp)
+				json.NewEncoder(w).Encode(resp) //nolint:errcheck
 			},
 			want: &DeviceCodeResponse{
 				DeviceCode:      "device123",
@@ -68,9 +68,9 @@ func TestClient_getDeviceCode(t *testing.T) {
 		{
 			name:     "error response from GitHub",
 			clientID: "test-client-id",
-			handler: func(w http.ResponseWriter, r *http.Request) {
+			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(`{"error":"invalid_client","error_description":"The client_id is not valid"}`))
+				w.Write([]byte(`{"error":"invalid_client","error_description":"The client_id is not valid"}`)) //nolint:errcheck
 			},
 			want:        nil,
 			wantErr:     true,
@@ -79,9 +79,9 @@ func TestClient_getDeviceCode(t *testing.T) {
 		{
 			name:     "invalid JSON response",
 			clientID: "test-client-id",
-			handler: func(w http.ResponseWriter, r *http.Request) {
+			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				w.Write([]byte(`invalid json`))
+				w.Write([]byte(`invalid json`)) //nolint:errcheck
 			},
 			want:        nil,
 			wantErr:     true,
@@ -90,7 +90,7 @@ func TestClient_getDeviceCode(t *testing.T) {
 		{
 			name:     "empty client ID",
 			clientID: "",
-			handler: func(w http.ResponseWriter, r *http.Request) {
+			handler: func(_ http.ResponseWriter, _ *http.Request) {
 				// Should not be called
 				t.Error("handler should not be called with empty client ID")
 			},
@@ -110,7 +110,7 @@ func TestClient_getDeviceCode(t *testing.T) {
 			_ = originalURL // We'll need to modify the actual implementation to make URL configurable
 
 			input := NewMockInput()
-			input.HttpClient = server.Client()
+			input.HTTPClient = server.Client()
 			client := &Client{
 				input: input,
 			}
@@ -124,7 +124,7 @@ func TestClient_getDeviceCode(t *testing.T) {
 				server: server,
 				base:   http.DefaultTransport,
 			}
-			client.input.HttpClient = &http.Client{Transport: transport}
+			client.input.HTTPClient = &http.Client{Transport: transport}
 
 			got, err := client.getDeviceCode(ctx, tt.clientID)
 
@@ -193,7 +193,7 @@ func TestClient_checkAccessToken(t *testing.T) {
 					ExpiresIn:   28800,
 				}
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(resp)
+				json.NewEncoder(w).Encode(resp) //nolint:errcheck
 			},
 			want: &AccessTokenResponse{
 				AccessToken: "gho_testtoken123",
@@ -205,12 +205,12 @@ func TestClient_checkAccessToken(t *testing.T) {
 			name:       "authorization pending",
 			clientID:   "test-client-id",
 			deviceCode: "device123",
-			handler: func(w http.ResponseWriter, r *http.Request) {
+			handler: func(w http.ResponseWriter, _ *http.Request) {
 				resp := AccessTokenResponse{
 					Error: "authorization_pending",
 				}
 				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(resp)
+				json.NewEncoder(w).Encode(resp) //nolint:errcheck
 			},
 			want:    nil,
 			wantErr: true,
@@ -220,7 +220,7 @@ func TestClient_checkAccessToken(t *testing.T) {
 			name:       "slow down response",
 			clientID:   "test-client-id",
 			deviceCode: "device123",
-			handler: func(w http.ResponseWriter, r *http.Request) {
+			handler: func(w http.ResponseWriter, _ *http.Request) {
 				resp := AccessTokenResponse{
 					Error: "slow_down",
 				}
@@ -235,7 +235,7 @@ func TestClient_checkAccessToken(t *testing.T) {
 			name:       "access denied",
 			clientID:   "test-client-id",
 			deviceCode: "device123",
-			handler: func(w http.ResponseWriter, r *http.Request) {
+			handler: func(w http.ResponseWriter, _ *http.Request) {
 				resp := AccessTokenResponse{
 					Error: "access_denied",
 				}
@@ -250,9 +250,9 @@ func TestClient_checkAccessToken(t *testing.T) {
 			name:       "empty response",
 			clientID:   "test-client-id",
 			deviceCode: "device123",
-			handler: func(w http.ResponseWriter, r *http.Request) {
+			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				w.Write([]byte(`{}`))
+				w.Write([]byte(`{}`)) //nolint:errcheck
 			},
 			want:    nil,
 			wantErr: true,
@@ -272,7 +272,7 @@ func TestClient_checkAccessToken(t *testing.T) {
 			}
 
 			input := NewMockInput()
-			input.HttpClient = &http.Client{Transport: transport}
+			input.HTTPClient = &http.Client{Transport: transport}
 			client := NewClient(input)
 
 			ctx := t.Context()
@@ -299,7 +299,7 @@ func TestClient_checkAccessToken(t *testing.T) {
 	}
 }
 
-func TestClient_pollForAccessToken(t *testing.T) {
+func TestClient_pollForAccessToken(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	tests := []struct {
 		name        string
@@ -421,7 +421,7 @@ func TestClient_pollForAccessToken(t *testing.T) {
 			}
 
 			input := NewMockInput()
-			input.HttpClient = &http.Client{Transport: transport}
+			input.HTTPClient = &http.Client{Transport: transport}
 			client := NewClient(input)
 
 			ctx := t.Context()
@@ -535,7 +535,7 @@ func TestClient_Create(t *testing.T) {
 
 			fixedTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 			input := NewMockInput()
-			input.HttpClient = &http.Client{Transport: transport}
+			input.HTTPClient = &http.Client{Transport: transport}
 			input.Now = func() time.Time { return fixedTime }
 			input.Stderr = &bytes.Buffer{}
 			client := NewClient(input)
@@ -576,14 +576,14 @@ func TestNewClient(t *testing.T) {
 	t.Parallel()
 	httpClient := &http.Client{}
 	input := NewMockInput()
-	input.HttpClient = httpClient
+	input.HTTPClient = httpClient
 	client := NewClient(input)
 
 	if client == nil {
 		t.Fatal("NewClient returned nil")
 	}
 
-	if client.input.HttpClient != httpClient {
+	if client.input.HTTPClient != httpClient {
 		t.Error("httpClient not set correctly")
 	}
 
@@ -608,7 +608,7 @@ func (t *testTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		req.URL.Scheme = "http"
 		req.URL.Host = strings.TrimPrefix(t.server.URL, "http://")
 	}
-	return t.base.RoundTrip(req)
+	return t.base.RoundTrip(req) //nolint:wrapcheck
 }
 
 func TestErrNoCommandFound(t *testing.T) {
