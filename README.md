@@ -104,14 +104,7 @@ gh () {
 
 You can build a Git Credential Helper using ghtkn and GitHub CLI:
 
-1. Create a script:
-
-```sh
-vi ~/bin/ghtkn-gh
-chmod +x ~/bin/ghtkn-gh
-```
-
-~/bin/ghtkn-gh:
+1. Create the command `git-credential-ghtkn`
 
 ```sh
 #!/usr/bin/env bash
@@ -120,16 +113,15 @@ set -eu
 
 GH_TOKEN=$(ghtkn get)
 export GH_TOKEN
-exec gh "$@"
+exec gh auth git-credential "$@"
 ```
 
-2. Update `~/.gitconfig` and execute the script as Git Credential Helper:
-
-~/.gitconfig
+2. Make `git-credential-ghtkn` executable and locate it into $PATH
+3. Update `~/.gitconfig` and use ghtkn helper
 
 ```ini
 [credential "https://github.com"]
-	helper = !/Users/shunsukesuzuki/bin/ghtkn-gh auth git-credential
+	helper = ghtkn
 ```
 
 ### Specifying an App
