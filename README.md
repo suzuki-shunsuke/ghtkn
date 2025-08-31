@@ -27,7 +27,7 @@ All that's needed is the GitHub App's Client ID, and User Access Tokens only hav
 ## :rocket: Getting Started
 
 > [!WARNING]
-> As a prerequisite, Windows Creadential Manager, macOS KeyChain, or GNOME Keyring is required.
+> As a prerequisite, Windows Credential Manager, macOS KeyChain, or GNOME Keyring is required.
 > It will work without them, but in that case, you'll need to generate access tokens every time.
 
 First, install ghtkn.
