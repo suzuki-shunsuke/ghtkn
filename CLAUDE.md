@@ -1,10 +1,10 @@
 # Claude-Specific Guidelines for ghtkn
 
-This document contains Claude-specific guidelines. For general project guidelines, see [AI_GUIDE.md](AI_GUIDE.md).
+This document contains Claude-specific guidelines. For general project guidelines, see [AGENTS.md](AGENTS.md).
 
 ## Core Guidelines
 
-All general project guidelines are documented in [AI_GUIDE.md](AI_GUIDE.md). Please refer to that document for:
+All general project guidelines are documented in [AGENTS.md](AGENTS.md). Please refer to that document for:
 
 - Language conventions
 - Commit message format
@@ -35,4 +35,4 @@ All general project guidelines are documented in [AI_GUIDE.md](AI_GUIDE.md). Ple
 
 ## Quick Reference
 
-For quick access to common commands and guidelines, see [AI_GUIDE.md](AI_GUIDE.md#important-commands).
+For quick access to common commands and guidelines, see [AGENTS.md](AGENTS.md#important-commands).
