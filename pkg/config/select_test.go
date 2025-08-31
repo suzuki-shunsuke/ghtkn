@@ -34,23 +34,23 @@ func TestConfig_SelectApp(t *testing.T) { //nolint:funlen
 			cfg: &config.Config{
 				Apps: []*config.App{
 					{
-						ID:       "app1",
+						Name:     "app1",
 						ClientID: "client1",
 					},
 					{
-						ID:       "app2",
+						Name:     "app2",
 						ClientID: "client2",
 						Default:  true,
 					},
 					{
-						ID:       "app3",
+						Name:     "app3",
 						ClientID: "client3",
 					},
 				},
 			},
 			key: "app3",
 			want: &config.App{
-				ID:       "app3",
+				Name:     "app3",
 				ClientID: "client3",
 			},
 		},
@@ -59,23 +59,23 @@ func TestConfig_SelectApp(t *testing.T) { //nolint:funlen
 			cfg: &config.Config{
 				Apps: []*config.App{
 					{
-						ID:       "app1",
+						Name:     "app1",
 						ClientID: "client1",
 					},
 					{
-						ID:       "app2",
+						Name:     "app2",
 						ClientID: "client2",
 						Default:  true,
 					},
 					{
-						ID:       "app3",
+						Name:     "app3",
 						ClientID: "client3",
 					},
 				},
 			},
 			key: "nonexistent",
 			want: &config.App{
-				ID:       "app2",
+				Name:     "app2",
 				ClientID: "client2",
 				Default:  true,
 			},
@@ -85,11 +85,11 @@ func TestConfig_SelectApp(t *testing.T) { //nolint:funlen
 			cfg: &config.Config{
 				Apps: []*config.App{
 					{
-						ID:       "app1",
+						Name:     "app1",
 						ClientID: "client1",
 					},
 					{
-						ID:       "app2",
+						Name:     "app2",
 						ClientID: "client2",
 						Default:  true,
 					},
@@ -97,7 +97,7 @@ func TestConfig_SelectApp(t *testing.T) { //nolint:funlen
 			},
 			key: "",
 			want: &config.App{
-				ID:       "app2",
+				Name:     "app2",
 				ClientID: "client2",
 				Default:  true,
 			},
@@ -107,22 +107,22 @@ func TestConfig_SelectApp(t *testing.T) { //nolint:funlen
 			cfg: &config.Config{
 				Apps: []*config.App{
 					{
-						ID:       "app1",
+						Name:     "app1",
 						ClientID: "client1",
 					},
 					{
-						ID:       "app2",
+						Name:     "app2",
 						ClientID: "client2",
 					},
 					{
-						ID:       "app3",
+						Name:     "app3",
 						ClientID: "client3",
 					},
 				},
 			},
 			key: "nonexistent",
 			want: &config.App{
-				ID:       "app1",
+				Name:     "app1",
 				ClientID: "client1",
 			},
 		},
@@ -131,18 +131,18 @@ func TestConfig_SelectApp(t *testing.T) { //nolint:funlen
 			cfg: &config.Config{
 				Apps: []*config.App{
 					{
-						ID:       "app1",
+						Name:     "app1",
 						ClientID: "client1",
 					},
 					{
-						ID:       "app2",
+						Name:     "app2",
 						ClientID: "client2",
 					},
 				},
 			},
 			key: "",
 			want: &config.App{
-				ID:       "app1",
+				Name:     "app1",
 				ClientID: "client1",
 			},
 		},
@@ -151,14 +151,14 @@ func TestConfig_SelectApp(t *testing.T) { //nolint:funlen
 			cfg: &config.Config{
 				Apps: []*config.App{
 					{
-						ID:       "only-app",
+						Name:     "only-app",
 						ClientID: "client123",
 					},
 				},
 			},
 			key: "",
 			want: &config.App{
-				ID:       "only-app",
+				Name:     "only-app",
 				ClientID: "client123",
 			},
 		},
@@ -167,7 +167,7 @@ func TestConfig_SelectApp(t *testing.T) { //nolint:funlen
 			cfg: &config.Config{
 				Apps: []*config.App{
 					{
-						ID:       "only-app",
+						Name:     "only-app",
 						ClientID: "client123",
 						Default:  true,
 					},
@@ -175,7 +175,7 @@ func TestConfig_SelectApp(t *testing.T) { //nolint:funlen
 			},
 			key: "",
 			want: &config.App{
-				ID:       "only-app",
+				Name:     "only-app",
 				ClientID: "client123",
 				Default:  true,
 			},
@@ -185,16 +185,16 @@ func TestConfig_SelectApp(t *testing.T) { //nolint:funlen
 			cfg: &config.Config{
 				Apps: []*config.App{
 					{
-						ID:       "app1",
+						Name:     "app1",
 						ClientID: "client1",
 					},
 					{
-						ID:       "app2",
+						Name:     "app2",
 						ClientID: "client2",
 						Default:  true,
 					},
 					{
-						ID:       "app3",
+						Name:     "app3",
 						ClientID: "client3",
 						Default:  true,
 					},
@@ -202,7 +202,7 @@ func TestConfig_SelectApp(t *testing.T) { //nolint:funlen
 			},
 			key: "",
 			want: &config.App{
-				ID:       "app2",
+				Name:     "app2",
 				ClientID: "client2",
 				Default:  true,
 			},
@@ -212,11 +212,11 @@ func TestConfig_SelectApp(t *testing.T) { //nolint:funlen
 			cfg: &config.Config{
 				Apps: []*config.App{
 					{
-						ID:       "app1",
+						Name:     "app1",
 						ClientID: "client1",
 					},
 					{
-						ID:       "app2",
+						Name:     "app2",
 						ClientID: "client2",
 						Default:  true,
 					},
@@ -224,7 +224,7 @@ func TestConfig_SelectApp(t *testing.T) { //nolint:funlen
 			},
 			key: "app1",
 			want: &config.App{
-				ID:       "app1",
+				Name:     "app1",
 				ClientID: "client1",
 			},
 		},
@@ -233,18 +233,18 @@ func TestConfig_SelectApp(t *testing.T) { //nolint:funlen
 			cfg: &config.Config{
 				Apps: []*config.App{
 					{
-						ID:       "MyApp",
+						Name:     "MyApp",
 						ClientID: "client1",
 					},
 					{
-						ID:       "myapp",
+						Name:     "myapp",
 						ClientID: "client2",
 					},
 				},
 			},
 			key: "myapp",
 			want: &config.App{
-				ID:       "myapp",
+				Name:     "myapp",
 				ClientID: "client2",
 			},
 		},

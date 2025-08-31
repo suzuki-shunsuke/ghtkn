@@ -12,7 +12,7 @@ func (c *Config) SelectApp(key string) *App {
 	}
 	var app *App
 	for _, a := range c.Apps {
-		if key != "" && a.ID == key {
+		if key != "" && a.Name == key {
 			return a
 		}
 		if app == nil && a.Default {

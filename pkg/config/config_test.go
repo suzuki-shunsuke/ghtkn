@@ -37,7 +37,7 @@ func TestConfig_Validate(t *testing.T) { //nolint:funlen
 				Persist: true,
 				Apps: []*config.App{
 					{
-						ID:       "test-app",
+						Name:     "test-app",
 						ClientID: "client123",
 						Default:  true,
 					},
@@ -50,7 +50,7 @@ func TestConfig_Validate(t *testing.T) { //nolint:funlen
 			cfg: &config.Config{
 				Apps: []*config.App{
 					{
-						ID: "test-app",
+						Name: "test-app",
 						// Missing ClientID
 					},
 				},
@@ -63,11 +63,11 @@ func TestConfig_Validate(t *testing.T) { //nolint:funlen
 			cfg: &config.Config{
 				Apps: []*config.App{
 					{
-						ID:       "app1",
+						Name:     "app1",
 						ClientID: "client1",
 					},
 					{
-						ID: "app2",
+						Name: "app2",
 						// Missing ClientID
 					},
 				},
@@ -107,7 +107,7 @@ func TestApp_Validate(t *testing.T) {
 		{
 			name: "valid app",
 			app: &config.App{
-				ID:       "test-app",
+				Name:     "test-app",
 				ClientID: "client123",
 				Default:  true,
 			},
@@ -119,12 +119,12 @@ func TestApp_Validate(t *testing.T) {
 				ClientID: "client123",
 			},
 			wantErr: true,
-			errMsg:  "id is required",
+			errMsg:  "name is required",
 		},
 		{
 			name: "missing client_id",
 			app: &config.App{
-				ID: "test-app",
+				Name: "test-app",
 			},
 			wantErr: true,
 			errMsg:  "client_id is required",
@@ -133,7 +133,7 @@ func TestApp_Validate(t *testing.T) {
 			name:    "empty app",
 			app:     &config.App{},
 			wantErr: true,
-			errMsg:  "id is required",
+			errMsg:  "name is required",
 		},
 	}
 
@@ -177,10 +177,10 @@ func TestReader_Read(t *testing.T) { //nolint:funlen
 			name: "valid yaml config",
 			configContent: `persist: true
 apps:
-  - id: test-app
+  - name: test-app
     client_id: client123
     default: true
-  - id: another-app
+  - name: another-app
     client_id: client456
 `,
 			configFilePath: "/config/ghtkn.yaml",
@@ -193,12 +193,12 @@ apps:
 				Persist: true,
 				Apps: []*config.App{
 					{
-						ID:       "test-app",
+						Name:     "test-app",
 						ClientID: "client123",
 						Default:  true,
 					},
 					{
-						ID:       "another-app",
+						Name:     "another-app",
 						ClientID: "client456",
 						Default:  false,
 					},
@@ -226,7 +226,7 @@ apps:
 		{
 			name: "minimal valid config",
 			configContent: `apps:
-  - id: minimal
+  - name: minimal
     client_id: min123
 `,
 			configFilePath: "/config/minimal.yaml",
@@ -239,7 +239,7 @@ apps:
 				Persist: false,
 				Apps: []*config.App{
 					{
-						ID:       "minimal",
+						Name:     "minimal",
 						ClientID: "min123",
 						Default:  false,
 					},

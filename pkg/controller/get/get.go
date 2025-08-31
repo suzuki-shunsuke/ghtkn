@@ -21,7 +21,7 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 
 	// Select the app config
 	app := cfg.SelectApp(c.input.Env.App)
-	logFields := []any{"app", app.ID}
+	logFields := []any{"app", app.Name}
 	logger = logger.With(logFields...)
 
 	var token *keyring.AccessToken
@@ -68,7 +68,7 @@ func (c *Controller) createToken(ctx context.Context, logger *slog.Logger, app *
 		return nil, err //nolint:wrapcheck
 	}
 	return &keyring.AccessToken{
-		App:            app.ID,
+		App:            app.Name,
 		AccessToken:    tk.AccessToken,
 		ExpirationDate: tk.ExpirationDate,
 	}, nil
@@ -97,7 +97,7 @@ func (c *Controller) getAccessTokenFromKeyring(logger *slog.Logger, app *config.
 	if tk == nil {
 		return nil, nil //nolint:nilnil
 	}
-	tk.App = app.ID
+	tk.App = app.Name
 	// Check if the access token expires
 	expired, err := c.checkExpired(tk.ExpirationDate)
 	if err != nil {

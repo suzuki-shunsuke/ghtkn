@@ -37,7 +37,7 @@ Generate a configuration file at `${XDG_CONFIG_HOME:-${HOME}/.config}/ghtkn/ghtk
 ```yaml
 persist: true # false if Windows Credential Manager, macOS KeyChain, or GNOME Keyring is not available
 apps:
-  - id: suzuki-shunsuke/write # Required. GitHub App identifier. Not the App ID, freely configurable by the user but must be unique
+  - name: suzuki-shunsuke/write # Required. GitHub App identifier. Not the App ID, freely configurable by the user but must be unique
     client_id: xxx # Required. GitHub App Client ID
     default: true # Optional. Only one app in apps can be true. The true app is used by default
 ```

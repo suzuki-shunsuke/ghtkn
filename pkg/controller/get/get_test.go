@@ -42,7 +42,7 @@ func TestController_Run(t *testing.T) {
 							Persist: false,
 							Apps: []*config.App{
 								{
-									ID:       "test-app",
+									Name:     "test-app",
 									ClientID: "test-client-id",
 								},
 							},
@@ -76,7 +76,7 @@ func TestController_Run(t *testing.T) {
 							Persist: true,
 							Apps: []*config.App{
 								{
-									ID:       "test-app",
+									Name:     "test-app",
 									ClientID: "test-client-id",
 								},
 							},
@@ -119,7 +119,7 @@ func TestController_Run(t *testing.T) {
 							Persist: true,
 							Apps: []*config.App{
 								{
-									ID:       "test-app",
+									Name:     "test-app",
 									ClientID: "test-client-id",
 								},
 							},
@@ -192,7 +192,7 @@ func TestController_Run(t *testing.T) {
 							Persist: false,
 							Apps: []*config.App{
 								{
-									ID:       "test-app",
+									Name:     "test-app",
 									ClientID: "test-client-id",
 								},
 							},
@@ -222,7 +222,7 @@ func TestController_Run(t *testing.T) {
 							Persist: false,
 							Apps: []*config.App{
 								{
-									ID:       "test-app",
+									Name:     "test-app",
 									ClientID: "test-client-id",
 								},
 							},

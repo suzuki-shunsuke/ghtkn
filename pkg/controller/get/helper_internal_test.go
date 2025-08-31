@@ -158,7 +158,7 @@ func TestController_readConfig(t *testing.T) {
 				cfg: &config.Config{
 					Apps: []*config.App{
 						{
-							ID:       "app1",
+							Name:     "app1",
 							ClientID: "client1",
 						},
 					},
@@ -221,7 +221,7 @@ func TestController_createToken(t *testing.T) {
 		{
 			name: "successful token creation",
 			app: &config.App{
-				ID:       "test-app",
+				Name:     "test-app",
 				ClientID: "test-client-id",
 			},
 			client: &testAppTokenClient{
@@ -240,7 +240,7 @@ func TestController_createToken(t *testing.T) {
 		{
 			name: "token creation error",
 			app: &config.App{
-				ID:       "test-app",
+				Name:     "test-app",
 				ClientID: "test-client-id",
 			},
 			client: &testAppTokenClient{
@@ -296,7 +296,7 @@ func TestController_getAccessTokenFromKeyring(t *testing.T) {
 		{
 			name: "valid token from keyring",
 			app: &config.App{
-				ID:       "test-app",
+				Name:     "test-app",
 				ClientID: "test-client-id",
 			},
 			keyring: &testKeyring{
@@ -319,7 +319,7 @@ func TestController_getAccessTokenFromKeyring(t *testing.T) {
 		{
 			name: "expired token in keyring",
 			app: &config.App{
-				ID:       "test-app",
+				Name:     "test-app",
 				ClientID: "test-client-id",
 			},
 			keyring: &testKeyring{
@@ -338,7 +338,7 @@ func TestController_getAccessTokenFromKeyring(t *testing.T) {
 		{
 			name: "token not found in keyring",
 			app: &config.App{
-				ID:       "test-app",
+				Name:     "test-app",
 				ClientID: "test-client-id",
 			},
 			keyring: &testKeyring{
@@ -352,7 +352,7 @@ func TestController_getAccessTokenFromKeyring(t *testing.T) {
 		{
 			name: "keyring error",
 			app: &config.App{
-				ID:       "test-app",
+				Name:     "test-app",
 				ClientID: "test-client-id",
 			},
 			keyring: &testKeyring{

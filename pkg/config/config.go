@@ -30,25 +30,25 @@ func (cfg *Config) Validate() error {
 	}
 	for _, app := range cfg.Apps {
 		if err := app.Validate(); err != nil {
-			return fmt.Errorf("app is invalid: %w", slogerr.With(err, "app", app.ID))
+			return fmt.Errorf("app is invalid: %w", slogerr.With(err, "app", app.Name))
 		}
 	}
 	return nil
 }
 
 // App represents a GitHub App configuration.
-// Each app must have a unique ID and a client ID for authentication.
+// Each app must have a unique name and a client ID for authentication.
 type App struct {
-	ID       string `json:"id"`
+	Name     string `json:"name"`
 	ClientID string `json:"client_id" yaml:"client_id"`
 	Default  bool   `json:"default,omitempty"`
 }
 
 // Validate checks if the App configuration is valid.
-// It ensures both ID and ClientID fields are present.
+// It ensures both Name and ClientID fields are present.
 func (app *App) Validate() error {
-	if app.ID == "" {
-		return errors.New("id is required")
+	if app.Name == "" {
+		return errors.New("name is required")
 	}
 	if app.ClientID == "" {
 		return errors.New("client_id is required")
@@ -62,7 +62,7 @@ const Default = `# yaml-language-server: $schema=https://raw.githubusercontent.c
 # ghtkn - https://github.com/suzuki-shunsuke/ghtkn
 persist: true
 apps:
-  - id: suzuki-shunsuke/write (The name to identify the app)
+  - name: suzuki-shunsuke/write (The name to identify the app)
     client_id: <Your GitHub App Client ID>
     default: true
 `
