@@ -3,6 +3,7 @@ module github.com/suzuki-shunsuke/ghtkn
 go 1.25.0
 
 require (
+	github.com/google/go-cmp v0.7.0
 	github.com/lmittmann/tint v1.1.2
 	github.com/spf13/afero v1.14.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
@@ -12,6 +13,7 @@ require (
 	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.0.8-0.20250830063646-87773e1bf444
 	github.com/urfave/cli/v3 v3.4.1
 	github.com/zalando/go-keyring v0.2.6
+	golang.org/x/sys v0.26.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -21,10 +23,8 @@ require (
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/danieljoos/wincred v1.2.2 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
-	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/invopop/jsonschema v0.12.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
-	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 )
