@@ -7,7 +7,6 @@ import (
 	"errors"
 	"io"
 	"log/slog"
-	"net/http"
 	"os"
 	"runtime"
 	"time"
@@ -55,14 +54,10 @@ func NewInput(configFilePath string) *Input {
 		FS:             fs,
 		ConfigReader:   config.NewReader(fs),
 		Env:            config.NewEnv(os.Getenv, runtime.GOOS),
-		AppTokenClient: apptoken.NewClient(&apptoken.Input{
-			HTTPClient: http.DefaultClient,
-			Now:        time.Now,
-			Stderr:     os.Stderr,
-		}),
-		Stdout:  os.Stdout,
-		Keyring: keyring.New(keyring.NewInput()),
-		Now:     time.Now,
+		AppTokenClient: apptoken.NewClient(apptoken.NewInput()),
+		Stdout:         os.Stdout,
+		Keyring:        keyring.New(keyring.NewInput()),
+		Now:            time.Now,
 	}
 }
 
