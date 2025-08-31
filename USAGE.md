@@ -11,7 +11,7 @@ USAGE:
    ghtkn [global options] [command [command options]]
 
 VERSION:
-   0.1.0-1
+   0.1.0
 
 COMMANDS:
    init        Create ghtkn.yaml if it doesn't exist
@@ -57,7 +57,7 @@ OPTIONS:
    --log-level string                  Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
    --config string, -c string          configuration file path [$GHTKN_CONFIG]
    --format string, -f string          output format (json) [$GHTKN_OUTPUT_FORMAT]
-   --min-expiration string, -m string  minimum expiration duration (e.g. 1h, 30m, 30s)
+   --min-expiration string, -m string  minimum expiration duration (e.g. 1h, 30m, 30s) [$GHTKN_MIN_EXPIRATION]
    --help, -h                          show help
 ```
 
