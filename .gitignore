@@ -1,3 +1,4 @@
 dist
 .coverage
 third_party_licenses
+.serena
