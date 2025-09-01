@@ -1,4 +1,5 @@
 // Package get provides functionality to retrieve GitHub App access tokens.
+// It serves both the standard 'get' command and the 'git-credential' helper command.
 // It handles token retrieval from the keyring cache and token generation/renewal when needed.
 package get
 
@@ -32,17 +33,19 @@ func New(input *Input) *Controller {
 
 // Input contains all the dependencies and configuration needed by the Controller.
 // It encapsulates file system access, configuration reading, token generation, and output handling.
+// The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
-	ConfigFilePath string           // Path to the configuration file
-	OutputFormat   string           // Output format ("json" or empty for plain text)
-	MinExpiration  time.Duration    // Minimum token expiration duration required
-	FS             afero.Fs         // File system abstraction for testing
-	ConfigReader   ConfigReader     // Configuration file reader
-	Env            *config.Env      // Environment variable provider
-	AppTokenClient AppTokenClient   // Client for creating GitHub App tokens
-	Stdout         io.Writer        // Output writer
-	Keyring        Keyring          // Keyring for token storage
-	Now            func() time.Time // Current time provider for testing
+	ConfigFilePath  string           // Path to the configuration file
+	OutputFormat    string           // Output format ("json" or empty for plain text)
+	MinExpiration   time.Duration    // Minimum token expiration duration required
+	FS              afero.Fs         // File system abstraction for testing
+	ConfigReader    ConfigReader     // Configuration file reader
+	Env             *config.Env      // Environment variable provider
+	AppTokenClient  AppTokenClient   // Client for creating GitHub App tokens
+	Stdout          io.Writer        // Output writer
+	Keyring         Keyring          // Keyring for token storage
+	Now             func() time.Time // Current time provider for testing
+	IsGitCredential bool             // Whether to output in Git credential helper format
 }
 
 // NewInput creates a new Input instance with default production values.

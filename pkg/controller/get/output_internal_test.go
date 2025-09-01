@@ -15,11 +15,12 @@ func TestController_output(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name         string
-		token        *keyring.AccessToken
-		outputFormat string
-		wantOutput   string
-		wantErr      bool
+		name            string
+		token           *keyring.AccessToken
+		outputFormat    string
+		isGitCredential bool
+		wantOutput      string
+		wantErr         bool
 	}{
 		{
 			name: "plain text output",
@@ -28,9 +29,10 @@ func TestController_output(t *testing.T) {
 				AccessToken:    "test-token-123",
 				ExpirationDate: "2024-12-31T23:59:59Z",
 			},
-			outputFormat: "",
-			wantOutput:   "test-token-123\n",
-			wantErr:      false,
+			outputFormat:    "",
+			isGitCredential: false,
+			wantOutput:      "test-token-123\n",
+			wantErr:         false,
 		},
 		{
 			name: "JSON output",
@@ -39,9 +41,22 @@ func TestController_output(t *testing.T) {
 				AccessToken:    "test-token-json",
 				ExpirationDate: "2024-12-31T23:59:59Z",
 			},
-			outputFormat: "json",
-			wantOutput:   "",
-			wantErr:      false,
+			outputFormat:    "json",
+			isGitCredential: false,
+			wantOutput:      "",
+			wantErr:         false,
+		},
+		{
+			name: "Git credential helper output",
+			token: &keyring.AccessToken{
+				App:            "test-app",
+				AccessToken:    "test-token-git",
+				ExpirationDate: "2024-12-31T23:59:59Z",
+			},
+			outputFormat:    "",
+			isGitCredential: true,
+			wantOutput:      "password=test-token-git\n\n",
+			wantErr:         false,
 		},
 	}
 
@@ -51,8 +66,9 @@ func TestController_output(t *testing.T) {
 
 			buf := &bytes.Buffer{}
 			input := &Input{
-				OutputFormat: tt.outputFormat,
-				Stdout:       buf,
+				OutputFormat:    tt.outputFormat,
+				IsGitCredential: tt.isGitCredential,
+				Stdout:          buf,
 			}
 			controller := &Controller{input: input}
 
