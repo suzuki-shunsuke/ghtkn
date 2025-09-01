@@ -236,17 +236,15 @@ In such cases, it's convenient to be able to generate an access token with no pe
 So, create a GitHub App with no permissions.
 You don't need to install the App either.
 
-## Configuration file path
+## Using ghtkn in Enterprise Organizations
 
-> [!WARNING]
-> The file extension `.yml` isn't supported as there is no reason to support it.
-> Please use `.yaml`.
+When using ghtkn in a company's GitHub Organization, it may not be practical for each developer to create their own GitHub App in organizations with a certain scale. In such cases, you can create a shared GitHub App and share the Client ID within the company.
 
-1. `-c` option
-1. `$GHTKN_CONFIG`
-1. (macOS, Linux) `${XDG_CONFIG_HOME}/ghtkn/ghtkn.yaml`
-1. (macOS, Linux) `${HOME}/.config/ghtkn/ghtkn.yaml`
-1. (Windows) `%APPDATA%\ghtkn\ghtkn.yaml`
+User Access Tokens cannot generate tokens with permissions beyond what the user has, and users cannot impersonate others. API rate limits are also per-user.
+
+Therefore, the risk of sharing within a limited internal space is considered to be low.
+
+From a company's perspective, this can prevent the leakage of developers' PATs or GitHub CLI OAuth App access tokens that have access to the company's Organization. Even if a Client ID is leaked outside the company, it doesn't provide direct access to the company's Organization, and even if an access token is leaked, the risk can be minimized due to its short validity period (8 hours).
 
 ## Environment Variables
 
