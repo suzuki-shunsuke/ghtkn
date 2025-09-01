@@ -120,7 +120,7 @@ exec gh auth git-credential "$@"
 3. Update `~/.gitconfig` and use ghtkn helper
 
 ```ini
-[credential "https://github.com"]
+[credential]
 	helper = ghtkn
 ```
 
