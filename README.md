@@ -13,7 +13,6 @@ ghtkn allows you to manage multiple GitHub Apps through configuration files and 
 > [!NOTE]
 > In this document, we call Windows Credential Manger, macOS KeyChain, and GNOME Keyring as secret manager.
 
-
 ## Why ghtkn is needed
 
 By using ghtkn, **you can minimize the risk of access token leakage in local development and enhance security**.
