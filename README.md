@@ -100,6 +100,32 @@ At this time, the issue creator will be you, not the App.
 The permissions (Permissions and Repositories) of a user access token are held by both the authorized user (i.e. you) and the GitHub App.
 Therefore, as shown above, the GitHub App cannot perform operations that it is not permitted to perform, and conversely, the user cannot perform operations that they are not authorized to perform.
 
+## Wrapping commands
+
+It's bothersome to run `env GH_TOKEN=$(ghtkn get) gh ...` everytime you run `gh` command.
+And it's difficult to fix gh commands in scripts. 
+So it's useful if an access token can be passed to commands without `env GH_TOKEN=$(ghtkn get)`.
+
+There are two techniques:
+
+1. Wrap commands by shell functions
+2. Wrap commands by shell scripts
+
+### :warning: Caution of wrapping commands
+
+Wrapping commands is useful, but also has some drawbacks.
+Always passing access tokens can be the security risk.
+
+### :warning: Caution of aqua users
+
+If you use [aqua](https://aquaproj.github.io/) and wrap aqua, an access token is always passed to any commands executed via aqua.
+When you run a command managed by aqua, the command is executed via `aqua exec` command.
+So if you wrap aqua and pass an access token to aqua, the access token is also passed commands managed by aqua.
+If any commands are abused, the access token can be leaked.
+So we think you shouldn't wrap aqua.
+There is no problem to pass an access token to commands such as `aqua i`, `aqua up`, and so on.
+But passing an access token to any commands is dangerous.
+
 ## Wrapping arbitrary commands via shell functions
 
 > [!WARNING]
@@ -184,13 +210,6 @@ cp helpers/* ~/bin
 ```sh
 ghtkn-gen-wrap "$(command -v aqua)" # Wrap the command aqua
 ```
-
-### :bulb: Wrap commands installed by aqua
-
-If you try to wrap [aqua](https://aquaproj.github.io/) using ghtkn installed by aqua, it'll cause the infinite loop.
-To avoid this, [you should install ghtkn without aqua](INSTALL.md).
-
-If you wrap aqua using ghtkn, mostly you don't need to wrap commands installed by aqua because the environment variable `GITHUB_TOKEN` is inherited to commands via `aqua exec`.
 
 ## Git Credential Helper
 
