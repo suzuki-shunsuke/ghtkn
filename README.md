@@ -178,6 +178,52 @@ exec aqua exec -- gh "$@"
 chmod +x ~/bin/gh
 ```
 
+You can write helper commands to simply wrappers:
+
+~/bin/ghtkn-wrap
+
+```sh
+#!/usr/bin/env bash
+
+set -eu
+
+cmd=$1
+shift
+
+GH_TOKEN="$(ghtkn get)" 
+export GH_TOKEN
+exec "$cmd" "$@"
+```
+
+~/bin/ghtkn-wrap-aqua
+
+```sh
+#!/usr/bin/env bash
+
+set -eu
+
+cmd=$1
+shift
+
+GH_TOKEN="$(ghtkn get)" 
+export GH_TOKEN
+exec aqua exec -- "$cmd" "$@"
+```
+
+~/bin/gh
+
+```sh
+#!/usr/bin/env bash
+
+exec ghtkn-wrap /opt/homebrew/bin/gh "$@"
+```
+
+```sh
+#!/usr/bin/env bash
+
+exec ghtkn-wrap-aqua gh "$@"
+```
+
 ## Git Credential Helper
 
 ghtkn >= v0.1.2
