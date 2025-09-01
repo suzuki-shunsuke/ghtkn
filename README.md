@@ -137,29 +137,13 @@ gh () {
 
 ## :bulb: Git Credential Helper
 
-> [!NOTE]
-> See also [#11](https://github.com/suzuki-shunsuke/ghtkn/issues/11).
+ghtkn >= v0.1.2
 
-You can build a [Git Credential Helper](https://git-scm.com/book/en/v2/Git-Tools-Credential-Storage) using ghtkn and GitHub CLI, then you can push and pull commits with Git using a user access token created by ghtkn:
-
-1. Create the command `git-credential-ghtkn`
-
-```sh
-#!/usr/bin/env bash
-
-set -eu
-
-GH_TOKEN=$(ghtkn get)
-export GH_TOKEN
-exec gh auth git-credential "$@"
-```
-
-2. Make `git-credential-ghtkn` executable and locate it into $PATH
-3. Update `~/.gitconfig` and use ghtkn helper
+You can use ghtkn as a [Git Credential Helper](https://git-scm.com/book/en/v2/Git-Tools-Credential-Storage):
 
 ```ini
 [credential]
-	helper = ghtkn
+	helper = !ghtkn git-credential
 ```
 
 ## Use multiple apps
