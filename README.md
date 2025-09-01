@@ -102,6 +102,15 @@ Therefore, as shown above, the GitHub App cannot perform operations that it is n
 
 ## Wrapping arbitrary commands via shell functions
 
+> [!WARNING]
+> Unfortunately, even if you define shell functions in files like .bashrc, they aren't available in scripts.
+> 
+> ```sh
+> bash test.sh # In test.sh, functions defined in .bashrc aren't available.
+> ```
+>
+> To avoid this issue, [please check shell scripts out](#wrapping-arbitrary-commands-via-shell-scripts).
+
 You can write simple wrappers (shell functions) for arbitrary commands that require access tokens using ghtkn.
 
 e.g.
@@ -137,13 +146,6 @@ gh () {
 
 ## Wrapping arbitrary commands via shell scripts
 
-Unfortunately, even if you define shell functions in files like .bashrc, they aren't available in scripts.
-
-```sh
-bash test.sh # In test.sh, functions defined in .bashrc aren't available.
-```
-
-Instead of shell functions, you can use shell scripts.
 For instance, if you want to wrap the command `gh`,
 
 1. Put the script `gh` into $PATH
