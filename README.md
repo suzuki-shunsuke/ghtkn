@@ -100,7 +100,7 @@ At this time, the issue creator will be you, not the App.
 The permissions (Permissions and Repositories) of a user access token are held by both the authorized user (i.e. you) and the GitHub App.
 Therefore, as shown above, the GitHub App cannot perform operations that it is not permitted to perform, and conversely, the user cannot perform operations that they are not authorized to perform.
 
-### :bulb: Wrapping arbitrary commands with ghtkn
+## Wrapping arbitrary commands via shell functions
 
 You can write simple wrappers (shell functions) for arbitrary commands that require access tokens using ghtkn.
 
@@ -135,7 +135,50 @@ gh () {
 }
 ```
 
-## :bulb: Git Credential Helper
+## Wrapping arbitrary commands via shell scripts
+
+Unfortunately, even if you define shell functions in files like .bashrc, they aren't available in scripts.
+
+```sh
+bash test.sh # In test.sh, functions defined in .bashrc aren't available.
+```
+
+Instead of shell functions, you can use shell scripts.
+For instance, if you want to wrap the command `gh`,
+
+1. Put the script `gh` into $PATH
+
+To avoid the infinite loop, you need to specify the absolute path of `gh` in the script.
+
+```sh
+#!/usr/bin/env bash
+
+set -eu
+
+GH_TOKEN="$(ghtkn get)" 
+export GH_TOKEN
+exec /opt/homebrew/bin/gh "$@"
+```
+
+If you manage `gh` by [aqua](https://aquaproj.github.io/), `aqua exec` command is also available.
+
+```sh
+#!/usr/bin/env bash
+
+set -eu
+
+GH_TOKEN="$(ghtkn get)" 
+export GH_TOKEN
+exec aqua exec -- gh "$@"
+```
+
+2. Make the script executable
+
+```sh
+chmod +x ~/bin/gh
+```
+
+## Git Credential Helper
 
 ghtkn >= v0.1.2
 
