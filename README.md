@@ -208,7 +208,7 @@ cp helpers/* ~/bin
 4. Create wrappers using helpers
 
 ```sh
-ghtkn-gen-wrap "$(command -v aqua)" # Wrap the command aqua
+ghtkn-gen-wrap "$(command -v gh)" # Wrap the command gh
 ```
 
 ## Git Credential Helper
