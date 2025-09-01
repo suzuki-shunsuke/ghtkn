@@ -102,6 +102,15 @@ Therefore, as shown above, the GitHub App cannot perform operations that it is n
 
 ## Wrapping arbitrary commands via shell functions
 
+> [!WARNING]
+> Unfortunately, even if you define shell functions in files like .bashrc, they aren't available in scripts.
+> 
+> ```sh
+> bash test.sh # In test.sh, functions defined in .bashrc aren't available.
+> ```
+>
+> To avoid this issue, [please check shell scripts out](#wrapping-arbitrary-commands-via-shell-scripts).
+
 You can write simple wrappers (shell functions) for arbitrary commands that require access tokens using ghtkn.
 
 e.g.
@@ -137,13 +146,6 @@ gh () {
 
 ## Wrapping arbitrary commands via shell scripts
 
-Unfortunately, even if you define shell functions in files like .bashrc, they aren't available in scripts.
-
-```sh
-bash test.sh # In test.sh, functions defined in .bashrc aren't available.
-```
-
-Instead of shell functions, you can use shell scripts.
 For instance, if you want to wrap the command `gh`,
 
 1. Put the script `gh` into $PATH
@@ -158,18 +160,6 @@ set -eu
 GH_TOKEN="$(ghtkn get)" 
 export GH_TOKEN
 exec /opt/homebrew/bin/gh "$@"
-```
-
-If you manage `gh` by [aqua](https://aquaproj.github.io/), `aqua exec` command is also available.
-
-```sh
-#!/usr/bin/env bash
-
-set -eu
-
-GH_TOKEN="$(ghtkn get)" 
-export GH_TOKEN
-exec aqua exec -- gh "$@"
 ```
 
 2. Make the script executable
@@ -192,9 +182,15 @@ cp helpers/* ~/bin
 4. Create wrappers using helpers
 
 ```sh
-ghtkn-gen-wrap /opt/homebrew/bin/gh
-ghtkn-gen-wrap-aqua tfcmt
+ghtkn-gen-wrap "$(command -v aqua)" # Wrap the command aqua
 ```
+
+### :bulb: Wrap commands installed by aqua
+
+If you try to wrap [aqua](https://aquaproj.github.io/) using ghtkn installed by aqua, it'll cause the infinite loop.
+To avoid this, [you should install ghtkn without aqua](INSTALL.md).
+
+If you wrap aqua using ghtkn, mostly you don't need to wrap commands installed by aqua because the environment variable `GITHUB_TOKEN` is inherited to commands via `aqua exec`.
 
 ## Git Credential Helper
 
