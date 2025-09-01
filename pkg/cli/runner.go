@@ -38,7 +38,8 @@ func Run(ctx context.Context, logger *slog.Logger, ldFlags *stdutil.LDFlags, arg
 		},
 		Commands: []*cli.Command{
 			initcmd.New(logger, ldFlags.Version),
-			get.New(logger, ldFlags.Version),
+			get.New(logger, ldFlags.Version, true),
+			get.New(logger, ldFlags.Version, false),
 		},
 	}).Run(ctx, args)
 }

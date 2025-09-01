@@ -33,16 +33,17 @@ func New(input *Input) *Controller {
 // Input contains all the dependencies and configuration needed by the Controller.
 // It encapsulates file system access, configuration reading, token generation, and output handling.
 type Input struct {
-	ConfigFilePath string           // Path to the configuration file
-	OutputFormat   string           // Output format ("json" or empty for plain text)
-	MinExpiration  time.Duration    // Minimum token expiration duration required
-	FS             afero.Fs         // File system abstraction for testing
-	ConfigReader   ConfigReader     // Configuration file reader
-	Env            *config.Env      // Environment variable provider
-	AppTokenClient AppTokenClient   // Client for creating GitHub App tokens
-	Stdout         io.Writer        // Output writer
-	Keyring        Keyring          // Keyring for token storage
-	Now            func() time.Time // Current time provider for testing
+	ConfigFilePath  string           // Path to the configuration file
+	OutputFormat    string           // Output format ("json" or empty for plain text)
+	MinExpiration   time.Duration    // Minimum token expiration duration required
+	FS              afero.Fs         // File system abstraction for testing
+	ConfigReader    ConfigReader     // Configuration file reader
+	Env             *config.Env      // Environment variable provider
+	AppTokenClient  AppTokenClient   // Client for creating GitHub App tokens
+	Stdout          io.Writer        // Output writer
+	Keyring         Keyring          // Keyring for token storage
+	Now             func() time.Time // Current time provider for testing
+	IsGitCredential bool
 }
 
 // NewInput creates a new Input instance with default production values.

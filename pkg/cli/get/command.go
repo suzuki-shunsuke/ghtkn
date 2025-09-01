@@ -19,23 +19,37 @@ import (
 
 // New creates a new get command instance with the provided logger and version.
 // It returns a CLI command that can be registered with the main CLI application.
-func New(logger *slog.Logger, version string) *cli.Command {
+func New(logger *slog.Logger, version string, isGitCredential bool) *cli.Command {
 	r := &runner{
-		logger:  logger,
-		version: version,
+		logger:          logger,
+		version:         version,
+		isGitCredential: isGitCredential,
 	}
 	return r.Command()
 }
 
 // runner encapsulates the state and behavior for the get command.
 type runner struct {
-	logger  *slog.Logger
-	version string
+	logger          *slog.Logger
+	version         string
+	isGitCredential bool
 }
 
 // Command returns the CLI command definition for the get subcommand.
 // It defines the command name, usage, action handler, and available flags.
 func (r *runner) Command() *cli.Command {
+	if r.isGitCredential {
+		return &cli.Command{
+			Name:   "git-credential",
+			Usage:  "Git Credential Helper",
+			Action: r.action,
+			Flags: []cli.Flag{
+				flag.LogLevel(),
+				flag.Config(),
+				flag.MinExpiration(),
+			},
+		}
+	}
 	return &cli.Command{
 		Name:   "get",
 		Usage:  "Output a GitHub App User Access Token to stdout",
@@ -53,6 +67,13 @@ func (r *runner) Command() *cli.Command {
 // It configures the controller with flags and arguments, then executes the token retrieval.
 // Returns an error if configuration is invalid or token retrieval fails.
 func (r *runner) action(ctx context.Context, c *cli.Command) error {
+	input := get.NewInput(flag.ConfigValue(c))
+	if r.isGitCredential {
+		input.IsGitCredential = true
+		if arg := c.Args().First(); arg != "get" {
+			return nil
+		}
+	}
 	logger := r.logger
 	if lvlS := flag.LogLevelValue(c); lvlS != "" {
 		lvl, err := log.ParseLevel(lvlS)
@@ -61,7 +82,6 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error {
 		}
 		logger = log.New(r.version, lvl)
 	}
-	input := get.NewInput(flag.ConfigValue(c))
 	if input.ConfigFilePath == "" {
 		p, err := config.GetPath(input.Env)
 		if err != nil {
@@ -69,7 +89,9 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error {
 		}
 		input.ConfigFilePath = p
 	}
-	input.OutputFormat = flag.FormatValue(c)
+	if !r.isGitCredential {
+		input.OutputFormat = flag.FormatValue(c)
+	}
 	if m := flag.MinExpirationValue(c); m != "" {
 		d, err := time.ParseDuration(m)
 		if err != nil {
@@ -80,8 +102,10 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error {
 	if err := input.Validate(); err != nil {
 		return err //nolint:wrapcheck
 	}
-	if arg := c.Args().First(); arg != "" {
-		input.Env.App = arg
+	if !r.isGitCredential {
+		if arg := c.Args().First(); arg != "" {
+			input.Env.App = arg
+		}
 	}
 	return get.New(input).Run(ctx, logger) //nolint:wrapcheck
 }
