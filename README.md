@@ -176,7 +176,37 @@ ghtkn get suzuki-shunsuke/write
 
 The value is the app name defined in the configuration file.
 Alternatively, you can specify it with the environment variable `GHTKN_APP`.
-For example, it might be convenient to switch `GHTKN_APP` for each directory using direnv.
+For example, it might be convenient to switch `GHTKN_APP` for each directory using a tool like [direnv](https://direnv.net/).
+
+I check out my repositories from [https://github.com/suzuki-shunsuke](https://github.com/suzuki-shunsuke) into the `~/repos/src/github.com/suzuki-shunsuke` directory.
+I then place a `.envrc` file in that directory with the following content:
+
+```sh
+source_up
+
+export GHTKN_APP=suzuki-shunsuke/write
+```
+
+Similarly, I place a `.envrc` file in `~/repos/src/github.com/aquaproj` as well:
+
+```sh
+source_up
+
+export GHTKN_APP=aquaproj/write
+```
+
+I've also set up a default App that has no permissions.
+While some might think an access token with no permissions is useless, it can still be used to read public repositories and helps you avoid hitting API rate limits compared to not using an access token at all.
+So, it's quite useful.
+
+```yaml
+apps:
+  - name: suzuki-shunsuke/none
+    client_id: xxx
+    default: true
+```
+
+With this setup, the access token is transparently switched depending on the working directory. What's written in the `.envrc` is the `GHTKN_APP`, not the access token itself, which is safe because it's not a secret.
 
 ## Access Token Regeneration
 
@@ -193,48 +223,17 @@ ghtkn get -m 1h
 
 `2h`, `30m`, `30s` etc. are also valid. Units are required.
 
-## Creating GitHub Apps
+You can also set this using an environment variable.
 
-Create one or two GitHub Apps for each Organization and User you manage.
-
-- Check `Enable Device Flow`
-- Uncheck Webhook
-
-When creating multiple Apps for the same Organization and User, vary the Permissions and Repositories according to their purpose.
-Unlike Installation Access Tokens, you cannot narrow permissions when generating tokens.
-Therefore, you cannot use an App with strong permissions to generate a token with weak permissions, so create Apps with weak permissions as well as strong permissions according to your needs.
-
-The granularity depends on the individual.
-To avoid overly complex management, for example:
-
-1. No Permission: One is enough
-2. read-only (installed on all repos): One per Org and User
-3. write (installed on all repos): One per Org and User
-
-It's safer to use tokens without permissions by default.
-
-```yaml
-persist: true
-apps:
-  - name: suzuki-shunsuke/read
-    client_id: xxx1
-  - name: suzuki-shunsuke/write
-    client_id: xxx2
-  - name: aquaprj/read
-    client_id: xxx3
-  - name: aquaprj/write
-    client_id: xxx4
-  - name: none
-    client_id: xxx5
-    default: true
+```sh
+export GHTKN_MIN_EXPIRATION=10m
 ```
 
-### GitHub App with no permissions
+If you're only using the GitHub CLI to call an API, it usually finishes in an instant, so you probably won't need to set this.
+However, if you're passing the access token to a script that takes, say, 30 minutes to run, setting it to something like `50m` will prevent the token from expiring in the middle of the script.
 
-While no permissions are needed to read Public Repositories, without an access token, you're likely to hit API rate limits.
-In such cases, it's convenient to be able to generate an access token with no permissions.
-So, create a GitHub App with no permissions.
-You don't need to install the App either.
+By the way, if you set the value to 8 hours or more, you can replicate how ghtkn regenerates the access token.
+This could be useful if you want to test how `ghtkn` behaves.
 
 ## Using ghtkn in Enterprise Organizations
 
@@ -323,7 +322,8 @@ ghtkn doesn't support some operations that require Client Secrets as the risk of
 - [Refresh Token via GitHub API](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/refreshing-user-access-tokens#refreshing-a-user-access-token-with-a-refresh-token)
 - [Revoke Access Tokens via GitHub API](https://docs.github.com/en/rest/apps/oauth-applications?apiVersion=2022-11-28#delete-an-app-token)
 
-Instead, if the validity has expired, the access token is regenerated through Device Flow.
+Instead of refreshing a token, ghtkn regenerates the token through Device Flow.
+While you can't revoke a token directly with `ghtkn`, if you absolutely need to, you can either go to the GitHub App settings page and select **"Revoke all user tokens"** or temporarily generate a client secret and [use the API to revoke the token](https://docs.github.com/en/rest/apps/oauth-applications?apiVersion=2022-11-28#delete-an-app-token).
 
 ## LICENSE
 
