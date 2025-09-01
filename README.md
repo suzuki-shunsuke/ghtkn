@@ -87,7 +87,7 @@ REPO=suzuki-shunsuke/ghtkn # Please change this to your public repository
 env GH_TOKEN=$(ghtkn get) gh issue create -R "$REPO" --title "Hello, ghtkn" --body "This is created by ghtkn"
 ```
 
-Then it failed due to the permission error even if you have the permission.
+Then it fails due to the permission error even if you have the permission.
 
 ```
 GraphQL: Resource not accessible by integration (createIssue)
@@ -140,7 +140,7 @@ gh () {
 > [!NOTE]
 > See also [#11](https://github.com/suzuki-shunsuke/ghtkn/issues/11).
 
-You can build a Git Credential Helper using ghtkn and GitHub CLI:
+You can build a [Git Credential Helper](https://git-scm.com/book/en/v2/Git-Tools-Credential-Storage) using ghtkn and GitHub CLI, then you can push and pull commits with Git using a user access token created by ghtkn:
 
 1. Create the command `git-credential-ghtkn`
 
@@ -162,7 +162,7 @@ exec gh auth git-credential "$@"
 	helper = ghtkn
 ```
 
-### Use multiple apps
+## Use multiple apps
 
 You can configure multiple GitHub Apps in the `apps` section of the configuration file and create and use different Apps for each Organization or User.
 By default, the one with `default: true` is used.
@@ -315,7 +315,7 @@ The rate limit for authenticated users is 5,000 per hour, so it should be fine f
 
 > All of these requests count towards your personal rate limit of 5,000 requests per hour.
 
-## :warning: Limitation
+### Limitation
 
 ghtkn doesn't support some operations that require Client Secrets as the risk of Client Secret leakage is high:
 
