@@ -24,16 +24,6 @@ ghtkn allows you to manage multiple GitHub Apps through configuration files and 
 > [!NOTE]
 > In this document, we call Windows Credential Manger, macOS KeyChain, and GNOME Keyring as secret manager.
 
-## Why ghtkn is needed
-
-By using ghtkn, **you can minimize the risk of access token leakage in local development and enhance security**.
-Keeping long-lived access tokens like GitHub CLI OAuth App tokens or Personal Access Tokens locally poses a significant risk if they are leaked.
-ghtkn doesn't require highly sensitive secrets like Personal Access Tokens, GitHub App Private Keys, or Client Secrets.
-All that's needed is the GitHub App's Client ID, and User Access Tokens only have an 8-hour validity period, making them relatively safer.
-
-> [!NOTE]  
-> Ideally, we would like to generate shorter-lived tokens of about 1 hour, but this doesn't seem to be possible.
-
 ## :rocket: Getting Started
 
 > [!WARNING]
