@@ -186,7 +186,7 @@ You can use [helper scripts](helpers).
 cp helpers/* ~/bin
 ```
 
-4. Create wrappers
+4. Create wrappers using helpers
 
 ```sh
 ghtkn-gen-wrap /opt/homebrew/bin/gh
