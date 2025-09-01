@@ -180,6 +180,9 @@ chmod +x ~/bin/gh
 
 You can use [helper scripts](helpers).
 
+We don't think these helper scripts are ideal solutions.
+But they are useful to some extent.
+
 3. Copy helper scripts in $PATH
 
 ```sh
