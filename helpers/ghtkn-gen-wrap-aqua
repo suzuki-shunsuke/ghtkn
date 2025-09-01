@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -eu
+
+cmd=$1
+
+p="$HOME/bin/$cmd"
+
+echo "#!/usr/bin/env bash
+
+exec ghtkn-wrap-aqua $cmd \"\$@\"" > "$p"
+chmod +x "$p"

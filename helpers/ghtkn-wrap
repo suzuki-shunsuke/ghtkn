@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -eu
+
+cmd=$1
+shift
+
+GITHUB_TOKEN="$(ghtkn get)" 
+export GITHUB_TOKEN
+exec "$cmd" "$@"
