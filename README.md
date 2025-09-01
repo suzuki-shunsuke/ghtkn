@@ -180,14 +180,15 @@ cp helpers/* ~/bin
 4. Create wrappers using helpers
 
 ```sh
-ghtkn-gen-wrap /opt/homebrew/bin/aqua # Wrap the command aqua
+ghtkn-gen-wrap "$(command -v aqua)" # Wrap the command aqua
 ```
 
-### :bulb: Not need to wrap commands installed by aqua
+### :bulb: Wrap commands installed by aqua
 
-Mostly, you don't need to wrap commands installed by aqua as long as you wrap aqua because the environment variable `GITHUB_TOKEN` is inherited to commands via `aqua exec`.
+If you try to wrap [aqua](https://aquaproj.github.io/) using ghtkn installed by aqua, it'll cause the infinite loop.
+To avoid this, [you should install ghtkn without aqua](INSTALL.md).
 
-You only need to wrap aqua.
+If you wrap aqua using ghtkn, mostly you don't need to wrap commands installed by aqua because the environment variable `GITHUB_TOKEN` is inherited to commands via `aqua exec`.
 
 ## Git Credential Helper
 

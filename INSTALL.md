@@ -6,9 +6,13 @@ There are some ways to install ghtkn.
 
 1. [Homebrew](#homebrew)
 1. [Scoop](#scoop)
-1. [aqua](#aqua)
 1. [GitHub Releases](#github-releases)
 1. [Build an executable binary from source code yourself using Go](#build-an-executable-binary-from-source-code-yourself-using-go)
+
+## :warning: Don't install ghtkn using aqua :warning:
+
+If you try to wrap [aqua](https://aquaproj.github.io/) using ghtkn installed by aqua, it'll cause the infinite loop.
+To avoid this, Don't install ghtkn using aqua.
 
 ## Homebrew
 
@@ -25,16 +29,6 @@ You can install ghtkn using [Scoop](https://scoop.sh/).
 ```sh
 scoop bucket add suzuki-shunsuke https://github.com/suzuki-shunsuke/scoop-bucket
 scoop install ghtkn
-```
-
-## aqua
-
-[aqua-registry >= v4.407.0 is required](https://github.com/aquaproj/aqua-registry/releases/tag/v4.407.0).
-
-You can install ghtkn using [aqua](https://aquaproj.github.io/).
-
-```sh
-aqua g -i suzuki-shunsuke/ghtkn
 ```
 
 ## Build an executable binary from source code yourself using Go
