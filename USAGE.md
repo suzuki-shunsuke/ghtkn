@@ -11,14 +11,15 @@ USAGE:
    ghtkn [global options] [command [command options]]
 
 VERSION:
-   0.1.1
+   0.1.2
 
 COMMANDS:
-   init        Create ghtkn.yaml if it doesn't exist
-   get         Output a GitHub App User Access Token to stdout
-   version     Show version
-   help, h     Shows a list of commands or help for one command
-   completion  Output shell completion script for bash, zsh, fish, or Powershell
+   init            Create ghtkn.yaml if it doesn't exist
+   git-credential  Git Credential Helper
+   get             Output a GitHub App User Access Token to stdout
+   version         Show version
+   help, h         Shows a list of commands or help for one command
+   completion      Output shell completion script for bash, zsh, fish, or Powershell
 
 GLOBAL OPTIONS:
    --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
@@ -41,6 +42,23 @@ OPTIONS:
    --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
    --config string, -c string  configuration file path [$GHTKN_CONFIG]
    --help, -h                  show help
+```
+
+## ghtkn git-credential
+
+```console
+$ ghtkn git-credential --help
+NAME:
+   ghtkn git-credential - Git Credential Helper
+
+USAGE:
+   ghtkn git-credential
+
+OPTIONS:
+   --log-level string                  Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
+   --config string, -c string          configuration file path [$GHTKN_CONFIG]
+   --min-expiration string, -m string  minimum expiration duration (e.g. 1h, 30m, 30s) [$GHTKN_MIN_EXPIRATION]
+   --help, -h                          show help
 ```
 
 ## ghtkn get
