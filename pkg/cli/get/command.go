@@ -66,7 +66,7 @@ func (r *runner) Command() *cli.Command {
 // action implements the main logic for the get command.
 // It configures the controller with flags and arguments, then executes the token retrieval.
 // Returns an error if configuration is invalid or token retrieval fails.
-func (r *runner) action(ctx context.Context, c *cli.Command) error {
+func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cyclop
 	input := get.NewInput(flag.ConfigValue(c))
 	if r.isGitCredential {
 		input.IsGitCredential = true
