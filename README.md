@@ -160,18 +160,6 @@ export GH_TOKEN
 exec /opt/homebrew/bin/gh "$@"
 ```
 
-If you manage `gh` by [aqua](https://aquaproj.github.io/), `aqua exec` command is also available.
-
-```sh
-#!/usr/bin/env bash
-
-set -eu
-
-GH_TOKEN="$(ghtkn get)" 
-export GH_TOKEN
-exec aqua exec -- gh "$@"
-```
-
 2. Make the script executable
 
 ```sh
@@ -192,9 +180,14 @@ cp helpers/* ~/bin
 4. Create wrappers using helpers
 
 ```sh
-ghtkn-gen-wrap /opt/homebrew/bin/gh
-ghtkn-gen-wrap-aqua tfcmt
+ghtkn-gen-wrap /opt/homebrew/bin/aqua # Wrap the command aqua
 ```
+
+### :bulb: Not need to wrap commands installed by aqua
+
+Mostly, you don't need to wrap commands installed by aqua as long as you wrap aqua because the environment variable `GITHUB_TOKEN` is inherited to commands via `aqua exec`.
+
+You only need to wrap aqua.
 
 ## Git Credential Helper
 
