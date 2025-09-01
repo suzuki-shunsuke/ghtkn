@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -eu
+
+abs=$1
+cmd=$(basename "$abs")
+
+p="$HOME/bin/$cmd"
+
+echo "#!/usr/bin/env bash
+
+exec ghtkn-wrap \"$abs\" \"\$@\"" > "$p"
+chmod +x "$p"

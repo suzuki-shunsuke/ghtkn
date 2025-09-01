@@ -121,7 +121,7 @@ for name in gh aqua; do
   eval "
   ${name}() {
     local token=\"\$(ghtkn get)\"
-    env GH_TOKEN=\"\$token\" command ${name} \"\$@\"
+    env GITHUB_TOKEN=\"\$token\" command ${name} \"\$@\"
   }
   "
 done
@@ -131,7 +131,7 @@ done
 $ which gh               
 gh () {
         local token="$(ghtkn get)" 
-        env GH_TOKEN="$token" command gh "$@"
+        env GITHUB_TOKEN="$token" command gh "$@"
 }
 ```
 
@@ -178,50 +178,19 @@ exec aqua exec -- gh "$@"
 chmod +x ~/bin/gh
 ```
 
-You can write helper commands to simply wrappers:
+You can use [helper scripts](helpers).
 
-~/bin/ghtkn-wrap
+3. Copy helper scripts in $PATH
 
 ```sh
-#!/usr/bin/env bash
-
-set -eu
-
-cmd=$1
-shift
-
-GH_TOKEN="$(ghtkn get)" 
-export GH_TOKEN
-exec "$cmd" "$@"
+cp helpers/* ~/bin
 ```
 
-~/bin/ghtkn-wrap-aqua
+4. Create wrappers
 
 ```sh
-#!/usr/bin/env bash
-
-set -eu
-
-cmd=$1
-shift
-
-GH_TOKEN="$(ghtkn get)" 
-export GH_TOKEN
-exec aqua exec -- "$cmd" "$@"
-```
-
-~/bin/gh
-
-```sh
-#!/usr/bin/env bash
-
-exec ghtkn-wrap /opt/homebrew/bin/gh "$@"
-```
-
-```sh
-#!/usr/bin/env bash
-
-exec ghtkn-wrap-aqua gh "$@"
+ghtkn-gen-wrap /opt/homebrew/bin/gh
+ghtkn-gen-wrap-aqua tfcmt
 ```
 
 ## Git Credential Helper
