@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
@@ -295,7 +294,6 @@ func TestController_getAccessTokenFromKeyring(t *testing.T) {
 				Keyring:       tt.keyring,
 				MinExpiration: tt.minExpiration,
 				Now:           func() time.Time { return tt.now },
-				FS:            afero.NewMemMapFs(),
 			}
 			controller := &TokenManager{input: input}
 

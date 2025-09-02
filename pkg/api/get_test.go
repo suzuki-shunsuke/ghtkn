@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/api"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
@@ -53,7 +52,6 @@ func TestTokenManager_Get(t *testing.T) {
 			setupInput: func() *api.Input {
 				return &api.Input{
 					MinExpiration: time.Hour,
-					FS:            afero.NewMemMapFs(),
 					AppTokenClient: &mockAppTokenClient{
 						token: &apptoken.AccessToken{
 							AccessToken:    "test-token-123",
@@ -74,7 +72,6 @@ func TestTokenManager_Get(t *testing.T) {
 			setupInput: func() *api.Input {
 				return &api.Input{
 					MinExpiration: time.Hour,
-					FS:            afero.NewMemMapFs(),
 					AppTokenClient: &mockAppTokenClient{
 						token: &apptoken.AccessToken{
 							AccessToken:    "new-token",
@@ -105,7 +102,6 @@ func TestTokenManager_Get(t *testing.T) {
 				expiredTime := fixedTime.Add(30 * time.Minute)
 				return &api.Input{
 					MinExpiration: time.Hour,
-					FS:            afero.NewMemMapFs(),
 					AppTokenClient: &mockAppTokenClient{
 						token: &apptoken.AccessToken{
 							AccessToken:    "new-token",
@@ -134,7 +130,6 @@ func TestTokenManager_Get(t *testing.T) {
 			name: "config read error",
 			setupInput: func() *api.Input {
 				return &api.Input{
-					FS:     afero.NewMemMapFs(),
 					Stdout: &bytes.Buffer{},
 				}
 			},
@@ -144,7 +139,6 @@ func TestTokenManager_Get(t *testing.T) {
 			name: "invalid config",
 			setupInput: func() *api.Input {
 				return &api.Input{
-					FS:     afero.NewMemMapFs(),
 					Stdout: &bytes.Buffer{},
 				}
 			},
@@ -155,7 +149,6 @@ func TestTokenManager_Get(t *testing.T) {
 			setupInput: func() *api.Input {
 				return &api.Input{
 					MinExpiration: time.Hour,
-					FS:            afero.NewMemMapFs(),
 					AppTokenClient: &mockAppTokenClient{
 						err: errors.New("token creation failed"),
 					},
@@ -172,7 +165,6 @@ func TestTokenManager_Get(t *testing.T) {
 			setupInput: func() *api.Input {
 				return &api.Input{
 					MinExpiration: time.Hour,
-					FS:            afero.NewMemMapFs(),
 					AppTokenClient: &mockAppTokenClient{
 						token: &apptoken.AccessToken{
 							AccessToken:    "test-token-123",
@@ -196,7 +188,6 @@ func TestTokenManager_Get(t *testing.T) {
 			setupInput: func() *api.Input {
 				return &api.Input{
 					MinExpiration: time.Hour,
-					FS:            afero.NewMemMapFs(),
 					AppTokenClient: &mockAppTokenClient{
 						token: &apptoken.AccessToken{
 							AccessToken:    "new-token",
@@ -229,7 +220,6 @@ func TestTokenManager_Get(t *testing.T) {
 			setupInput: func() *api.Input {
 				return &api.Input{
 					MinExpiration: time.Hour,
-					FS:            afero.NewMemMapFs(),
 					AppTokenClient: &mockAppTokenClient{
 						token: &apptoken.AccessToken{
 							AccessToken:    "test-token-json",

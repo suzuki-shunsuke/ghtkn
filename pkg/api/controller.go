@@ -10,7 +10,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/github"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
@@ -34,7 +33,6 @@ func New(input *Input) *TokenManager {
 // The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
 	MinExpiration  time.Duration    // Minimum token expiration duration required
-	FS             afero.Fs         // File system abstraction for testing
 	AppTokenClient AppTokenClient   // Client for creating GitHub App tokens
 	Stdout         io.Writer        // Output writer
 	Keyring        Keyring          // Keyring for token storage
@@ -45,9 +43,7 @@ type Input struct {
 // NewInput creates a new Input instance with default production values.
 // It sets up all necessary dependencies including file system, HTTP client, and keyring access.
 func NewInput() *Input {
-	fs := afero.NewOsFs()
 	return &Input{
-		FS:             fs,
 		AppTokenClient: apptoken.NewClient(apptoken.NewInput()),
 		Stdout:         os.Stdout,
 		Keyring:        keyring.New(keyring.NewInput()),
