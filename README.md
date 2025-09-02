@@ -222,6 +222,47 @@ You can use ghtkn as a [Git Credential Helper](https://git-scm.com/book/en/v2/Gi
 	helper = !ghtkn git-credential
 ```
 
+### :warning: Troubleshooting of Git Credential Helper on macOS
+
+If Git Credential Helper doesn't work on macOS, please check if osxkeychain is used.
+
+You can check the trace log of Git by `GIT_TRACE=1 GIT_CURL_VERBOSE=1`.
+
+```sh
+GIT_TRACE=1 GIT_CURL_VERBOSE=1 git push origin
+```
+
+If git outputs the following log, Git uses `git-credential-osxkeychain`, not ghtkn.
+
+```
+09:25:49.373133 git.c:750               trace: exec: git-credential-osxkeychain get
+09:25:49.373152 run-command.c:655       trace: run_command: git-credential-osxkeychain get
+```
+
+Please check the git config.
+
+```sh
+git config --get-all --show-origin credential.helper
+```
+
+The following output shows osxkeychain is used by the system setting `/Library/Developer/CommandLineTools/usr/share/git-core/gitconfig`.
+
+```
+file:/Library/Developer/CommandLineTools/usr/share/git-core/gitconfig   osxkeychain
+file:/Users/shunsukesuzuki/.gitconfig   !ghtkn git-credential
+```
+
+To solve the problem, please comment out the system setting.
+
+```sh
+sudo vi /Library/Developer/CommandLineTools/usr/share/git-core/gitconfig
+```
+
+```ini
+# [credential]
+# 	helper = osxkeychain
+```
+
 ## Use multiple apps
 
 You can configure multiple GitHub Apps in the `apps` section of the configuration file and create and use different Apps for each Organization or User.
