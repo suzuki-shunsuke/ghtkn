@@ -238,6 +238,91 @@ func TestController_Run(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "GitHub API GetUser error",
+			setupInput: func() *get.Input {
+				return &get.Input{
+					ConfigFilePath: "test.yaml",
+					OutputFormat:   "",
+					MinExpiration:  time.Hour,
+					FS:             afero.NewMemMapFs(),
+					ConfigReader: &mockConfigReader{
+						cfg: &config.Config{
+							Persist: false,
+							Apps: []*config.App{
+								{
+									Name:     "test-app",
+									ClientID: "test-client-id",
+								},
+							},
+						},
+					},
+					Env: &config.Env{App: "test-app"},
+					AppTokenClient: &mockAppTokenClient{
+						token: &apptoken.AccessToken{
+							AccessToken:    "test-token-123",
+							ExpirationDate: keyring.FormatDate(futureTime),
+						},
+					},
+					Stdout:  &bytes.Buffer{},
+					Keyring: &mockKeyring{},
+					Now:     func() time.Time { return fixedTime },
+					NewGitHub: func(_ context.Context, _ string) get.GitHub {
+						return &mockGitHub{
+							err: errors.New("GitHub API error"),
+						}
+					},
+				}
+			},
+			wantErr: true,
+		},
+		{
+			name: "cached token without login and GitHub API error",
+			setupInput: func() *get.Input {
+				return &get.Input{
+					ConfigFilePath: "test.yaml",
+					OutputFormat:   "",
+					MinExpiration:  time.Hour,
+					FS:             afero.NewMemMapFs(),
+					ConfigReader: &mockConfigReader{
+						cfg: &config.Config{
+							Persist: true,
+							Apps: []*config.App{
+								{
+									Name:     "test-app",
+									ClientID: "test-client-id",
+								},
+							},
+						},
+					},
+					Env: &config.Env{App: "test-app"},
+					AppTokenClient: &mockAppTokenClient{
+						token: &apptoken.AccessToken{
+							AccessToken:    "new-token",
+							ExpirationDate: keyring.FormatDate(futureTime),
+						},
+					},
+					Stdout: &bytes.Buffer{},
+					Keyring: &mockKeyring{
+						tokens: map[string]*keyring.AccessToken{
+							"test-client-id": {
+								App:            "test-app",
+								AccessToken:    "cached-token",
+								ExpirationDate: keyring.FormatDate(futureTime),
+								// Login is empty, will trigger GetUser call
+							},
+						},
+					},
+					Now: func() time.Time { return fixedTime },
+					NewGitHub: func(_ context.Context, _ string) get.GitHub {
+						return &mockGitHub{
+							err: errors.New("GitHub API rate limit exceeded"),
+						}
+					},
+				}
+			},
+			wantErr: true,
+		},
+		{
 			name: "JSON output format",
 			setupInput: func() *get.Input {
 				return &get.Input{
