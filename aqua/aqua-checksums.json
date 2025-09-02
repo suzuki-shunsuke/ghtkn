@@ -276,33 +276,33 @@
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/suzuki-shunsuke/ghtkn/v0.1.2/ghtkn_darwin_amd64.tar.gz",
-      "checksum": "D6583FDECBC3B365DBB5F176EBEB64F6B0C3E46B699259CF0973549D5887ADF3",
+      "id": "github_release/github.com/suzuki-shunsuke/ghtkn/v0.1.3/ghtkn_darwin_amd64.tar.gz",
+      "checksum": "ADD542F2434F7E7CA8D50BFAAE830047F21E2CE182ED6FDC0252DA23DDD31439",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/suzuki-shunsuke/ghtkn/v0.1.2/ghtkn_darwin_arm64.tar.gz",
-      "checksum": "C7CDCA371EAD73282C0196A3FFA00C205BD22AB077FF817F739422AAC8D593F1",
+      "id": "github_release/github.com/suzuki-shunsuke/ghtkn/v0.1.3/ghtkn_darwin_arm64.tar.gz",
+      "checksum": "9CAEB62611FB66958E32013EABA42F57A1D6930FB8954B67CFC26B9ADFD7646F",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/suzuki-shunsuke/ghtkn/v0.1.2/ghtkn_linux_amd64.tar.gz",
-      "checksum": "687B08FE3468CC61C7597B30539F20FFE6896FA2BD61F65FBD7067CF9552B77A",
+      "id": "github_release/github.com/suzuki-shunsuke/ghtkn/v0.1.3/ghtkn_linux_amd64.tar.gz",
+      "checksum": "DDC7C92E42193CA6AF65CEA0E61713B35D3C4F81DB065E40B8C7000FA36E1BC0",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/suzuki-shunsuke/ghtkn/v0.1.2/ghtkn_linux_arm64.tar.gz",
-      "checksum": "8E5EF90ABC9FE5792A7CB54CEFD4A559435A7553C3F7C35EB442C6D572B9A328",
+      "id": "github_release/github.com/suzuki-shunsuke/ghtkn/v0.1.3/ghtkn_linux_arm64.tar.gz",
+      "checksum": "43B7E013543BA6BCDBC4F334EFF9C274A2A782A674F679AD0C99B20E815A2DAA",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/suzuki-shunsuke/ghtkn/v0.1.2/ghtkn_windows_amd64.zip",
-      "checksum": "CE7143365CBF89588B139B2E0A43F9E4FE7346328DC5E8D8184AF65D5A9A4797",
+      "id": "github_release/github.com/suzuki-shunsuke/ghtkn/v0.1.3/ghtkn_windows_amd64.zip",
+      "checksum": "4813AB41FB7D81302DD52058F2CB65A645B1384068C1BC184706A2B358CEEAA3",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/suzuki-shunsuke/ghtkn/v0.1.2/ghtkn_windows_arm64.zip",
-      "checksum": "77A3AB4809993261A8AAB4B61D4B6C734058B9D438840171C6071EC613F8229C",
+      "id": "github_release/github.com/suzuki-shunsuke/ghtkn/v0.1.3/ghtkn_windows_arm64.zip",
+      "checksum": "30AF1EFD21D09C94A338C5B2268761E1F3516A48418008ED4408DF5369F5D2E2",
       "algorithm": "sha256"
     },
     {

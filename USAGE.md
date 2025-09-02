@@ -11,7 +11,7 @@ USAGE:
    ghtkn [global options] [command [command options]]
 
 VERSION:
-   0.1.2
+   0.1.3
 
 COMMANDS:
    init            Create ghtkn.yaml if it doesn't exist
