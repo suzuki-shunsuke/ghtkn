@@ -52,7 +52,6 @@ func TestTokenManager_Get(t *testing.T) {
 			name: "successful token creation without persistence",
 			setupInput: func() *api.Input {
 				return &api.Input{
-					OutputFormat:  "",
 					MinExpiration: time.Hour,
 					FS:            afero.NewMemMapFs(),
 					AppTokenClient: &mockAppTokenClient{
@@ -74,7 +73,6 @@ func TestTokenManager_Get(t *testing.T) {
 			name: "successful token retrieval from keyring",
 			setupInput: func() *api.Input {
 				return &api.Input{
-					OutputFormat:  "",
 					MinExpiration: time.Hour,
 					FS:            afero.NewMemMapFs(),
 					AppTokenClient: &mockAppTokenClient{
@@ -106,7 +104,6 @@ func TestTokenManager_Get(t *testing.T) {
 			setupInput: func() *api.Input {
 				expiredTime := fixedTime.Add(30 * time.Minute)
 				return &api.Input{
-					OutputFormat:  "",
 					MinExpiration: time.Hour,
 					FS:            afero.NewMemMapFs(),
 					AppTokenClient: &mockAppTokenClient{
@@ -157,7 +154,6 @@ func TestTokenManager_Get(t *testing.T) {
 			name: "token creation error",
 			setupInput: func() *api.Input {
 				return &api.Input{
-					OutputFormat:  "",
 					MinExpiration: time.Hour,
 					FS:            afero.NewMemMapFs(),
 					AppTokenClient: &mockAppTokenClient{
@@ -175,7 +171,6 @@ func TestTokenManager_Get(t *testing.T) {
 			name: "GitHub API GetUser error",
 			setupInput: func() *api.Input {
 				return &api.Input{
-					OutputFormat:  "",
 					MinExpiration: time.Hour,
 					FS:            afero.NewMemMapFs(),
 					AppTokenClient: &mockAppTokenClient{
@@ -200,7 +195,6 @@ func TestTokenManager_Get(t *testing.T) {
 			name: "cached token without login and GitHub API error",
 			setupInput: func() *api.Input {
 				return &api.Input{
-					OutputFormat:  "",
 					MinExpiration: time.Hour,
 					FS:            afero.NewMemMapFs(),
 					AppTokenClient: &mockAppTokenClient{
@@ -234,7 +228,6 @@ func TestTokenManager_Get(t *testing.T) {
 			name: "JSON output format",
 			setupInput: func() *api.Input {
 				return &api.Input{
-					OutputFormat:  "json",
 					MinExpiration: time.Hour,
 					FS:            afero.NewMemMapFs(),
 					AppTokenClient: &mockAppTokenClient{
@@ -266,13 +259,6 @@ func TestTokenManager_Get(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Run() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			}
-
-			if !tt.wantErr && input.OutputFormat != "json" {
-				output := input.Stdout.(*bytes.Buffer).String()
-				if output != tt.wantOutput {
-					t.Errorf("Run() output = %v, want %v", output, tt.wantOutput)
-				}
 			}
 
 			if tt.checkKeyring {

@@ -33,7 +33,6 @@ func New(input *Input) *TokenManager {
 // It encapsulates file system access, configuration reading, token generation, and output handling.
 // The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
-	OutputFormat   string           // Output format ("json" or empty for plain text)
 	MinExpiration  time.Duration    // Minimum token expiration duration required
 	FS             afero.Fs         // File system abstraction for testing
 	AppTokenClient AppTokenClient   // Client for creating GitHub App tokens
