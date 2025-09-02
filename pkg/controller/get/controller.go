@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/github"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 )
 
@@ -46,6 +47,7 @@ type Input struct {
 	Keyring         Keyring          // Keyring for token storage
 	Now             func() time.Time // Current time provider for testing
 	IsGitCredential bool             // Whether to output in Git credential helper format
+	NewGitHub       func(ctx context.Context, token string) GitHub
 }
 
 // NewInput creates a new Input instance with default production values.
@@ -61,6 +63,9 @@ func NewInput(configFilePath string) *Input {
 		Stdout:         os.Stdout,
 		Keyring:        keyring.New(keyring.NewInput()),
 		Now:            time.Now,
+		NewGitHub: func(ctx context.Context, token string) GitHub {
+			return github.New(ctx, token)
+		},
 	}
 }
 
@@ -92,4 +97,10 @@ type AppTokenClient interface {
 type Keyring interface {
 	Get(key string) (*keyring.AccessToken, error)
 	Set(key string, token *keyring.AccessToken) error
+}
+
+// GitHub defines the interface for interacting with the GitHub API.
+// It is used to retrieve authenticated user information needed for Git Credential Helper.
+type GitHub interface {
+	GetUser(ctx context.Context) (*github.User, error)
 }

@@ -8,10 +8,15 @@ import (
 )
 
 // output writes the access token to stdout in the configured format.
-// For Git credential helper mode, it outputs in the format: password=<token>
+// For Git credential helper mode, it outputs both username and password in the format:
+//
+//	username=<login>
+//	password=<token>
+//
 // For standard mode, it outputs either the raw token string (default) or a JSON object based on OutputFormat.
 func (c *Controller) output(token *keyring.AccessToken) error {
 	if c.input.IsGitCredential {
+		fmt.Fprintf(c.input.Stdout, "username=%s\n", token.Login)
 		fmt.Fprintf(c.input.Stdout, "password=%s\n\n", token.AccessToken)
 		return nil
 	}

@@ -52,10 +52,11 @@ func TestController_output(t *testing.T) {
 				App:            "test-app",
 				AccessToken:    "test-token-git",
 				ExpirationDate: "2024-12-31T23:59:59Z",
+				Login:          "testuser",
 			},
 			outputFormat:    "",
 			isGitCredential: true,
-			wantOutput:      "password=test-token-git\n\n",
+			wantOutput:      "username=testuser\npassword=test-token-git\n\n",
 			wantErr:         false,
 		},
 	}

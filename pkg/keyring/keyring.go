@@ -64,12 +64,13 @@ func FormatDate(t time.Time) string {
 	return t.Format(dateFormat)
 }
 
-// AccessToken represents a GitHub access token stored in the keyring.
-// It includes the token value, associated app, and expiration date.
+// AccessToken represents a GitHub App access token stored in the keyring.
+// It contains the token value, expiration information, and user login details.
 type AccessToken struct {
-	App            string `json:"app"`
-	AccessToken    string `json:"access_token"`
-	ExpirationDate string `json:"expiration_date"`
+	App            string `json:"app"`             // The GitHub App name for display purposes
+	AccessToken    string `json:"access_token"`    // The OAuth access token for GitHub API authentication
+	ExpirationDate string `json:"expiration_date"` // RFC3339 formatted expiration timestamp
+	Login          string `json:"login"`           // GitHub username for Git Credential Helper authentication
 	// ClientID string `json:"client_id"`
 }
 
