@@ -47,6 +47,7 @@ type Input struct {
 	Keyring         Keyring          // Keyring for token storage
 	Now             func() time.Time // Current time provider for testing
 	IsGitCredential bool             // Whether to output in Git credential helper format
+	NewGitHub       func(ctx context.Context, token string) GitHub
 }
 
 // NewInput creates a new Input instance with default production values.
@@ -62,6 +63,9 @@ func NewInput(configFilePath string) *Input {
 		Stdout:         os.Stdout,
 		Keyring:        keyring.New(keyring.NewInput()),
 		Now:            time.Now,
+		NewGitHub: func(ctx context.Context, token string) GitHub {
+			return github.New(ctx, token)
+		},
 	}
 }
 

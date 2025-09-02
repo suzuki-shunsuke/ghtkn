@@ -6,7 +6,6 @@ import (
 	"log/slog"
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/github"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
@@ -35,7 +34,7 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 		// Get the authenticated user info for Git Credential Helper.
 		// Git Credential Helper requires both username and password for authentication.
 		// The username is the GitHub user's login name retrieved via the GitHub API.
-		gh := github.New(ctx, token.AccessToken)
+		gh := c.input.NewGitHub(ctx, token.AccessToken)
 		user, err := gh.GetUser(ctx)
 		if err != nil {
 			return fmt.Errorf("get authenticated user: %w", err)
