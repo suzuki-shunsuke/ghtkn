@@ -19,36 +19,10 @@ type State struct {
 	FailedToGetAuthenticatedUser      error
 	FailedToStoreAccessTokenInKeyring error
 }
-
-type hasStateErr struct {
-	err   error
-	state *State
-}
-
-func (h *hasStateErr) Error() string {
-	if h == nil {
-		return ""
-	}
-	return h.err.Error()
-}
-
-func (h *hasStateErr) Unwrap() error {
-	if h == nil {
-		return nil
-	}
-	return h.err
-}
-
-func (h *hasStateErr) State() *State {
-	if h == nil {
-		return nil
-	}
-	return h.state
-}
 */
 
-// Run executes the main logic for retrieving a GitHub App access token.
-// It reads configuration, checks for cached tokens, creates new tokens if needed,
+// Get executes the main logic for retrieving a GitHub App access token.
+// It checks for cached tokens, creates new tokens if needed,
 // retrieves the authenticated user's login for Git Credential Helper if necessary,
 // and outputs the result in the requested format.
 func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, clientID string) (*keyring.AccessToken, error) {
