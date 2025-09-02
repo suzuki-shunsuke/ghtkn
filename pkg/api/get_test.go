@@ -1,4 +1,4 @@
-//nolint:forcetypeassert,funlen,maintidx
+//nolint:forcetypeassert,funlen
 package api_test
 
 import (
