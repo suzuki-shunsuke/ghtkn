@@ -1,7 +1,7 @@
-// Package get provides functionality to retrieve GitHub App access tokens.
+// Package api provides functionality to retrieve GitHub App access tokens.
 // It serves both the standard 'get' command and the 'git-credential' helper command.
 // It handles token retrieval from the keyring cache and token generation/renewal when needed.
-package get
+package api
 
 import (
 	"context"
@@ -19,40 +19,33 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 )
 
-// Controller manages the process of retrieving GitHub App access tokens.
+// TokenManager manages the process of retrieving GitHub App access tokens.
 // It coordinates between configuration reading, token caching, and token generation.
-type Controller struct {
+type TokenManager struct {
 	input *Input
 }
 
 // New creates a new Controller instance with the provided input configuration.
-func New(input *Input) *Controller {
-	return &Controller{
+func New(input *Input) *TokenManager {
+	return &TokenManager{
 		input: input,
 	}
-}
-
-type TokenManager interface {
-	Get(ctx context.Context, logger *slog.Logger, app *config.App) (*keyring.AccessToken, error)
 }
 
 // Input contains all the dependencies and configuration needed by the Controller.
 // It encapsulates file system access, configuration reading, token generation, and output handling.
 // The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
-	ConfigFilePath  string           // Path to the configuration file
-	OutputFormat    string           // Output format ("json" or empty for plain text)
-	MinExpiration   time.Duration    // Minimum token expiration duration required
-	FS              afero.Fs         // File system abstraction for testing
-	ConfigReader    ConfigReader     // Configuration file reader
-	Env             *config.Env      // Environment variable provider
-	AppTokenClient  AppTokenClient   // Client for creating GitHub App tokens
-	Stdout          io.Writer        // Output writer
-	Keyring         Keyring          // Keyring for token storage
-	Now             func() time.Time // Current time provider for testing
-	IsGitCredential bool             // Whether to output in Git credential helper format
-	NewGitHub       func(ctx context.Context, token string) GitHub
-	TokenManager    TokenManager // TokenManager for handling token retrieval and creation
+	OutputFormat   string           // Output format ("json" or empty for plain text)
+	MinExpiration  time.Duration    // Minimum token expiration duration required
+	FS             afero.Fs         // File system abstraction for testing
+	ConfigReader   ConfigReader     // Configuration file reader
+	Env            *config.Env      // Environment variable provider
+	AppTokenClient AppTokenClient   // Client for creating GitHub App tokens
+	Stdout         io.Writer        // Output writer
+	Keyring        Keyring          // Keyring for token storage
+	Now            func() time.Time // Current time provider for testing
+	NewGitHub      func(ctx context.Context, token string) GitHub
 }
 
 // NewInput creates a new Input instance with default production values.
@@ -60,7 +53,6 @@ type Input struct {
 func NewInput(configFilePath string) *Input {
 	fs := afero.NewOsFs()
 	return &Input{
-		ConfigFilePath: configFilePath,
 		FS:             fs,
 		ConfigReader:   config.NewReader(fs),
 		Env:            config.NewEnv(os.Getenv, runtime.GOOS),

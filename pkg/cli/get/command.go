@@ -1,8 +1,6 @@
-// Package get implements both the 'ghtkn get' command and 'ghtkn git-credential' command.
-// These commands retrieve or create GitHub App User Access Tokens and output them to stdout.
-// The 'get' command outputs tokens in plain text or JSON format for general use.
-// The 'git-credential' command outputs tokens in Git's credential helper format for seamless Git authentication.
-// Both commands handle token persistence, expiration checking, and automatic renewal when needed.
+// Package get implements the 'ghtkn get' command.
+// This command retrieves or creates GitHub App User Access Tokens and outputs them to stdout.
+// It handles token persistence, expiration checking, and automatic renewal when needed.
 package get
 
 import (
@@ -19,9 +17,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-// New creates either a 'get' or 'git-credential' command instance based on the isGitCredential flag.
-// When isGitCredential is true, it creates a Git credential helper command.
-// When false, it creates a standard get command for general token retrieval.
+// New creates a new get command instance with the provided logger and version.
 // It returns a CLI command that can be registered with the main CLI application.
 func New(logger *slog.Logger, version string, isGitCredential bool) *cli.Command {
 	r := &runner{
@@ -32,16 +28,14 @@ func New(logger *slog.Logger, version string, isGitCredential bool) *cli.Command
 	return r.Command()
 }
 
-// runner encapsulates the state and behavior for both the get and git-credential commands.
+// runner encapsulates the state and behavior for the get command.
 type runner struct {
 	logger          *slog.Logger
 	version         string
 	isGitCredential bool
 }
 
-// Command returns the CLI command definition for either the get or git-credential subcommand.
-// For git-credential, it creates a command compatible with Git's credential helper protocol.
-// For get, it creates a standard command with output format options.
+// Command returns the CLI command definition for the get subcommand.
 // It defines the command name, usage, action handler, and available flags.
 func (r *runner) Command() *cli.Command {
 	if r.isGitCredential {
@@ -69,9 +63,7 @@ func (r *runner) Command() *cli.Command {
 	}
 }
 
-// action implements the main logic for both the get and git-credential commands.
-// For git-credential, it follows Git's credential helper protocol and only processes 'get' operations.
-// For get command, it supports different output formats (plain text or JSON).
+// action implements the main logic for the get command.
 // It configures the controller with flags and arguments, then executes the token retrieval.
 // Returns an error if configuration is invalid or token retrieval fails.
 func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cyclop
