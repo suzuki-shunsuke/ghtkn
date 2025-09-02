@@ -12,6 +12,7 @@ import (
 // For standard mode, it outputs either the raw token string (default) or a JSON object based on OutputFormat.
 func (c *Controller) output(token *keyring.AccessToken) error {
 	if c.input.IsGitCredential {
+		fmt.Fprintf(c.input.Stdout, "username=%s\n", token.Login)
 		fmt.Fprintf(c.input.Stdout, "password=%s\n\n", token.AccessToken)
 		return nil
 	}

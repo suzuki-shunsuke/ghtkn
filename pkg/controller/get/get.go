@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/github"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
@@ -24,22 +25,21 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	logFields := []any{"app", app.Name}
 	logger = logger.With(logFields...)
 
-	var token *keyring.AccessToken
-	if cfg.Persist {
-		// Get an access token from keyring
-		tk, err := c.getAccessTokenFromKeyring(logger, app)
-		if err != nil {
-			logger.Warn("get a GitHub App User Access Token from keyring", "error", err)
-		}
-		token = tk
+	token, changed, err := c.getOrCreateToken(ctx, logger, cfg, app)
+	if err != nil {
+		return fmt.Errorf("get or create token: %w", slogerr.With(err, logFields...))
 	}
-	if token == nil {
-		// Create access token
-		tk, err := c.createToken(ctx, logger, app)
+
+	if token.Login == "" {
+		// Get the authenticated user info for Git Credential Helper.
+		// Git Credential Helper needs the authenticated user login.
+		gh := github.New(ctx, token.AccessToken)
+		user, err := gh.GetUser(ctx)
 		if err != nil {
-			return fmt.Errorf("create a GitHub App User Access Token: %w", slogerr.With(err, logFields...))
+			return fmt.Errorf("get authenticated user: %w", err)
 		}
-		token = tk
+		token.Login = user.Login
+		changed = true
 	}
 
 	// Output access token
@@ -47,17 +47,37 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 		return err
 	}
 
-	if cfg.Persist {
+	if cfg.Persist && changed {
 		// Store the token in keyring
 		if err := c.input.Keyring.Set(app.ClientID, &keyring.AccessToken{
 			AccessToken:    token.AccessToken,
 			ExpirationDate: token.ExpirationDate,
+			Login:          token.Login,
 		}); err != nil {
 			logger.Warn("could not store a GitHub App User Access Token in keyring", "error", err)
 		}
 	}
 
 	return nil
+}
+
+func (c *Controller) getOrCreateToken(ctx context.Context, logger *slog.Logger, cfg *config.Config, app *config.App) (*keyring.AccessToken, bool, error) {
+	if cfg.Persist {
+		// Get an access token from keyring
+		token, err := c.getAccessTokenFromKeyring(logger, app)
+		if err != nil {
+			logger.Warn("get a GitHub App User Access Token from keyring", "error", err)
+		}
+		if token != nil {
+			return token, false, nil
+		}
+	}
+	// Create access token
+	token, err := c.createToken(ctx, logger, app)
+	if err != nil {
+		return nil, false, fmt.Errorf("create a GitHub App User Access Token: %w", err)
+	}
+	return token, true, nil
 }
 
 // createToken generates a new GitHub App access token using the OAuth device flow.
@@ -67,6 +87,7 @@ func (c *Controller) createToken(ctx context.Context, logger *slog.Logger, app *
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}
+
 	return &keyring.AccessToken{
 		App:            app.Name,
 		AccessToken:    tk.AccessToken,

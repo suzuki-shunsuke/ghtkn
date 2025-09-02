@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/github"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 )
 
@@ -92,4 +93,9 @@ type AppTokenClient interface {
 type Keyring interface {
 	Get(key string) (*keyring.AccessToken, error)
 	Set(key string, token *keyring.AccessToken) error
+}
+
+// GitHub is a GitHub API Client.
+type GitHub interface {
+	GetUser(ctx context.Context) (*github.User, error)
 }

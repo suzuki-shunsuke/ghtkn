@@ -70,6 +70,7 @@ type AccessToken struct {
 	App            string `json:"app"`
 	AccessToken    string `json:"access_token"`
 	ExpirationDate string `json:"expiration_date"`
+	Login          string `json:"login"`
 	// ClientID string `json:"client_id"`
 }
 
