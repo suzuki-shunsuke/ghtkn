@@ -102,6 +102,8 @@ Therefore, as shown above, the GitHub App cannot perform operations that it is n
 
 ## Wrapping commands
 
+You can wrap commands using shell functions or scripts.
+
 Shell functions:
 
 ```sh
@@ -109,6 +111,8 @@ gh() {
     env GH_TOKEN=$(ghtkn get) command gh "$@" # Be careful to use 'command' to avoid infinite loops
 }
 ```
+
+Shell scripts:
 
 1. Put shell scripts in $PATH:
 
