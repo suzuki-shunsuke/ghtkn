@@ -5,7 +5,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"io"
 	"log/slog"
 	"os"
@@ -39,7 +38,6 @@ type Input struct {
 	OutputFormat   string           // Output format ("json" or empty for plain text)
 	MinExpiration  time.Duration    // Minimum token expiration duration required
 	FS             afero.Fs         // File system abstraction for testing
-	ConfigReader   ConfigReader     // Configuration file reader
 	Env            *config.Env      // Environment variable provider
 	AppTokenClient AppTokenClient   // Client for creating GitHub App tokens
 	Stdout         io.Writer        // Output writer
@@ -54,7 +52,6 @@ func NewInput() *Input {
 	fs := afero.NewOsFs()
 	return &Input{
 		FS:             fs,
-		ConfigReader:   config.NewReader(fs),
 		Env:            config.NewEnv(os.Getenv, runtime.GOOS),
 		AppTokenClient: apptoken.NewClient(apptoken.NewInput()),
 		Stdout:         os.Stdout,
@@ -66,23 +63,10 @@ func NewInput() *Input {
 	}
 }
 
-// IsJSON returns true if the output format is set to JSON.
-func (i *Input) IsJSON() bool {
-	return i.OutputFormat == "json"
-}
-
 // Validate checks if the Input configuration is valid.
 // It returns an error if the output format is neither empty nor "json".
 func (i *Input) Validate() error {
-	if i.OutputFormat != "" && !i.IsJSON() {
-		return errors.New("output format must be empty or 'json'")
-	}
 	return nil
-}
-
-// ConfigReader defines the interface for reading configuration files.
-type ConfigReader interface {
-	Read(cfg *config.Config, configFilePath string) error
 }
 
 // AppTokenClient defines the interface for creating GitHub App access tokens.
