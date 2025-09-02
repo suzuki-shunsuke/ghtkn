@@ -5,13 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
-	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
+/*
 type State struct {
 	FailedToGetAccessTokenFromKeyring error
 	AccessTokenIsNotFound             bool
@@ -22,17 +20,41 @@ type State struct {
 	FailedToStoreAccessTokenInKeyring error
 }
 
+type hasStateErr struct {
+	err   error
+	state *State
+}
+
+func (h *hasStateErr) Error() string {
+	if h == nil {
+		return ""
+	}
+	return h.err.Error()
+}
+
+func (h *hasStateErr) Unwrap() error {
+	if h == nil {
+		return nil
+	}
+	return h.err
+}
+
+func (h *hasStateErr) State() *State {
+	if h == nil {
+		return nil
+	}
+	return h.state
+}
+*/
+
 // Run executes the main logic for retrieving a GitHub App access token.
 // It reads configuration, checks for cached tokens, creates new tokens if needed,
 // retrieves the authenticated user's login for Git Credential Helper if necessary,
 // and outputs the result in the requested format.
-func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, app *config.App) (*keyring.AccessToken, error) {
-	logFields := []any{"app", app.Name}
-	logger = logger.With(logFields...)
-
-	token, changed, err := tm.getOrCreateToken(ctx, logger, app)
+func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, clientID string) (*keyring.AccessToken, error) {
+	token, changed, err := tm.getOrCreateToken(ctx, logger, clientID)
 	if err != nil {
-		return nil, fmt.Errorf("get or create token: %w", slogerr.With(err, logFields...))
+		return nil, fmt.Errorf("get or create token: %w", err)
 	}
 
 	if token.Login == "" {
@@ -50,7 +72,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, app *confi
 
 	if changed {
 		// Store the token in keyring
-		if err := tm.input.Keyring.Set(app.ClientID, &keyring.AccessToken{
+		if err := tm.input.Keyring.Set(clientID, &keyring.AccessToken{
 			AccessToken:    token.AccessToken,
 			ExpirationDate: token.ExpirationDate,
 			Login:          token.Login,
@@ -68,17 +90,17 @@ var ErrStoreToken = errors.New("could not store the token in keyring")
 // It returns the token, a boolean indicating whether the token was newly created or modified,
 // and any error that occurred. The changed flag is used to determine if the token should be
 // saved back to the keyring.
-func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logger, app *config.App) (*keyring.AccessToken, bool, error) {
+func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logger, clientID string) (*keyring.AccessToken, bool, error) {
 	// Get an access token from keyring
-	token, err := tm.getAccessTokenFromKeyring(logger, app)
+	token, err := tm.getAccessTokenFromKeyring(logger, clientID)
 	if err != nil {
-		logger.Warn("get a GitHub App User Access Token from keyring", "error", err)
+		return nil, false, fmt.Errorf("get a GitHub App User Access Token from keyring: %w", err)
 	}
 	if token != nil {
 		return token, false, nil
 	}
 	// Create access token
-	token, err = tm.createToken(ctx, logger, app)
+	token, err = tm.createToken(ctx, logger, clientID)
 	if err != nil {
 		return nil, false, fmt.Errorf("create a GitHub App User Access Token: %w", err)
 	}
@@ -87,14 +109,13 @@ func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logge
 
 // createToken generates a new GitHub App access token using the OAuth device flow.
 // It returns a keyring.AccessToken with the token details and expiration date.
-func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, app *config.App) (*keyring.AccessToken, error) {
-	tk, err := tm.input.AppTokenClient.Create(ctx, logger, app.ClientID)
+func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, clientID string) (*keyring.AccessToken, error) {
+	tk, err := tm.input.AppTokenClient.Create(ctx, logger, clientID)
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}
 
 	return &keyring.AccessToken{
-		App:            app.Name,
 		AccessToken:    tk.AccessToken,
 		ExpirationDate: tk.ExpirationDate,
 	}, nil
@@ -102,16 +123,15 @@ func (tm *TokenManager) createToken(ctx context.Context, logger *slog.Logger, ap
 
 // getAccessTokenFromKeyring retrieves a cached access token from the system keyring.
 // It returns nil if the token doesn't exist or has expired based on MinExpiration.
-func (tm *TokenManager) getAccessTokenFromKeyring(logger *slog.Logger, app *config.App) (*keyring.AccessToken, error) {
+func (tm *TokenManager) getAccessTokenFromKeyring(logger *slog.Logger, clientID string) (*keyring.AccessToken, error) {
 	// Get an access token from keyring
-	tk, err := tm.input.Keyring.Get(app.ClientID)
+	tk, err := tm.input.Keyring.Get(clientID)
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}
 	if tk == nil {
 		return nil, nil //nolint:nilnil
 	}
-	tk.App = app.Name
 	// Check if the access token expires
 	expired, err := tm.checkExpired(tk.ExpirationDate)
 	if err != nil {

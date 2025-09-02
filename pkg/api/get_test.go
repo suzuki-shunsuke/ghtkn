@@ -11,7 +11,6 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/api"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/github"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 )
@@ -45,7 +44,7 @@ func TestTokenManager_Get(t *testing.T) {
 		wantErr      bool
 		wantOutput   string
 		checkKeyring bool
-		app          *config.App
+		clientID     string
 	}{
 		{
 			name: "successful token creation without persistence",
@@ -245,7 +244,7 @@ func TestTokenManager_Get(t *testing.T) {
 			ctx := context.Background()
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			_, err := controller.Get(ctx, logger, tt.app)
+			_, err := controller.Get(ctx, logger, tt.clientID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Run() error = %v, wantErr %v", err, tt.wantErr)
 				return

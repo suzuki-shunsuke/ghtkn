@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 )
 
@@ -133,18 +132,15 @@ func TestController_createToken(t *testing.T) {
 	futureTime := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
 
 	tests := []struct {
-		name    string
-		app     *config.App
-		client  AppTokenClient
-		want    *keyring.AccessToken
-		wantErr bool
+		name     string
+		clientID string
+		client   AppTokenClient
+		want     *keyring.AccessToken
+		wantErr  bool
 	}{
 		{
-			name: "successful token creation",
-			app: &config.App{
-				Name:     "test-app",
-				ClientID: "test-client-id",
-			},
+			name:     "successful token creation",
+			clientID: "test-client-id",
 			client: &testAppTokenClient{
 				token: &apptoken.AccessToken{
 					AccessToken:    "new-token",
@@ -159,11 +155,8 @@ func TestController_createToken(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "token creation error",
-			app: &config.App{
-				Name:     "test-app",
-				ClientID: "test-client-id",
-			},
+			name:     "token creation error",
+			clientID: "test-client-id",
 			client: &testAppTokenClient{
 				err: errors.New("creation failed"),
 			},
@@ -184,7 +177,7 @@ func TestController_createToken(t *testing.T) {
 			ctx := context.Background()
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			got, err := controller.createToken(ctx, logger, tt.app)
+			got, err := controller.createToken(ctx, logger, tt.clientID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("createToken() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -207,7 +200,7 @@ func TestController_getAccessTokenFromKeyring(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		app           *config.App
+		clientID      string
 		keyring       Keyring
 		minExpiration time.Duration
 		now           time.Time
@@ -215,11 +208,8 @@ func TestController_getAccessTokenFromKeyring(t *testing.T) {
 		wantErr       bool
 	}{
 		{
-			name: "valid token from keyring",
-			app: &config.App{
-				Name:     "test-app",
-				ClientID: "test-client-id",
-			},
+			name:     "valid token from keyring",
+			clientID: "test-client-id",
 			keyring: &testKeyring{
 				tokens: map[string]*keyring.AccessToken{
 					"test-client-id": {
@@ -238,11 +228,8 @@ func TestController_getAccessTokenFromKeyring(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "expired token in keyring",
-			app: &config.App{
-				Name:     "test-app",
-				ClientID: "test-client-id",
-			},
+			name:     "expired token in keyring",
+			clientID: "test-client-id",
 			keyring: &testKeyring{
 				tokens: map[string]*keyring.AccessToken{
 					"test-client-id": {
@@ -257,11 +244,8 @@ func TestController_getAccessTokenFromKeyring(t *testing.T) {
 			wantErr:       false,
 		},
 		{
-			name: "token not found in keyring",
-			app: &config.App{
-				Name:     "test-app",
-				ClientID: "test-client-id",
-			},
+			name:     "token not found in keyring",
+			clientID: "test-client-id",
 			keyring: &testKeyring{
 				tokens: map[string]*keyring.AccessToken{},
 			},
@@ -271,11 +255,8 @@ func TestController_getAccessTokenFromKeyring(t *testing.T) {
 			wantErr:       false,
 		},
 		{
-			name: "keyring error",
-			app: &config.App{
-				Name:     "test-app",
-				ClientID: "test-client-id",
-			},
+			name:     "keyring error",
+			clientID: "test-client-id",
 			keyring: &testKeyring{
 				getErr: errors.New("keyring error"),
 			},
@@ -299,7 +280,7 @@ func TestController_getAccessTokenFromKeyring(t *testing.T) {
 
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			got, err := controller.getAccessTokenFromKeyring(logger, tt.app)
+			got, err := controller.getAccessTokenFromKeyring(logger, tt.clientID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getAccessTokenFromKeyring() error = %v, wantErr %v", err, tt.wantErr)
 				return
