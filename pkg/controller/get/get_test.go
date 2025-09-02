@@ -22,13 +22,8 @@ type mockGitHub struct {
 	err  error
 }
 
-func (m *mockGitHub) GetUser(ctx context.Context) (*github.User, error) {
+func (m *mockGitHub) GetUser(_ context.Context) (*github.User, error) {
 	return m.user, m.err
-}
-
-func (m *mockGitHub) set(user *github.User, err error) {
-	m.user = user
-	m.err = err
 }
 
 func mockNewGitHub(_ context.Context, _ string) get.GitHub {
