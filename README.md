@@ -102,44 +102,7 @@ Therefore, as shown above, the GitHub App cannot perform operations that it is n
 
 ## Wrapping commands
 
-It's bothersome to run `env GH_TOKEN=$(ghtkn get) gh ...` everytime you run `gh` command.
-And it's difficult to fix gh commands in scripts. 
-So it's useful if an access token can be passed to commands without `env GH_TOKEN=$(ghtkn get)`.
-
-There are two techniques:
-
-1. Wrap commands by shell functions
-2. Wrap commands by shell scripts
-
-### :warning: Caution of wrapping commands
-
-Wrapping commands is useful, but also has some drawbacks.
-Always passing access tokens can be the security risk.
-
-### :warning: Caution of aqua users
-
-If you use [aqua](https://aquaproj.github.io/) and wrap aqua, an access token is always passed to any commands executed via aqua.
-When you run a command managed by aqua, the command is executed via `aqua exec` command.
-So if you wrap aqua and pass an access token to aqua, the access token is also passed commands managed by aqua.
-If any commands are abused, the access token can be leaked.
-So we think you shouldn't wrap aqua.
-There is no problem to pass an access token to commands such as `aqua i`, `aqua up`, and so on.
-But passing an access token to any commands is dangerous.
-
-## Wrapping arbitrary commands via shell functions
-
-> [!WARNING]
-> Unfortunately, even if you define shell functions in files like .bashrc, they aren't available in scripts.
-> 
-> ```sh
-> bash test.sh # In test.sh, functions defined in .bashrc aren't available.
-> ```
->
-> To avoid this issue, [please check shell scripts out](#wrapping-arbitrary-commands-via-shell-scripts).
-
-You can write simple wrappers (shell functions) for arbitrary commands that require access tokens using ghtkn.
-
-e.g.
+Shell functions:
 
 ```sh
 gh() {
@@ -147,36 +110,9 @@ gh() {
 }
 ```
 
-This way, when you run the gh command normally, the access token will be automatically passed to the gh command.
+1. Put shell scripts in $PATH:
 
-We can define multiple shell functions using for loop:
-
-```sh
-for name in gh aqua; do
-  eval "
-  ${name}() {
-    local token=\"\$(ghtkn get)\"
-    env GITHUB_TOKEN=\"\$token\" command ${name} \"\$@\"
-  }
-  "
-done
-```
-
-```console
-$ which gh               
-gh () {
-        local token="$(ghtkn get)" 
-        env GITHUB_TOKEN="$token" command gh "$@"
-}
-```
-
-## Wrapping arbitrary commands via shell scripts
-
-For instance, if you want to wrap the command `gh`,
-
-1. Put the script `gh` into $PATH
-
-To avoid the infinite loop, you need to specify the absolute path of `gh` in the script.
+e.g. ~/bin/gh:
 
 ```sh
 #!/usr/bin/env bash
@@ -185,31 +121,22 @@ set -eu
 
 GH_TOKEN="$(ghtkn get)" 
 export GH_TOKEN
-exec /opt/homebrew/bin/gh "$@"
+exec /opt/homebrew/bin/gh "$@" # Specify the absolute path to avoid infinite loop
 ```
 
-2. Make the script executable
+If the command is managed by [aqua](https://aquaproj.github.io/), `aqua exec` is useful:
+
+```sh
+exec aqua exec -- gh "$@"
+```
+
+2. Make scripts executable
 
 ```sh
 chmod +x ~/bin/gh
 ```
 
-You can use [helper scripts](helpers).
-
-We don't think these helper scripts are ideal solutions.
-But they are useful to some extent.
-
-3. Copy helper scripts in $PATH
-
-```sh
-cp helpers/* ~/bin
-```
-
-4. Create wrappers using helpers
-
-```sh
-ghtkn-gen-wrap "$(command -v gh)" # Wrap the command gh
-```
+It's useful to wrap `gh` using shell script as gh always requires GitHub access tokens.
 
 ## Git Credential Helper
 
@@ -263,7 +190,7 @@ sudo vi /Library/Developer/CommandLineTools/usr/share/git-core/gitconfig
 # 	helper = osxkeychain
 ```
 
-## Use multiple apps
+## Use Multiple Apps
 
 You can configure multiple GitHub Apps in the `apps` section of the configuration file and create and use different Apps for each Organization or User.
 By default, the one with `default: true` is used.
