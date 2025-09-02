@@ -13,6 +13,7 @@ import (
 
 // Run executes the main logic for retrieving a GitHub App access token.
 // It reads configuration, checks for cached tokens, creates new tokens if needed,
+// retrieves the authenticated user's login for Git Credential Helper if necessary,
 // and outputs the result in the requested format.
 func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	cfg := &config.Config{}
@@ -32,7 +33,8 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 
 	if token.Login == "" {
 		// Get the authenticated user info for Git Credential Helper.
-		// Git Credential Helper needs the authenticated user login.
+		// Git Credential Helper requires both username and password for authentication.
+		// The username is the GitHub user's login name retrieved via the GitHub API.
 		gh := github.New(ctx, token.AccessToken)
 		user, err := gh.GetUser(ctx)
 		if err != nil {
@@ -61,6 +63,10 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	return nil
 }
 
+// getOrCreateToken retrieves an existing token from the keyring or creates a new one.
+// It returns the token, a boolean indicating whether the token was newly created or modified,
+// and any error that occurred. The changed flag is used to determine if the token should be
+// saved back to the keyring.
 func (c *Controller) getOrCreateToken(ctx context.Context, logger *slog.Logger, cfg *config.Config, app *config.App) (*keyring.AccessToken, bool, error) {
 	if cfg.Persist {
 		// Get an access token from keyring

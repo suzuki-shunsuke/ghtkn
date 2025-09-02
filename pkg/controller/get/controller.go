@@ -95,7 +95,8 @@ type Keyring interface {
 	Set(key string, token *keyring.AccessToken) error
 }
 
-// GitHub is a GitHub API Client.
+// GitHub defines the interface for interacting with the GitHub API.
+// It is used to retrieve authenticated user information needed for Git Credential Helper.
 type GitHub interface {
 	GetUser(ctx context.Context) (*github.User, error)
 }
