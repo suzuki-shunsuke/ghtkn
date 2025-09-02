@@ -50,7 +50,7 @@ type Input struct {
 
 // NewInput creates a new Input instance with default production values.
 // It sets up all necessary dependencies including file system, HTTP client, and keyring access.
-func NewInput(configFilePath string) *Input {
+func NewInput() *Input {
 	fs := afero.NewOsFs()
 	return &Input{
 		FS:             fs,
