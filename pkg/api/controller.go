@@ -8,12 +8,10 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"runtime"
 	"time"
 
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/github"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 )
@@ -38,7 +36,6 @@ type Input struct {
 	OutputFormat   string           // Output format ("json" or empty for plain text)
 	MinExpiration  time.Duration    // Minimum token expiration duration required
 	FS             afero.Fs         // File system abstraction for testing
-	Env            *config.Env      // Environment variable provider
 	AppTokenClient AppTokenClient   // Client for creating GitHub App tokens
 	Stdout         io.Writer        // Output writer
 	Keyring        Keyring          // Keyring for token storage
@@ -52,7 +49,6 @@ func NewInput() *Input {
 	fs := afero.NewOsFs()
 	return &Input{
 		FS:             fs,
-		Env:            config.NewEnv(os.Getenv, runtime.GOOS),
 		AppTokenClient: apptoken.NewClient(apptoken.NewInput()),
 		Stdout:         os.Stdout,
 		Keyring:        keyring.New(keyring.NewInput()),

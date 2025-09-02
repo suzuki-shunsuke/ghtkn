@@ -55,7 +55,6 @@ func TestTokenManager_Get(t *testing.T) {
 					OutputFormat:  "",
 					MinExpiration: time.Hour,
 					FS:            afero.NewMemMapFs(),
-					Env:           &config.Env{App: "test-app"},
 					AppTokenClient: &mockAppTokenClient{
 						token: &apptoken.AccessToken{
 							AccessToken:    "test-token-123",
@@ -78,7 +77,6 @@ func TestTokenManager_Get(t *testing.T) {
 					OutputFormat:  "",
 					MinExpiration: time.Hour,
 					FS:            afero.NewMemMapFs(),
-					Env:           &config.Env{App: "test-app"},
 					AppTokenClient: &mockAppTokenClient{
 						token: &apptoken.AccessToken{
 							AccessToken:    "new-token",
@@ -111,7 +109,6 @@ func TestTokenManager_Get(t *testing.T) {
 					OutputFormat:  "",
 					MinExpiration: time.Hour,
 					FS:            afero.NewMemMapFs(),
-					Env:           &config.Env{App: "test-app"},
 					AppTokenClient: &mockAppTokenClient{
 						token: &apptoken.AccessToken{
 							AccessToken:    "new-token",
@@ -163,7 +160,6 @@ func TestTokenManager_Get(t *testing.T) {
 					OutputFormat:  "",
 					MinExpiration: time.Hour,
 					FS:            afero.NewMemMapFs(),
-					Env:           &config.Env{App: "test-app"},
 					AppTokenClient: &mockAppTokenClient{
 						err: errors.New("token creation failed"),
 					},
@@ -182,7 +178,6 @@ func TestTokenManager_Get(t *testing.T) {
 					OutputFormat:  "",
 					MinExpiration: time.Hour,
 					FS:            afero.NewMemMapFs(),
-					Env:           &config.Env{App: "test-app"},
 					AppTokenClient: &mockAppTokenClient{
 						token: &apptoken.AccessToken{
 							AccessToken:    "test-token-123",
@@ -208,7 +203,6 @@ func TestTokenManager_Get(t *testing.T) {
 					OutputFormat:  "",
 					MinExpiration: time.Hour,
 					FS:            afero.NewMemMapFs(),
-					Env:           &config.Env{App: "test-app"},
 					AppTokenClient: &mockAppTokenClient{
 						token: &apptoken.AccessToken{
 							AccessToken:    "new-token",
@@ -243,7 +237,6 @@ func TestTokenManager_Get(t *testing.T) {
 					OutputFormat:  "json",
 					MinExpiration: time.Hour,
 					FS:            afero.NewMemMapFs(),
-					Env:           &config.Env{App: "test-app"},
 					AppTokenClient: &mockAppTokenClient{
 						token: &apptoken.AccessToken{
 							AccessToken:    "test-token-json",
