@@ -148,7 +148,6 @@ func TestController_createToken(t *testing.T) {
 				},
 			},
 			want: &keyring.AccessToken{
-				App:            "test-app",
 				AccessToken:    "new-token",
 				ExpirationDate: keyring.FormatDate(futureTime),
 			},
@@ -183,7 +182,7 @@ func TestController_createToken(t *testing.T) {
 				return
 			}
 			if !tt.wantErr {
-				if got.App != tt.want.App || got.AccessToken != tt.want.AccessToken || got.ExpirationDate != tt.want.ExpirationDate {
+				if got.AccessToken != tt.want.AccessToken || got.ExpirationDate != tt.want.ExpirationDate {
 					t.Errorf("createToken() = %v, want %v", got, tt.want)
 				}
 			}
@@ -221,7 +220,6 @@ func TestController_getAccessTokenFromKeyring(t *testing.T) {
 			minExpiration: time.Hour,
 			now:           fixedTime,
 			want: &keyring.AccessToken{
-				App:            "test-app",
 				AccessToken:    "cached-token",
 				ExpirationDate: keyring.FormatDate(futureTime),
 			},
@@ -286,7 +284,7 @@ func TestController_getAccessTokenFromKeyring(t *testing.T) {
 				return
 			}
 			if !tt.wantErr && got != nil {
-				if got.App != tt.want.App || got.AccessToken != tt.want.AccessToken || got.ExpirationDate != tt.want.ExpirationDate {
+				if got.AccessToken != tt.want.AccessToken || got.ExpirationDate != tt.want.ExpirationDate {
 					t.Errorf("getAccessTokenFromKeyring() = %v, want %v", got, tt.want)
 				}
 			}

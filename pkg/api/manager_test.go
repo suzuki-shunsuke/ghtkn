@@ -86,38 +86,12 @@ func TestNewInput(t *testing.T) {
 func TestInput_Validate(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name         string
-		outputFormat string
-		wantErr      bool
-	}{
-		{
-			name:         "valid json format",
-			outputFormat: "json",
-			wantErr:      false,
-		},
-		{
-			name:         "valid empty format",
-			outputFormat: "",
-			wantErr:      false,
-		},
-		{
-			name:         "invalid format",
-			outputFormat: "yaml",
-			wantErr:      true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			input := &api.Input{}
-
-			err := input.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
+	// Currently, Input.Validate() always returns nil
+	// since there are no validation rules for the Input struct
+	input := &api.Input{}
+	
+	err := input.Validate()
+	if err != nil {
+		t.Errorf("Validate() error = %v, want nil", err)
 	}
 }

@@ -48,6 +48,7 @@ func TestTokenManager_Get(t *testing.T) {
 					}, nil),
 				}
 			},
+			clientID:   "test-client-id",
 			wantErr:    false,
 			wantOutput: "test-token-123\n",
 		},
@@ -79,6 +80,7 @@ func TestTokenManager_Get(t *testing.T) {
 					}, nil),
 				}
 			},
+			clientID:   "test-client-id",
 			wantErr:    false,
 			wantOutput: "cached-token\n",
 		},
@@ -110,6 +112,7 @@ func TestTokenManager_Get(t *testing.T) {
 					}, nil),
 				}
 			},
+			clientID:     "test-client-id",
 			wantErr:      false,
 			wantOutput:   "new-token\n",
 			checkKeyring: true,
@@ -118,19 +121,33 @@ func TestTokenManager_Get(t *testing.T) {
 			name: "config read error",
 			setupInput: func() *api.Input {
 				return &api.Input{
-					Stdout: &bytes.Buffer{},
+					MinExpiration: time.Hour,
+					AppTokenClient: &mockAppTokenClient{
+						err: errors.New("app token client error"),
+					},
+					Stdout:  &bytes.Buffer{},
+					Keyring: &mockKeyring{},
+					Now:     func() time.Time { return fixedTime },
 				}
 			},
-			wantErr: true,
+			clientID: "test-client-id",
+			wantErr:  true,
 		},
 		{
 			name: "invalid config",
 			setupInput: func() *api.Input {
 				return &api.Input{
-					Stdout: &bytes.Buffer{},
+					MinExpiration: time.Hour,
+					AppTokenClient: &mockAppTokenClient{
+						err: errors.New("token creation failed"),
+					},
+					Stdout:  &bytes.Buffer{},
+					Keyring: &mockKeyring{},
+					Now:     func() time.Time { return fixedTime },
 				}
 			},
-			wantErr: true,
+			clientID: "test-client-id",
+			wantErr:  true,
 		},
 		{
 			name: "token creation error",
@@ -148,7 +165,8 @@ func TestTokenManager_Get(t *testing.T) {
 					}, nil),
 				}
 			},
-			wantErr: true,
+			clientID: "test-client-id",
+			wantErr:  true,
 		},
 		{
 			name: "GitHub API GetUser error",
@@ -167,7 +185,8 @@ func TestTokenManager_Get(t *testing.T) {
 					NewGitHub: api.NewMockGitHub(nil, errors.New("GitHub API error")),
 				}
 			},
-			wantErr: true,
+			clientID: "test-client-id",
+			wantErr:  true,
 		},
 		{
 			name: "cached token without login and GitHub API error",
@@ -195,7 +214,8 @@ func TestTokenManager_Get(t *testing.T) {
 					NewGitHub: api.NewMockGitHub(nil, errors.New("GitHub API rate limit exceeded")),
 				}
 			},
-			wantErr: true,
+			clientID: "test-client-id",
+			wantErr:  true,
 		},
 		{
 			name: "JSON output format",
@@ -216,7 +236,8 @@ func TestTokenManager_Get(t *testing.T) {
 					}, nil),
 				}
 			},
-			wantErr: false,
+			clientID: "test-client-id",
+			wantErr:  false,
 		},
 	}
 
