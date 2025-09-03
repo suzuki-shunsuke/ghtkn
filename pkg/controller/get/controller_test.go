@@ -63,6 +63,18 @@ func (m *mockKeyring) Set(key string, token *keyring.AccessToken) error {
 	return nil
 }
 
+type mockTokenManager struct {
+	token *keyring.AccessToken
+	err   error
+}
+
+func (m *mockTokenManager) Get(ctx context.Context, logger *slog.Logger, clientID string) (*keyring.AccessToken, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.token, nil
+}
+
 func TestNew(t *testing.T) {
 	t.Parallel()
 
