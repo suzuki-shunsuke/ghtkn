@@ -41,19 +41,16 @@ type TokenManager interface {
 // It encapsulates file system access, configuration reading, token generation, and output handling.
 // The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
-	ConfigFilePath string        // Path to the configuration file
-	OutputFormat   string        // Output format ("json" or empty for plain text)
-	MinExpiration  time.Duration // Minimum token expiration duration required
-	FS             afero.Fs      // File system abstraction for testing
-	ConfigReader   ConfigReader  // Configuration file reader
-	Env            *config.Env   // Environment variable provider
-	// AppTokenClient  AppTokenClient   // Client for creating GitHub App tokens
+	ConfigFilePath  string           // Path to the configuration file
+	OutputFormat    string           // Output format ("json" or empty for plain text)
+	MinExpiration   time.Duration    // Minimum token expiration duration required
+	FS              afero.Fs         // File system abstraction for testing
+	ConfigReader    ConfigReader     // Configuration file reader
+	Env             *config.Env      // Environment variable provider
 	Stdout          io.Writer        // Output writer
-	Keyring         Keyring          // Keyring for token storage
 	Now             func() time.Time // Current time provider for testing
 	IsGitCredential bool             // Whether to output in Git credential helper format
-	NewGitHub       func(ctx context.Context, token string) api.GitHub
-	TokenManager    TokenManager // TokenManager for handling token retrieval and creation
+	TokenManager    TokenManager     // TokenManager for handling token retrieval and creation
 }
 
 // NewInput creates a new Input instance with default production values.
@@ -66,13 +63,8 @@ func NewInput(configFilePath string) *Input {
 		FS:             fs,
 		ConfigReader:   config.NewReader(fs),
 		Env:            config.NewEnv(os.Getenv, runtime.GOOS),
-		// AppTokenClient: apptoken.NewClient(apptoken.NewInput()),
-		Stdout:  os.Stdout,
-		Keyring: keyring.New(keyring.NewInput()),
-		Now:     time.Now,
-		// NewGitHub: func(ctx context.Context, token string) GitHub {
-		// 	return github.New(ctx, token)
-		// },
+		Stdout:         os.Stdout,
+		Now:            time.Now,
 	}
 }
 

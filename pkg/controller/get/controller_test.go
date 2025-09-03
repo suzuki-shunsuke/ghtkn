@@ -114,10 +114,6 @@ func TestNewInput(t *testing.T) {
 		t.Error("NewInput().Stdout is nil")
 	}
 
-	if input.Keyring == nil {
-		t.Error("NewInput().Keyring is nil")
-	}
-
 	if input.Now == nil {
 		t.Error("NewInput().Now is nil")
 	}
