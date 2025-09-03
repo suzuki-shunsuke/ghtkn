@@ -38,12 +38,14 @@ type Input struct {
 	Logger         *Logger
 }
 
+const serviceKey = "github.com/suzuki-shunsuke/ghtkn"
+
 // NewInput creates a new Input instance with default production values.
 // It sets up all necessary dependencies including file system, HTTP client, and keyring access.
 func NewInput() *Input {
 	return &Input{
 		AppTokenClient: apptoken.NewClient(apptoken.NewInput()),
-		Keyring:        keyring.New(keyring.NewInput()),
+		Keyring:        keyring.New(keyring.NewInput(serviceKey)),
 		Now:            time.Now,
 		NewGitHub: func(ctx context.Context, token string) GitHub {
 			return github.New(ctx, token)

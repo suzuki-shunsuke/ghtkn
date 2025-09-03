@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/suzuki-shunsuke/ghtkn/pkg/api"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
@@ -24,7 +25,10 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	logFields := []any{"app", app.Name}
 	logger = logger.With(logFields...)
 
-	token, err := c.input.TokenManager.Get(ctx, logger, app.ClientID)
+	token, err := c.input.TokenManager.Get(ctx, logger, &api.InputGet{
+		ClientID:   app.ClientID,
+		UseKeyring: cfg.Persist,
+	})
 	if err != nil {
 		return fmt.Errorf("get access token: %w", slogerr.With(err, logFields...))
 	}

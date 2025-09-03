@@ -1,18 +1,21 @@
 package keyring
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/zalando/go-keyring"
 )
 
 // Mock is a mock implementation of the API interface for testing.
 // It stores secrets in memory instead of using the system keyring.
 type Mock struct {
-	secrets map[string]string
+	secrets map[string]*AccessToken
 }
 
-// NewMock creates a new mock API instance with the provided initial secrets.
+// NewMockAPI creates a new mock API instance with the provided initial secrets.
 // If secrets is nil, an empty map will be created when needed.
-func NewMock(secrets map[string]string) API {
+func NewMockAPI(secrets map[string]*AccessToken) API {
 	return &Mock{
 		secrets: secrets,
 	}
@@ -32,23 +35,23 @@ func (m *Mock) Get(service, user string) (string, error) {
 	if !ok {
 		return "", keyring.ErrNotFound
 	}
-	return s, nil
+	b, err := json.Marshal(s)
+	if err != nil {
+		return "", fmt.Errorf("marshal secret as JSON: %w", err)
+	}
+	return string(b), nil
 }
 
 // Set stores a secret in the mock keyring.
 // Creates the internal map if it doesn't exist.
 func (m *Mock) Set(service, user, password string) error {
 	if m.secrets == nil {
-		m.secrets = make(map[string]string)
+		m.secrets = map[string]*AccessToken{}
 	}
-	m.secrets[mockKey(service, user)] = password
-	return nil
-}
-
-// Delete removes a secret from the mock keyring.
-// No error is returned if the secret doesn't exist.
-func (m *Mock) Delete(service, user string) error {
-	k := mockKey(service, user)
-	delete(m.secrets, k)
+	token := &AccessToken{}
+	if err := json.Unmarshal([]byte(password), token); err != nil {
+		return fmt.Errorf("unmarshal secret as JSON: %w", err)
+	}
+	m.secrets[mockKey(service, user)] = token
 	return nil
 }

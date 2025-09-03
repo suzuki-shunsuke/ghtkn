@@ -31,7 +31,7 @@ func New(input *Input) *Controller {
 }
 
 type TokenManager interface {
-	Get(ctx context.Context, logger *slog.Logger, clientID string) (*keyring.AccessToken, error)
+	Get(ctx context.Context, logger *slog.Logger, input *api.InputGet) (*keyring.AccessToken, error)
 }
 
 // Input contains all the dependencies and configuration needed by the Controller.

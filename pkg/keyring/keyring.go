@@ -30,13 +30,19 @@ func New(input *Input) *Keyring {
 type API interface {
 	Get(service, user string) (string, error)
 	Set(service, user, password string) error
-	Delete(service, user string) error
 }
 
-func NewInput() *Input {
+func NewInput(key string) *Input {
 	return &Input{
-		KeyService: "github.com/suzuki-shunsuke/ghtkn",
+		KeyService: key,
 		API:        NewAPI(),
+	}
+}
+
+func NewMockInput(key string, secrets map[string]*AccessToken) *Input {
+	return &Input{
+		KeyService: key,
+		API:        NewMockAPI(secrets),
 	}
 }
 

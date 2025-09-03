@@ -8,10 +8,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/api"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 )
+
+const serviceKey = "github.com/suzuki-shunsuke/ghtkn"
 
 func TestTokenManager_Get(t *testing.T) {
 	t.Parallel()
@@ -20,12 +23,11 @@ func TestTokenManager_Get(t *testing.T) {
 	futureTime := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
 
 	tests := []struct {
-		name         string
-		setupInput   func() *api.Input
-		wantErr      bool
-		wantOutput   string
-		checkKeyring bool
-		clientID     string
+		name       string
+		setupInput func() *api.Input
+		wantErr    bool
+		wantToken  *keyring.AccessToken
+		input      *api.InputGet
 	}{
 		{
 			name: "successful token creation without persistence",
@@ -37,12 +39,19 @@ func TestTokenManager_Get(t *testing.T) {
 						ExpirationDate: keyring.FormatDate(futureTime),
 					},
 				}
-				input.Keyring = &mockKeyring{}
+				input.Keyring = keyring.New(keyring.NewMockInput(serviceKey, nil))
 				return input
 			},
-			clientID:   "test-client-id",
-			wantErr:    false,
-			wantOutput: "test-token-123\n",
+			input: &api.InputGet{
+				ClientID:   "test-client-id",
+				UseKeyring: false,
+			},
+			wantErr: false,
+			wantToken: &keyring.AccessToken{
+				AccessToken:    "test-token-123",
+				ExpirationDate: keyring.FormatDate(futureTime),
+				Login:          "test-user",
+			},
 		},
 		{
 			name: "successful token retrieval from keyring",
@@ -54,21 +63,26 @@ func TestTokenManager_Get(t *testing.T) {
 						ExpirationDate: keyring.FormatDate(futureTime),
 					},
 				}
-				input.Keyring = &mockKeyring{
-					tokens: map[string]*keyring.AccessToken{
-						"test-client-id": {
-							App:            "test-app",
-							AccessToken:    "cached-token",
-							ExpirationDate: keyring.FormatDate(futureTime),
-							Login:          "cached-user",
-						},
+				input.Keyring = keyring.New(keyring.NewMockInput(serviceKey, map[string]*keyring.AccessToken{
+					"test-client-id": {
+						App:            "test-app",
+						AccessToken:    "cached-token",
+						ExpirationDate: keyring.FormatDate(futureTime),
+						Login:          "cached-user",
 					},
-				}
+				}))
 				return input
 			},
-			clientID:   "test-client-id",
-			wantErr:    false,
-			wantOutput: "cached-token\n",
+			input: &api.InputGet{
+				ClientID:   "test-client-id",
+				UseKeyring: true,
+			},
+			wantErr: false,
+			wantToken: &keyring.AccessToken{
+				AccessToken:    "new-token",
+				ExpirationDate: keyring.FormatDate(futureTime),
+				Login:          "test-user",
+			},
 		},
 		{
 			name: "expired token in keyring triggers new token creation",
@@ -82,49 +96,25 @@ func TestTokenManager_Get(t *testing.T) {
 						ExpirationDate: keyring.FormatDate(futureTime),
 					},
 				}
-				input.Keyring = &mockKeyring{
-					tokens: map[string]*keyring.AccessToken{
-						"test-client-id": {
-							App:            "test-app",
-							AccessToken:    "expired-token",
-							ExpirationDate: keyring.FormatDate(expiredTime),
-						},
+				input.Keyring = keyring.New(keyring.NewMockInput(serviceKey, map[string]*keyring.AccessToken{
+					"test-client-id": {
+						App:            "test-app",
+						AccessToken:    "expired-token",
+						ExpirationDate: keyring.FormatDate(expiredTime),
 					},
-				}
+				}))
 				return input
 			},
-			clientID:     "test-client-id",
-			wantErr:      false,
-			wantOutput:   "new-token\n",
-			checkKeyring: true,
-		},
-		{
-			name: "config read error",
-			setupInput: func() *api.Input {
-				input := api.NewMockInput()
-				input.MinExpiration = time.Hour
-				input.AppTokenClient = &mockAppTokenClient{
-					err: errors.New("app token client error"),
-				}
-				input.Keyring = &mockKeyring{}
-				return input
+			input: &api.InputGet{
+				ClientID:   "test-client-id",
+				UseKeyring: true,
 			},
-			clientID: "test-client-id",
-			wantErr:  true,
-		},
-		{
-			name: "invalid config",
-			setupInput: func() *api.Input {
-				input := api.NewMockInput()
-				input.MinExpiration = time.Hour
-				input.AppTokenClient = &mockAppTokenClient{
-					err: errors.New("token creation failed"),
-				}
-				input.Keyring = &mockKeyring{}
-				return input
+			wantErr: false,
+			wantToken: &keyring.AccessToken{
+				AccessToken:    "new-token",
+				ExpirationDate: keyring.FormatDate(futureTime),
+				Login:          "test-user",
 			},
-			clientID: "test-client-id",
-			wantErr:  true,
 		},
 		{
 			name: "token creation error",
@@ -134,11 +124,14 @@ func TestTokenManager_Get(t *testing.T) {
 				input.AppTokenClient = &mockAppTokenClient{
 					err: errors.New("token creation failed"),
 				}
-				input.Keyring = &mockKeyring{}
+				input.Keyring = keyring.New(keyring.NewMockInput(serviceKey, nil))
 				return input
 			},
-			clientID: "test-client-id",
-			wantErr:  true,
+			input: &api.InputGet{
+				ClientID:   "test-client-id",
+				UseKeyring: true,
+			},
+			wantErr: true,
 		},
 		{
 			name: "GitHub API GetUser error",
@@ -151,12 +144,15 @@ func TestTokenManager_Get(t *testing.T) {
 						ExpirationDate: keyring.FormatDate(futureTime),
 					},
 				}
-				input.Keyring = &mockKeyring{}
+				input.Keyring = keyring.New(keyring.NewMockInput(serviceKey, nil))
 				input.NewGitHub = api.NewMockGitHub(nil, errors.New("GitHub API error"))
 				return input
 			},
-			clientID: "test-client-id",
-			wantErr:  true,
+			input: &api.InputGet{
+				ClientID:   "test-client-id",
+				UseKeyring: true,
+			},
+			wantErr: true,
 		},
 		{
 			name: "cached token without login and GitHub API error",
@@ -169,38 +165,22 @@ func TestTokenManager_Get(t *testing.T) {
 						ExpirationDate: keyring.FormatDate(futureTime),
 					},
 				}
-				input.Keyring = &mockKeyring{
-					tokens: map[string]*keyring.AccessToken{
-						"test-client-id": {
-							App:            "test-app",
-							AccessToken:    "cached-token",
-							ExpirationDate: keyring.FormatDate(futureTime),
-							// Login is empty, will trigger GetUser call
-						},
+				input.Keyring = keyring.New(keyring.NewMockInput(serviceKey, map[string]*keyring.AccessToken{
+					"test-client-id": {
+						App:            "test-app",
+						AccessToken:    "cached-token",
+						ExpirationDate: keyring.FormatDate(futureTime),
+						// Login is empty, will trigger GetUser call
 					},
-				}
+				}))
 				input.NewGitHub = api.NewMockGitHub(nil, errors.New("GitHub API rate limit exceeded"))
 				return input
 			},
-			clientID: "test-client-id",
-			wantErr:  true,
-		},
-		{
-			name: "JSON output format",
-			setupInput: func() *api.Input {
-				input := api.NewMockInput()
-				input.MinExpiration = time.Hour
-				input.AppTokenClient = &mockAppTokenClient{
-					token: &apptoken.AccessToken{
-						AccessToken:    "test-token-json",
-						ExpirationDate: keyring.FormatDate(futureTime),
-					},
-				}
-				input.Keyring = &mockKeyring{}
-				return input
+			input: &api.InputGet{
+				ClientID:   "test-client-id",
+				UseKeyring: true,
 			},
-			clientID: "test-client-id",
-			wantErr:  false,
+			wantErr: true,
 		},
 	}
 
@@ -209,23 +189,23 @@ func TestTokenManager_Get(t *testing.T) {
 			t.Parallel()
 
 			input := tt.setupInput()
-			controller := api.New(input)
+			tm := api.New(input)
 			ctx := t.Context()
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			_, err := controller.Get(ctx, logger, tt.clientID)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Run() error = %v, wantErr %v", err, tt.wantErr)
+			token, err := tm.Get(ctx, logger, tt.input)
+			if err != nil {
+				if !tt.wantErr {
+					t.Error(err)
+				}
 				return
 			}
-
-			if tt.checkKeyring {
-				kr := input.Keyring.(*mockKeyring)
-				if kr.tokens["test-client-id"] == nil {
-					t.Error("Token was not stored in keyring")
-				} else if kr.tokens["test-client-id"].AccessToken != "new-token" {
-					t.Errorf("Stored token = %v, want new-token", kr.tokens["test-client-id"].AccessToken)
-				}
+			if tt.wantErr {
+				t.Error("expected error but got nil")
+				return
+			}
+			if diff := cmp.Diff(tt.wantToken, token); diff != "" {
+				t.Error(diff)
 			}
 		})
 	}

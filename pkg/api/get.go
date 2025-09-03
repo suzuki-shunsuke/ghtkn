@@ -7,19 +7,8 @@ import (
 	"log/slog"
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
+	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
-
-/*
-type State struct {
-	FailedToGetAccessTokenFromKeyring error
-	AccessTokenIsNotFound             bool
-	ExpiresIn                         time.Time
-	FailedToParseExpirationDate       error
-	FailedToCreateAccessToken         error
-	FailedToGetAuthenticatedUser      error
-	FailedToStoreAccessTokenInKeyring error
-}
-*/
 
 type Logger struct {
 	Expire func(logger *slog.Logger, exDate string)
@@ -33,12 +22,17 @@ func NewLogger() *Logger {
 	}
 }
 
+type InputGet struct {
+	ClientID   string
+	UseKeyring bool
+}
+
 // Get executes the main logic for retrieving a GitHub App access token.
 // It checks for cached tokens, creates new tokens if needed,
 // retrieves the authenticated user's login for Git Credential Helper if necessary,
 // and outputs the result in the requested format.
-func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, clientID string) (*keyring.AccessToken, error) {
-	token, changed, err := tm.getOrCreateToken(ctx, logger, clientID)
+func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, input *InputGet) (*keyring.AccessToken, error) {
+	token, changed, err := tm.getOrCreateToken(ctx, logger, input)
 	if err != nil {
 		return nil, fmt.Errorf("get or create token: %w", err)
 	}
@@ -56,9 +50,9 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, clientID s
 		changed = true
 	}
 
-	if changed {
+	if input.UseKeyring && changed {
 		// Store the token in keyring
-		if err := tm.input.Keyring.Set(clientID, &keyring.AccessToken{
+		if err := tm.input.Keyring.Set(input.ClientID, &keyring.AccessToken{
 			AccessToken:    token.AccessToken,
 			ExpirationDate: token.ExpirationDate,
 			Login:          token.Login,
@@ -76,17 +70,19 @@ var ErrStoreToken = errors.New("could not store the token in keyring")
 // It returns the token, a boolean indicating whether the token was newly created or modified,
 // and any error that occurred. The changed flag is used to determine if the token should be
 // saved back to the keyring.
-func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logger, clientID string) (*keyring.AccessToken, bool, error) {
+func (tm *TokenManager) getOrCreateToken(ctx context.Context, logger *slog.Logger, input *InputGet) (*keyring.AccessToken, bool, error) {
 	// Get an access token from keyring
-	token, err := tm.getAccessTokenFromKeyring(logger, clientID)
-	if err != nil {
-		return nil, false, fmt.Errorf("get a GitHub App User Access Token from keyring: %w", err)
-	}
-	if token != nil {
-		return token, false, nil
+	if input.UseKeyring {
+		token, err := tm.getAccessTokenFromKeyring(logger, input.ClientID)
+		if err != nil {
+			slogerr.WithError(logger, err).Info("failed to get a GitHub App User Access Token from keyring")
+		}
+		if token != nil {
+			return token, false, nil
+		}
 	}
 	// Create access token
-	token, err = tm.createToken(ctx, logger, clientID)
+	token, err := tm.createToken(ctx, logger, input.ClientID)
 	if err != nil {
 		return nil, false, fmt.Errorf("create a GitHub App User Access Token: %w", err)
 	}

@@ -8,7 +8,6 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/api"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 )
 
 type mockAppTokenClient struct {
@@ -21,30 +20,6 @@ func (m *mockAppTokenClient) Create(_ context.Context, logger *slog.Logger, clie
 		return nil, m.err
 	}
 	return m.token, nil
-}
-
-type mockKeyring struct {
-	tokens map[string]*keyring.AccessToken
-	getErr error
-	setErr error
-}
-
-func (m *mockKeyring) Get(key string) (*keyring.AccessToken, error) {
-	if m.getErr != nil {
-		return nil, m.getErr
-	}
-	return m.tokens[key], nil
-}
-
-func (m *mockKeyring) Set(key string, token *keyring.AccessToken) error {
-	if m.setErr != nil {
-		return m.setErr
-	}
-	if m.tokens == nil {
-		m.tokens = make(map[string]*keyring.AccessToken)
-	}
-	m.tokens[key] = token
-	return nil
 }
 
 func TestNew(t *testing.T) {

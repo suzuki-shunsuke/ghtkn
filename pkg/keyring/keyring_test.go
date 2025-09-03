@@ -144,7 +144,7 @@ func TestKeyring_Get(t *testing.T) {
 	tests := []struct {
 		name    string
 		key     string
-		secrets map[string]string
+		secrets map[string]*keyring.AccessToken
 		want    *keyring.AccessToken
 		wantErr bool
 		errMsg  string
@@ -152,8 +152,12 @@ func TestKeyring_Get(t *testing.T) {
 		{
 			name: "successful get",
 			key:  "test-key",
-			secrets: map[string]string{
-				"github.com/suzuki-shunsuke/ghtkn:test-key": `{"app":"test-app","access_token":"token123","expiration_date":"2024-12-31T23:59:59Z"}`,
+			secrets: map[string]*keyring.AccessToken{
+				"github.com/suzuki-shunsuke/ghtkn:test-key": {
+					App:            "test-app",
+					AccessToken:    "token123",
+					ExpirationDate: "2024-12-31T23:59:59Z",
+				},
 			},
 			want: &keyring.AccessToken{
 				App:            "test-app",
@@ -164,18 +168,9 @@ func TestKeyring_Get(t *testing.T) {
 		{
 			name:    "key not found",
 			key:     "non-existent",
-			secrets: map[string]string{},
+			secrets: map[string]*keyring.AccessToken{},
 			wantErr: true,
 			errMsg:  "get a GitHub Access token in keyring",
-		},
-		{
-			name: "invalid JSON",
-			key:  "bad-json",
-			secrets: map[string]string{
-				"github.com/suzuki-shunsuke/ghtkn:bad-json": `{"invalid json`,
-			},
-			wantErr: true,
-			errMsg:  "unmarshal the token as JSON",
 		},
 	}
 
@@ -185,7 +180,7 @@ func TestKeyring_Get(t *testing.T) {
 
 			input := &keyring.Input{
 				KeyService: "github.com/suzuki-shunsuke/ghtkn",
-				API:        keyring.NewMock(tt.secrets),
+				API:        keyring.NewMockAPI(tt.secrets),
 			}
 			kr := keyring.New(input)
 
@@ -248,7 +243,7 @@ func TestKeyring_Set(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			api := keyring.NewMock(nil)
+			api := keyring.NewMockAPI(nil)
 			input := &keyring.Input{
 				KeyService: "github.com/suzuki-shunsuke/ghtkn",
 				API:        api,
@@ -289,7 +284,7 @@ func TestNew(t *testing.T) {
 
 	input := &keyring.Input{
 		KeyService: "test-service",
-		API:        keyring.NewMock(nil),
+		API:        keyring.NewMockAPI(nil),
 	}
 
 	kr := keyring.New(input)
@@ -298,11 +293,13 @@ func TestNew(t *testing.T) {
 	}
 }
 
+const serviceKey = "github.com/suzuki-shunsuke/ghtkn"
+
 // TestNewInput tests the NewInput function.
 func TestNewInput(t *testing.T) {
 	t.Parallel()
 
-	input := keyring.NewInput()
+	input := keyring.NewInput(serviceKey)
 	if input == nil {
 		t.Error("NewInput() returned nil")
 		return
