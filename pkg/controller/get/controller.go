@@ -10,12 +10,10 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
-	"time"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/api"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/github"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 )
 
@@ -32,22 +30,22 @@ func New(input *Input) *Controller {
 	}
 }
 
+type TokenManager interface {
+	Get(ctx context.Context, logger *slog.Logger, input *api.InputGet) (*keyring.AccessToken, error)
+}
+
 // Input contains all the dependencies and configuration needed by the Controller.
 // It encapsulates file system access, configuration reading, token generation, and output handling.
 // The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
-	ConfigFilePath  string           // Path to the configuration file
-	OutputFormat    string           // Output format ("json" or empty for plain text)
-	MinExpiration   time.Duration    // Minimum token expiration duration required
-	FS              afero.Fs         // File system abstraction for testing
-	ConfigReader    ConfigReader     // Configuration file reader
-	Env             *config.Env      // Environment variable provider
-	AppTokenClient  AppTokenClient   // Client for creating GitHub App tokens
-	Stdout          io.Writer        // Output writer
-	Keyring         Keyring          // Keyring for token storage
-	Now             func() time.Time // Current time provider for testing
-	IsGitCredential bool             // Whether to output in Git credential helper format
-	NewGitHub       func(ctx context.Context, token string) GitHub
+	ConfigFilePath  string       // Path to the configuration file
+	OutputFormat    string       // Output format ("json" or empty for plain text)
+	FS              afero.Fs     // File system abstraction for testing
+	ConfigReader    ConfigReader // Configuration file reader
+	Env             *config.Env  // Environment variable provider
+	Stdout          io.Writer    // Output writer
+	IsGitCredential bool         // Whether to output in Git credential helper format
+	TokenManager    TokenManager // TokenManager for handling token retrieval and creation
 }
 
 // NewInput creates a new Input instance with default production values.
@@ -55,17 +53,12 @@ type Input struct {
 func NewInput(configFilePath string) *Input {
 	fs := afero.NewOsFs()
 	return &Input{
+		TokenManager:   api.New(api.NewInput()),
 		ConfigFilePath: configFilePath,
 		FS:             fs,
 		ConfigReader:   config.NewReader(fs),
 		Env:            config.NewEnv(os.Getenv, runtime.GOOS),
-		AppTokenClient: apptoken.NewClient(apptoken.NewInput()),
 		Stdout:         os.Stdout,
-		Keyring:        keyring.New(keyring.NewInput()),
-		Now:            time.Now,
-		NewGitHub: func(ctx context.Context, token string) GitHub {
-			return github.New(ctx, token)
-		},
 	}
 }
 
@@ -86,21 +79,4 @@ func (i *Input) Validate() error {
 // ConfigReader defines the interface for reading configuration files.
 type ConfigReader interface {
 	Read(cfg *config.Config, configFilePath string) error
-}
-
-// AppTokenClient defines the interface for creating GitHub App access tokens.
-type AppTokenClient interface {
-	Create(ctx context.Context, logger *slog.Logger, clientID string) (*apptoken.AccessToken, error)
-}
-
-// Keyring defines the interface for storing and retrieving tokens from the system keyring.
-type Keyring interface {
-	Get(key string) (*keyring.AccessToken, error)
-	Set(key string, token *keyring.AccessToken) error
-}
-
-// GitHub defines the interface for interacting with the GitHub API.
-// It is used to retrieve authenticated user information needed for Git Credential Helper.
-type GitHub interface {
-	GetUser(ctx context.Context) (*github.User, error)
 }

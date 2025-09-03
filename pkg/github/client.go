@@ -31,10 +31,10 @@ func New(ctx context.Context, token string) *Client {
 	}
 }
 
-// GetUser retrieves the authenticated user's information from GitHub.
+// Get retrieves the authenticated user's information from GitHub.
 // It returns a User struct containing the login name, which is required for
 // Git Credential Helper to properly authenticate with GitHub repositories.
-func (c *Client) GetUser(ctx context.Context) (*User, error) {
+func (c *Client) Get(ctx context.Context) (*User, error) {
 	user, _, err := c.client.Get(ctx, "")
 	if err != nil {
 		return nil, fmt.Errorf("get authenticated user: %w", err)

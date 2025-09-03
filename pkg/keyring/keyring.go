@@ -4,13 +4,8 @@ package keyring
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"log/slog"
 	"time"
-
-	"github.com/suzuki-shunsuke/slog-error/slogerr"
-	"github.com/zalando/go-keyring"
 )
 
 // Keyring manages access tokens in the system keychain.
@@ -35,13 +30,19 @@ func New(input *Input) *Keyring {
 type API interface {
 	Get(service, user string) (string, error)
 	Set(service, user, password string) error
-	Delete(service, user string) error
 }
 
-func NewInput() *Input {
+func NewInput(key string) *Input {
 	return &Input{
-		KeyService: "github.com/suzuki-shunsuke/ghtkn",
+		KeyService: key,
 		API:        NewAPI(),
+	}
+}
+
+func NewMockInput(key string, secrets map[string]*AccessToken) *Input {
+	return &Input{
+		KeyService: key,
+		API:        NewMockAPI(secrets),
 	}
 }
 
@@ -99,20 +100,6 @@ func (kr *Keyring) Set(key string, token *AccessToken) error {
 	}
 	if err := kr.input.API.Set(kr.input.KeyService, key, string(s)); err != nil {
 		return fmt.Errorf("set a GitHub Access token in keyring: %w", err)
-	}
-	return nil
-}
-
-// Remove deletes an access token from the keyring.
-// If the token is not found, it logs a warning but returns nil.
-// Returns an error only for unexpected failures.
-func (kr *Keyring) Remove(logger *slog.Logger, key string) error {
-	if err := kr.input.API.Delete(kr.input.KeyService, key); err != nil {
-		if errors.Is(err, keyring.ErrNotFound) {
-			slogerr.WithError(logger, err).Warn("tried to remove a GitHub Access token from keyring, but the key wasn't found")
-			return nil
-		}
-		return fmt.Errorf("remove a GitHub Access token from keyring: %w", err)
 	}
 	return nil
 }

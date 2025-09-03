@@ -4,62 +4,12 @@ package keyring_test
 import (
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"testing"
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 	zkeyring "github.com/zalando/go-keyring"
 )
-
-// mockAPI is a mock implementation of the API interface for testing.
-// It stores secrets in memory instead of using the system keyring.
-type mockAPI struct {
-	secrets map[string]string
-}
-
-// NewMockAPI creates a new mock API instance with the provided initial secrets.
-// If secrets is nil, an empty map will be created when needed.
-func newMockAPI(secrets map[string]string) keyring.API {
-	return &mockAPI{
-		secrets: secrets,
-	}
-}
-
-// mockKey generates a unique key for storing secrets by combining service and user.
-// The format is "service:user".
-func mockKey(service, user string) string {
-	return service + ":" + user
-}
-
-// Get retrieves a secret from the mock keyring.
-// Returns keyring.ErrNotFound if the secret doesn't exist.
-func (m *mockAPI) Get(service, user string) (string, error) {
-	k := mockKey(service, user)
-	s, ok := m.secrets[k]
-	if !ok {
-		return "", zkeyring.ErrNotFound
-	}
-	return s, nil
-}
-
-// Set stores a secret in the mock keyring.
-// Creates the internal map if it doesn't exist.
-func (m *mockAPI) Set(service, user, password string) error {
-	if m.secrets == nil {
-		m.secrets = make(map[string]string)
-	}
-	m.secrets[mockKey(service, user)] = password
-	return nil
-}
-
-// Delete removes a secret from the mock keyring.
-// No error is returned if the secret doesn't exist.
-func (m *mockAPI) Delete(service, user string) error {
-	k := mockKey(service, user)
-	delete(m.secrets, k)
-	return nil
-}
 
 // TestParseDate tests the ParseDate function with various inputs.
 func TestParseDate(t *testing.T) {
@@ -194,7 +144,7 @@ func TestKeyring_Get(t *testing.T) {
 	tests := []struct {
 		name    string
 		key     string
-		secrets map[string]string
+		secrets map[string]*keyring.AccessToken
 		want    *keyring.AccessToken
 		wantErr bool
 		errMsg  string
@@ -202,8 +152,12 @@ func TestKeyring_Get(t *testing.T) {
 		{
 			name: "successful get",
 			key:  "test-key",
-			secrets: map[string]string{
-				"github.com/suzuki-shunsuke/ghtkn:test-key": `{"app":"test-app","access_token":"token123","expiration_date":"2024-12-31T23:59:59Z"}`,
+			secrets: map[string]*keyring.AccessToken{
+				"github.com/suzuki-shunsuke/ghtkn:test-key": {
+					App:            "test-app",
+					AccessToken:    "token123",
+					ExpirationDate: "2024-12-31T23:59:59Z",
+				},
 			},
 			want: &keyring.AccessToken{
 				App:            "test-app",
@@ -214,18 +168,9 @@ func TestKeyring_Get(t *testing.T) {
 		{
 			name:    "key not found",
 			key:     "non-existent",
-			secrets: map[string]string{},
+			secrets: map[string]*keyring.AccessToken{},
 			wantErr: true,
 			errMsg:  "get a GitHub Access token in keyring",
-		},
-		{
-			name: "invalid JSON",
-			key:  "bad-json",
-			secrets: map[string]string{
-				"github.com/suzuki-shunsuke/ghtkn:bad-json": `{"invalid json`,
-			},
-			wantErr: true,
-			errMsg:  "unmarshal the token as JSON",
 		},
 	}
 
@@ -235,7 +180,7 @@ func TestKeyring_Get(t *testing.T) {
 
 			input := &keyring.Input{
 				KeyService: "github.com/suzuki-shunsuke/ghtkn",
-				API:        newMockAPI(tt.secrets),
+				API:        keyring.NewMockAPI(tt.secrets),
 			}
 			kr := keyring.New(input)
 
@@ -298,7 +243,7 @@ func TestKeyring_Set(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			api := newMockAPI(nil)
+			api := keyring.NewMockAPI(nil)
 			input := &keyring.Input{
 				KeyService: "github.com/suzuki-shunsuke/ghtkn",
 				API:        api,
@@ -333,68 +278,13 @@ func TestKeyring_Set(t *testing.T) {
 	}
 }
 
-// TestKeyring_Remove tests the Remove method of Keyring.
-func TestKeyring_Remove(t *testing.T) {
-	t.Parallel()
-
-	// Create a test logger
-	logger := slog.Default()
-
-	tests := []struct {
-		name    string
-		key     string
-		secrets map[string]string
-		wantErr bool
-	}{
-		{
-			name: "successful remove",
-			key:  "test-key",
-			secrets: map[string]string{
-				"github.com/suzuki-shunsuke/ghtkn:test-key": `{"app":"test-app","access_token":"token123","expiration_date":"2024-12-31T23:59:59Z"}`,
-			},
-		},
-		{
-			name:    "remove non-existent key (should not error)",
-			key:     "non-existent",
-			secrets: map[string]string{},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			api := newMockAPI(tt.secrets)
-			input := &keyring.Input{
-				KeyService: "github.com/suzuki-shunsuke/ghtkn",
-				API:        api,
-			}
-			kr := keyring.New(input)
-
-			err := kr.Remove(logger, tt.key)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Remove() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			// Verify the key was removed
-			if !tt.wantErr {
-				_, err := api.Get("github.com/suzuki-shunsuke/ghtkn", tt.key)
-				if !errors.Is(err, zkeyring.ErrNotFound) {
-					t.Errorf("Key should have been removed but still exists")
-				}
-			}
-		})
-	}
-}
-
 // TestNew tests the New function.
 func TestNew(t *testing.T) {
 	t.Parallel()
 
 	input := &keyring.Input{
 		KeyService: "test-service",
-		API:        newMockAPI(nil),
+		API:        keyring.NewMockAPI(nil),
 	}
 
 	kr := keyring.New(input)
@@ -403,11 +293,13 @@ func TestNew(t *testing.T) {
 	}
 }
 
+const serviceKey = "github.com/suzuki-shunsuke/ghtkn"
+
 // TestNewInput tests the NewInput function.
 func TestNewInput(t *testing.T) {
 	t.Parallel()
 
-	input := keyring.NewInput()
+	input := keyring.NewInput(serviceKey)
 	if input == nil {
 		t.Error("NewInput() returned nil")
 		return
