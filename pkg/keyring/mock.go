@@ -1,7 +1,7 @@
 package keyring
 
 import (
-	zkeyring "github.com/zalando/go-keyring"
+	"github.com/zalando/go-keyring"
 )
 
 // Mock is a mock implementation of the API interface for testing.
@@ -30,7 +30,7 @@ func (m *Mock) Get(service, user string) (string, error) {
 	k := mockKey(service, user)
 	s, ok := m.secrets[k]
 	if !ok {
-		return "", zkeyring.ErrNotFound
+		return "", keyring.ErrNotFound
 	}
 	return s, nil
 }
