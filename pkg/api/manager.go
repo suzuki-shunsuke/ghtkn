@@ -35,6 +35,7 @@ type Input struct {
 	Keyring        Keyring          // Keyring for token storage
 	Now            func() time.Time // Current time provider for testing
 	NewGitHub      func(ctx context.Context, token string) GitHub
+	Logger         *Logger
 }
 
 // NewInput creates a new Input instance with default production values.
@@ -47,6 +48,7 @@ func NewInput() *Input {
 		NewGitHub: func(ctx context.Context, token string) GitHub {
 			return github.New(ctx, token)
 		},
+		Logger: NewLogger(),
 	}
 }
 
@@ -63,6 +65,7 @@ func NewMockInput() *Input {
 				Login: "test-user",
 			}, nil)(ctx, token)
 		},
+		Logger: NewLogger(),
 	}
 }
 

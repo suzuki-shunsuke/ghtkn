@@ -28,20 +28,36 @@ type Browser interface {
 }
 
 type Input struct {
-	HTTPClient *http.Client
-	Now        func() time.Time
-	Stderr     io.Writer
-	Browser    Browser
-	NewTicker  func(d time.Duration) *time.Ticker
+	HTTPClient   *http.Client
+	Now          func() time.Time
+	Stderr       io.Writer
+	Browser      Browser
+	NewTicker    func(d time.Duration) *time.Ticker
+	Logger       *Logger
+	DeviceCodeUI DeviceCodeUI
+}
+
+type Logger struct {
+	FailedToOpenBrowser func(logger *slog.Logger, err error)
+}
+
+func NewLogger() *Logger {
+	return &Logger{
+		FailedToOpenBrowser: func(logger *slog.Logger, err error) {
+			slogerr.WithError(logger, err).Warn("failed to open the browser")
+		},
+	}
 }
 
 func NewInput() *Input {
 	return &Input{
-		HTTPClient: http.DefaultClient,
-		Now:        time.Now,
-		Stderr:     os.Stderr,
-		Browser:    NewBrowser(),
-		NewTicker:  time.NewTicker,
+		HTTPClient:   http.DefaultClient,
+		Now:          time.Now,
+		Stderr:       os.Stderr,
+		Browser:      NewBrowser(),
+		NewTicker:    time.NewTicker,
+		Logger:       NewLogger(),
+		DeviceCodeUI: NewDeviceCodeUI(os.Stderr),
 	}
 }
 
@@ -54,6 +70,8 @@ func NewMockInput() *Input {
 		NewTicker: func(_ time.Duration) *time.Ticker {
 			return time.NewTicker(10 * time.Millisecond) //nolint:mnd
 		},
+		Logger:       NewLogger(),
+		DeviceCodeUI: &MockDeviceCodeUI{},
 	}
 }
 
@@ -104,12 +122,11 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 		return nil, fmt.Errorf("get device code: %w", err)
 	}
 
-	fmt.Fprintf(c.input.Stderr, "Please visit: %s\n", deviceCode.VerificationURI)
-	fmt.Fprintf(c.input.Stderr, "And enter code: %s\n", deviceCode.UserCode)
-	fmt.Fprintf(c.input.Stderr, "Expiration date: %s\n", c.input.Now().Add(time.Duration(deviceCode.ExpiresIn)*time.Second).Format(time.RFC3339))
+	deviceCodeExpirationDate := c.input.Now().Add(time.Duration(deviceCode.ExpiresIn) * time.Second)
+	c.input.DeviceCodeUI.Show(deviceCode, deviceCodeExpirationDate)
 	if err := c.input.Browser.Open(ctx, deviceCode.VerificationURI); err != nil {
 		if !errors.Is(err, errNoCommandFound) {
-			slogerr.WithError(logger, err).Warn("failed to open the browser")
+			c.input.Logger.FailedToOpenBrowser(logger, err)
 		}
 	}
 
@@ -123,6 +140,30 @@ func (c *Client) Create(ctx context.Context, logger *slog.Logger, clientID strin
 		AccessToken:    token.AccessToken,
 		ExpirationDate: keyring.FormatDate(now.Add(time.Duration(token.ExpiresIn) * time.Second)),
 	}, nil
+}
+
+type DeviceCodeUI interface {
+	Show(deviceCode *DeviceCodeResponse, expirationDate time.Time)
+}
+
+type MockDeviceCodeUI struct{}
+
+func (m *MockDeviceCodeUI) Show(_ *DeviceCodeResponse, _ time.Time) {}
+
+type SimpleDeviceCodeUI struct {
+	stderr io.Writer
+}
+
+func NewDeviceCodeUI(stderr io.Writer) *SimpleDeviceCodeUI {
+	return &SimpleDeviceCodeUI{
+		stderr: stderr,
+	}
+}
+
+func (d *SimpleDeviceCodeUI) Show(deviceCode *DeviceCodeResponse, expirationDate time.Time) {
+	fmt.Fprintf(d.stderr, "Please visit: %s\n", deviceCode.VerificationURI)
+	fmt.Fprintf(d.stderr, "And enter code: %s\n", deviceCode.UserCode)
+	fmt.Fprintf(d.stderr, "Expiration date: %s\n", expirationDate.Format(time.RFC3339))
 }
 
 // getDeviceCode requests a device code from GitHub's OAuth device endpoint.

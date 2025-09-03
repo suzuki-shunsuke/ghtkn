@@ -273,6 +273,7 @@ func TestController_getAccessTokenFromKeyring(t *testing.T) {
 				Keyring:       tt.keyring,
 				MinExpiration: tt.minExpiration,
 				Now:           func() time.Time { return tt.now },
+				Logger:        NewLogger(),
 			}
 			controller := &TokenManager{input: input}
 

@@ -3,7 +3,6 @@ package api_test
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"log/slog"
 	"testing"
@@ -42,6 +41,7 @@ func TestTokenManager_Get(t *testing.T) {
 					},
 					Keyring: &mockKeyring{},
 					Now:     func() time.Time { return fixedTime },
+					Logger:  api.NewLogger(),
 					NewGitHub: api.NewMockGitHub(&github.User{
 						Login: "test-user",
 					}, nil),
@@ -76,6 +76,7 @@ func TestTokenManager_Get(t *testing.T) {
 					NewGitHub: api.NewMockGitHub(&github.User{
 						Login: "test-user",
 					}, nil),
+					Logger: api.NewLogger(),
 				}
 			},
 			clientID:   "test-client-id",
@@ -107,6 +108,7 @@ func TestTokenManager_Get(t *testing.T) {
 					NewGitHub: api.NewMockGitHub(&github.User{
 						Login: "test-user",
 					}, nil),
+					Logger: api.NewLogger(),
 				}
 			},
 			clientID:     "test-client-id",
@@ -124,6 +126,7 @@ func TestTokenManager_Get(t *testing.T) {
 					},
 					Keyring: &mockKeyring{},
 					Now:     func() time.Time { return fixedTime },
+					Logger:  api.NewLogger(),
 				}
 			},
 			clientID: "test-client-id",
@@ -139,6 +142,7 @@ func TestTokenManager_Get(t *testing.T) {
 					},
 					Keyring: &mockKeyring{},
 					Now:     func() time.Time { return fixedTime },
+					Logger:  api.NewLogger(),
 				}
 			},
 			clientID: "test-client-id",
@@ -154,6 +158,7 @@ func TestTokenManager_Get(t *testing.T) {
 					},
 					Keyring: &mockKeyring{},
 					Now:     func() time.Time { return fixedTime },
+					Logger:  api.NewLogger(),
 					NewGitHub: api.NewMockGitHub(&github.User{
 						Login: "test-user",
 					}, nil),
@@ -222,6 +227,7 @@ func TestTokenManager_Get(t *testing.T) {
 					},
 					Keyring: &mockKeyring{},
 					Now:     func() time.Time { return fixedTime },
+					Logger:  api.NewLogger(),
 					NewGitHub: api.NewMockGitHub(&github.User{
 						Login: "test-user",
 					}, nil),
@@ -238,7 +244,7 @@ func TestTokenManager_Get(t *testing.T) {
 
 			input := tt.setupInput()
 			controller := api.New(input)
-			ctx := context.Background()
+			ctx := t.Context()
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
 			_, err := controller.Get(ctx, logger, tt.clientID)

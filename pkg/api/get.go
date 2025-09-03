@@ -21,6 +21,18 @@ type State struct {
 }
 */
 
+type Logger struct {
+	Expire func(logger *slog.Logger, exDate string)
+}
+
+func NewLogger() *Logger {
+	return &Logger{
+		Expire: func(logger *slog.Logger, exDate string) {
+			logger.Debug("access token expires", "expiration_date", exDate)
+		},
+	}
+}
+
 // Get executes the main logic for retrieving a GitHub App access token.
 // It checks for cached tokens, creates new tokens if needed,
 // retrieves the authenticated user's login for Git Credential Helper if necessary,
@@ -112,7 +124,7 @@ func (tm *TokenManager) getAccessTokenFromKeyring(logger *slog.Logger, clientID 
 		return nil, fmt.Errorf("check if the access token is expired: %w", err)
 	}
 	if expired {
-		logger.Debug("access token expires", "expiration_date", tk.ExpirationDate)
+		tm.input.Logger.Expire(logger, tk.ExpirationDate)
 		return nil, nil //nolint:nilnil
 	}
 	// Not expires
