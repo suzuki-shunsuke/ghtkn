@@ -40,7 +40,6 @@ func TestTokenManager_Get(t *testing.T) {
 							ExpirationDate: keyring.FormatDate(futureTime),
 						},
 					},
-					Stdout:  &bytes.Buffer{},
 					Keyring: &mockKeyring{},
 					Now:     func() time.Time { return fixedTime },
 					NewGitHub: api.NewMockGitHub(&github.User{
@@ -63,7 +62,6 @@ func TestTokenManager_Get(t *testing.T) {
 							ExpirationDate: keyring.FormatDate(futureTime),
 						},
 					},
-					Stdout: &bytes.Buffer{},
 					Keyring: &mockKeyring{
 						tokens: map[string]*keyring.AccessToken{
 							"test-client-id": {
@@ -96,7 +94,6 @@ func TestTokenManager_Get(t *testing.T) {
 							ExpirationDate: keyring.FormatDate(futureTime),
 						},
 					},
-					Stdout: &bytes.Buffer{},
 					Keyring: &mockKeyring{
 						tokens: map[string]*keyring.AccessToken{
 							"test-client-id": {
@@ -125,7 +122,6 @@ func TestTokenManager_Get(t *testing.T) {
 					AppTokenClient: &mockAppTokenClient{
 						err: errors.New("app token client error"),
 					},
-					Stdout:  &bytes.Buffer{},
 					Keyring: &mockKeyring{},
 					Now:     func() time.Time { return fixedTime },
 				}
@@ -141,7 +137,6 @@ func TestTokenManager_Get(t *testing.T) {
 					AppTokenClient: &mockAppTokenClient{
 						err: errors.New("token creation failed"),
 					},
-					Stdout:  &bytes.Buffer{},
 					Keyring: &mockKeyring{},
 					Now:     func() time.Time { return fixedTime },
 				}
@@ -157,7 +152,6 @@ func TestTokenManager_Get(t *testing.T) {
 					AppTokenClient: &mockAppTokenClient{
 						err: errors.New("token creation failed"),
 					},
-					Stdout:  &bytes.Buffer{},
 					Keyring: &mockKeyring{},
 					Now:     func() time.Time { return fixedTime },
 					NewGitHub: api.NewMockGitHub(&github.User{
@@ -179,7 +173,6 @@ func TestTokenManager_Get(t *testing.T) {
 							ExpirationDate: keyring.FormatDate(futureTime),
 						},
 					},
-					Stdout:    &bytes.Buffer{},
 					Keyring:   &mockKeyring{},
 					Now:       func() time.Time { return fixedTime },
 					NewGitHub: api.NewMockGitHub(nil, errors.New("GitHub API error")),
@@ -199,7 +192,6 @@ func TestTokenManager_Get(t *testing.T) {
 							ExpirationDate: keyring.FormatDate(futureTime),
 						},
 					},
-					Stdout: &bytes.Buffer{},
 					Keyring: &mockKeyring{
 						tokens: map[string]*keyring.AccessToken{
 							"test-client-id": {
@@ -228,7 +220,6 @@ func TestTokenManager_Get(t *testing.T) {
 							ExpirationDate: keyring.FormatDate(futureTime),
 						},
 					},
-					Stdout:  &bytes.Buffer{},
 					Keyring: &mockKeyring{},
 					Now:     func() time.Time { return fixedTime },
 					NewGitHub: api.NewMockGitHub(&github.User{

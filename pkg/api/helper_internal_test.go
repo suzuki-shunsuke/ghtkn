@@ -1,4 +1,4 @@
-//nolint:cyclop,funlen,revive
+//nolint:funlen,revive
 package api
 
 import (

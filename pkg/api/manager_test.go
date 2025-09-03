@@ -70,10 +70,6 @@ func TestNewInput(t *testing.T) {
 		t.Error("NewInput().AppTokenClient is nil")
 	}
 
-	if input.Stdout == nil {
-		t.Error("NewInput().Stdout is nil")
-	}
-
 	if input.Keyring == nil {
 		t.Error("NewInput().Keyring is nil")
 	}
@@ -89,7 +85,7 @@ func TestInput_Validate(t *testing.T) {
 	// Currently, Input.Validate() always returns nil
 	// since there are no validation rules for the Input struct
 	input := &api.Input{}
-	
+
 	err := input.Validate()
 	if err != nil {
 		t.Errorf("Validate() error = %v, want nil", err)

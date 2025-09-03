@@ -4,11 +4,8 @@
 package api
 
 import (
-	"bytes"
 	"context"
-	"io"
 	"log/slog"
-	"os"
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
@@ -29,28 +26,12 @@ func New(input *Input) *TokenManager {
 	}
 }
 
-func NewMockInput() *Input {
-	return &Input{
-		MinExpiration:  time.Hour,
-		AppTokenClient: apptoken.NewClient(apptoken.NewMockInput()),
-		Stdout:         &bytes.Buffer{},
-		Keyring:        keyring.New(&keyring.Input{}),
-		Now:            func() time.Time { return time.Now() },
-		NewGitHub: func(ctx context.Context, token string) GitHub {
-			return github.NewMock(&github.User{
-				Login: "test-user",
-			}, nil)(ctx, token)
-		},
-	}
-}
-
 // Input contains all the dependencies and configuration needed by the Controller.
 // It encapsulates file system access, configuration reading, token generation, and output handling.
 // The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
 	MinExpiration  time.Duration    // Minimum token expiration duration required
 	AppTokenClient AppTokenClient   // Client for creating GitHub App tokens
-	Stdout         io.Writer        // Output writer
 	Keyring        Keyring          // Keyring for token storage
 	Now            func() time.Time // Current time provider for testing
 	NewGitHub      func(ctx context.Context, token string) GitHub
@@ -61,11 +42,26 @@ type Input struct {
 func NewInput() *Input {
 	return &Input{
 		AppTokenClient: apptoken.NewClient(apptoken.NewInput()),
-		Stdout:         os.Stdout,
 		Keyring:        keyring.New(keyring.NewInput()),
 		Now:            time.Now,
 		NewGitHub: func(ctx context.Context, token string) GitHub {
 			return github.New(ctx, token)
+		},
+	}
+}
+
+func NewMockInput() *Input {
+	return &Input{
+		MinExpiration:  time.Hour,
+		AppTokenClient: apptoken.NewClient(apptoken.NewMockInput()),
+		Keyring:        keyring.New(&keyring.Input{}),
+		Now: func() time.Time {
+			return time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
+		},
+		NewGitHub: func(ctx context.Context, token string) GitHub {
+			return github.NewMock(&github.User{
+				Login: "test-user",
+			}, nil)(ctx, token)
 		},
 	}
 }
