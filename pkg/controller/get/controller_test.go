@@ -2,13 +2,10 @@
 package get_test
 
 import (
-	"context"
-	"log/slog"
 	"testing"
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 )
 
 type mockConfigReader struct {
@@ -24,18 +21,6 @@ func (m *mockConfigReader) Read(cfg *config.Config, _ string) error {
 		*cfg = *m.cfg
 	}
 	return nil
-}
-
-type mockTokenManager struct {
-	token *keyring.AccessToken
-	err   error
-}
-
-func (m *mockTokenManager) Get(ctx context.Context, logger *slog.Logger, clientID string) (*keyring.AccessToken, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	return m.token, nil
 }
 
 func TestNew(t *testing.T) {

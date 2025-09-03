@@ -47,13 +47,11 @@ func TestController_Run(t *testing.T) {
 						},
 					},
 					Env: &config.Env{App: "test-app"},
-					TokenManager: &mockTokenManager{
-						token: &keyring.AccessToken{
-							AccessToken:    "test-token-123",
-							ExpirationDate: keyring.FormatDate(futureTime),
-							Login:          "test-user",
-						},
-					},
+					TokenManager: api.NewMockTokenManager(&keyring.AccessToken{
+						AccessToken:    "test-token-123",
+						ExpirationDate: keyring.FormatDate(futureTime),
+						Login:          "test-user",
+					}, nil),
 					Stdout: &bytes.Buffer{},
 				}
 			},
@@ -79,13 +77,11 @@ func TestController_Run(t *testing.T) {
 						},
 					},
 					Env: &config.Env{App: "test-app"},
-					TokenManager: &mockTokenManager{
-						token: &keyring.AccessToken{
-							AccessToken:    "cached-token",
-							ExpirationDate: keyring.FormatDate(futureTime),
-							Login:          "cached-user",
-						},
-					},
+					TokenManager: api.NewMockTokenManager(&keyring.AccessToken{
+						AccessToken:    "cached-token",
+						ExpirationDate: keyring.FormatDate(futureTime),
+						Login:          "cached-user",
+					}, nil),
 					Stdout: &bytes.Buffer{},
 				}
 			},
@@ -111,13 +107,11 @@ func TestController_Run(t *testing.T) {
 						},
 					},
 					Env: &config.Env{App: "test-app"},
-					TokenManager: &mockTokenManager{
-						token: &keyring.AccessToken{
-							AccessToken:    "new-token",
-							ExpirationDate: keyring.FormatDate(futureTime),
-							Login:          "test-user",
-						},
-					},
+					TokenManager: api.NewMockTokenManager(&keyring.AccessToken{
+						AccessToken:    "new-token",
+						ExpirationDate: keyring.FormatDate(futureTime),
+						Login:          "test-user",
+					}, nil),
 					Stdout: &bytes.Buffer{},
 				}
 			},
@@ -231,11 +225,9 @@ func TestController_Run(t *testing.T) {
 							},
 						},
 					},
-					Env: &config.Env{App: "test-app"},
-					TokenManager: &mockTokenManager{
-						err: errors.New("GitHub API rate limit error"),
-					},
-					Stdout: &bytes.Buffer{},
+					Env:          &config.Env{App: "test-app"},
+					TokenManager: api.NewMockTokenManager(nil, errors.New("GitHub API rate limit error")),
+					Stdout:       &bytes.Buffer{},
 				}
 			},
 			wantErr: true,
@@ -259,13 +251,11 @@ func TestController_Run(t *testing.T) {
 						},
 					},
 					Env: &config.Env{App: "test-app"},
-					TokenManager: &mockTokenManager{
-						token: &keyring.AccessToken{
-							AccessToken:    "test-token-json",
-							ExpirationDate: keyring.FormatDate(futureTime),
-							Login:          "test-user",
-						},
-					},
+					TokenManager: api.NewMockTokenManager(&keyring.AccessToken{
+						AccessToken:    "test-token-json",
+						ExpirationDate: keyring.FormatDate(futureTime),
+						Login:          "test-user",
+					}, nil),
 					Stdout: &bytes.Buffer{},
 				}
 			},
