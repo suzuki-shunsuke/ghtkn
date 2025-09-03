@@ -38,7 +38,6 @@ func TestTokenManager_Get(t *testing.T) {
 					},
 				}
 				input.Keyring = &mockKeyring{}
-				input.Now = func() time.Time { return fixedTime }
 				return input
 			},
 			clientID:   "test-client-id",
@@ -65,7 +64,6 @@ func TestTokenManager_Get(t *testing.T) {
 						},
 					},
 				}
-				input.Now = func() time.Time { return fixedTime }
 				return input
 			},
 			clientID:   "test-client-id",
@@ -93,7 +91,6 @@ func TestTokenManager_Get(t *testing.T) {
 						},
 					},
 				}
-				input.Now = func() time.Time { return fixedTime }
 				return input
 			},
 			clientID:     "test-client-id",
@@ -110,7 +107,6 @@ func TestTokenManager_Get(t *testing.T) {
 					err: errors.New("app token client error"),
 				}
 				input.Keyring = &mockKeyring{}
-				input.Now = func() time.Time { return fixedTime }
 				return input
 			},
 			clientID: "test-client-id",
@@ -125,7 +121,6 @@ func TestTokenManager_Get(t *testing.T) {
 					err: errors.New("token creation failed"),
 				}
 				input.Keyring = &mockKeyring{}
-				input.Now = func() time.Time { return fixedTime }
 				return input
 			},
 			clientID: "test-client-id",
@@ -140,7 +135,6 @@ func TestTokenManager_Get(t *testing.T) {
 					err: errors.New("token creation failed"),
 				}
 				input.Keyring = &mockKeyring{}
-				input.Now = func() time.Time { return fixedTime }
 				return input
 			},
 			clientID: "test-client-id",
@@ -158,7 +152,6 @@ func TestTokenManager_Get(t *testing.T) {
 					},
 				}
 				input.Keyring = &mockKeyring{}
-				input.Now = func() time.Time { return fixedTime }
 				input.NewGitHub = api.NewMockGitHub(nil, errors.New("GitHub API error"))
 				return input
 			},
@@ -186,7 +179,6 @@ func TestTokenManager_Get(t *testing.T) {
 						},
 					},
 				}
-				input.Now = func() time.Time { return fixedTime }
 				input.NewGitHub = api.NewMockGitHub(nil, errors.New("GitHub API rate limit exceeded"))
 				return input
 			},
@@ -205,7 +197,6 @@ func TestTokenManager_Get(t *testing.T) {
 					},
 				}
 				input.Keyring = &mockKeyring{}
-				input.Now = func() time.Time { return fixedTime }
 				return input
 			},
 			clientID: "test-client-id",
