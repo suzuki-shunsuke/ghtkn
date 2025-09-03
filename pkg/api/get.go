@@ -36,7 +36,7 @@ func (tm *TokenManager) Get(ctx context.Context, logger *slog.Logger, clientID s
 		// Git Credential Helper requires both username and password for authentication.
 		// The username is the GitHub user's login name retrieved via the GitHub API.
 		gh := tm.input.NewGitHub(ctx, token.AccessToken)
-		user, err := gh.GetUser(ctx)
+		user, err := gh.Get(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("get authenticated user: %w", err)
 		}

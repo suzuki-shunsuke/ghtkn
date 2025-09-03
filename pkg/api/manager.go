@@ -4,6 +4,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"log/slog"
@@ -25,6 +26,21 @@ type TokenManager struct {
 func New(input *Input) *TokenManager {
 	return &TokenManager{
 		input: input,
+	}
+}
+
+func NewMockInput() *Input {
+	return &Input{
+		MinExpiration:  time.Hour,
+		AppTokenClient: apptoken.NewClient(apptoken.NewMockInput()),
+		Stdout:         &bytes.Buffer{},
+		Keyring:        keyring.New(&keyring.Input{}),
+		Now:            func() time.Time { return time.Now() },
+		NewGitHub: func(ctx context.Context, token string) GitHub {
+			return github.NewMock(&github.User{
+				Login: "test-user",
+			}, nil)(ctx, token)
+		},
 	}
 }
 
@@ -74,5 +90,5 @@ type Keyring interface {
 // GitHub defines the interface for interacting with the GitHub API.
 // It is used to retrieve authenticated user information needed for Git Credential Helper.
 type GitHub interface {
-	GetUser(ctx context.Context) (*github.User, error)
+	Get(ctx context.Context) (*github.User, error)
 }

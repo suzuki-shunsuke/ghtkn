@@ -15,23 +15,6 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 )
 
-type mockGitHub struct {
-	user *github.User
-	err  error
-}
-
-func (m *mockGitHub) GetUser(_ context.Context) (*github.User, error) {
-	return m.user, m.err
-}
-
-func mockNewGitHub(_ context.Context, _ string) api.GitHub {
-	return &mockGitHub{
-		user: &github.User{
-			Login: "test-user",
-		},
-	}
-}
-
 func TestTokenManager_Get(t *testing.T) {
 	t.Parallel()
 
@@ -57,10 +40,12 @@ func TestTokenManager_Get(t *testing.T) {
 							ExpirationDate: keyring.FormatDate(futureTime),
 						},
 					},
-					Stdout:    &bytes.Buffer{},
-					Keyring:   &mockKeyring{},
-					Now:       func() time.Time { return fixedTime },
-					NewGitHub: mockNewGitHub,
+					Stdout:  &bytes.Buffer{},
+					Keyring: &mockKeyring{},
+					Now:     func() time.Time { return fixedTime },
+					NewGitHub: api.NewMockGitHub(&github.User{
+						Login: "test-user",
+					}, nil),
 				}
 			},
 			wantErr:    false,
@@ -88,8 +73,10 @@ func TestTokenManager_Get(t *testing.T) {
 							},
 						},
 					},
-					Now:       func() time.Time { return fixedTime },
-					NewGitHub: mockNewGitHub,
+					Now: func() time.Time { return fixedTime },
+					NewGitHub: api.NewMockGitHub(&github.User{
+						Login: "test-user",
+					}, nil),
 				}
 			},
 			wantErr:    false,
@@ -117,8 +104,10 @@ func TestTokenManager_Get(t *testing.T) {
 							},
 						},
 					},
-					Now:       func() time.Time { return fixedTime },
-					NewGitHub: mockNewGitHub,
+					Now: func() time.Time { return fixedTime },
+					NewGitHub: api.NewMockGitHub(&github.User{
+						Login: "test-user",
+					}, nil),
 				}
 			},
 			wantErr:      false,
@@ -151,10 +140,12 @@ func TestTokenManager_Get(t *testing.T) {
 					AppTokenClient: &mockAppTokenClient{
 						err: errors.New("token creation failed"),
 					},
-					Stdout:    &bytes.Buffer{},
-					Keyring:   &mockKeyring{},
-					Now:       func() time.Time { return fixedTime },
-					NewGitHub: mockNewGitHub,
+					Stdout:  &bytes.Buffer{},
+					Keyring: &mockKeyring{},
+					Now:     func() time.Time { return fixedTime },
+					NewGitHub: api.NewMockGitHub(&github.User{
+						Login: "test-user",
+					}, nil),
 				}
 			},
 			wantErr: true,
@@ -170,14 +161,10 @@ func TestTokenManager_Get(t *testing.T) {
 							ExpirationDate: keyring.FormatDate(futureTime),
 						},
 					},
-					Stdout:  &bytes.Buffer{},
-					Keyring: &mockKeyring{},
-					Now:     func() time.Time { return fixedTime },
-					NewGitHub: func(_ context.Context, _ string) api.GitHub {
-						return &mockGitHub{
-							err: errors.New("GitHub API error"),
-						}
-					},
+					Stdout:    &bytes.Buffer{},
+					Keyring:   &mockKeyring{},
+					Now:       func() time.Time { return fixedTime },
+					NewGitHub: api.NewMockGitHub(nil, errors.New("GitHub API error")),
 				}
 			},
 			wantErr: true,
@@ -204,12 +191,8 @@ func TestTokenManager_Get(t *testing.T) {
 							},
 						},
 					},
-					Now: func() time.Time { return fixedTime },
-					NewGitHub: func(_ context.Context, _ string) api.GitHub {
-						return &mockGitHub{
-							err: errors.New("GitHub API rate limit exceeded"),
-						}
-					},
+					Now:       func() time.Time { return fixedTime },
+					NewGitHub: api.NewMockGitHub(nil, errors.New("GitHub API rate limit exceeded")),
 				}
 			},
 			wantErr: true,
@@ -225,10 +208,12 @@ func TestTokenManager_Get(t *testing.T) {
 							ExpirationDate: keyring.FormatDate(futureTime),
 						},
 					},
-					Stdout:    &bytes.Buffer{},
-					Keyring:   &mockKeyring{},
-					Now:       func() time.Time { return fixedTime },
-					NewGitHub: mockNewGitHub,
+					Stdout:  &bytes.Buffer{},
+					Keyring: &mockKeyring{},
+					Now:     func() time.Time { return fixedTime },
+					NewGitHub: api.NewMockGitHub(&github.User{
+						Login: "test-user",
+					}, nil),
 				}
 			},
 			wantErr: false,

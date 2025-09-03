@@ -24,7 +24,7 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	logFields := []any{"app", app.Name}
 	logger = logger.With(logFields...)
 
-	token, err := c.input.TokenManager.Get(ctx, logger, app)
+	token, err := c.input.TokenManager.Get(ctx, logger, app.ClientID)
 	if err != nil {
 		return fmt.Errorf("get access token: %w", slogerr.With(err, logFields...))
 	}

@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/suzuki-shunsuke/ghtkn/pkg/api"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 )
 
@@ -50,8 +50,8 @@ func (m *mockKeyring) Set(key string, token *keyring.AccessToken) error {
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	input := &get.Input{}
-	controller := get.New(input)
+	input := &api.Input{}
+	controller := api.New(input)
 	if controller == nil {
 		t.Error("New() returned nil")
 	}
@@ -60,26 +60,10 @@ func TestNew(t *testing.T) {
 func TestNewInput(t *testing.T) {
 	t.Parallel()
 
-	input := get.NewInput("/path/to/config")
+	input := api.NewInput()
 	if input == nil {
 		t.Error("NewInput() returned nil")
 		return
-	}
-
-	if input.ConfigFilePath != "/path/to/config" {
-		t.Errorf("NewInput().ConfigFilePath = %v, want /path/to/config", input.ConfigFilePath)
-	}
-
-	if input.FS == nil {
-		t.Error("NewInput().FS is nil")
-	}
-
-	if input.ConfigReader == nil {
-		t.Error("NewInput().ConfigReader is nil")
-	}
-
-	if input.Env == nil {
-		t.Error("NewInput().Env is nil")
 	}
 
 	if input.AppTokenClient == nil {
@@ -96,47 +80,6 @@ func TestNewInput(t *testing.T) {
 
 	if input.Now == nil {
 		t.Error("NewInput().Now is nil")
-	}
-}
-
-func TestInput_IsJSON(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name         string
-		outputFormat string
-		want         bool
-	}{
-		{
-			name:         "json format",
-			outputFormat: "json",
-			want:         true,
-		},
-		{
-			name:         "empty format",
-			outputFormat: "",
-			want:         false,
-		},
-		{
-			name:         "other format",
-			outputFormat: "yaml",
-			want:         false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			input := &get.Input{
-				OutputFormat: tt.outputFormat,
-			}
-
-			got := input.IsJSON()
-			if got != tt.want {
-				t.Errorf("IsJSON() = %v, want %v", got, tt.want)
-			}
-		})
 	}
 }
 
@@ -169,9 +112,7 @@ func TestInput_Validate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			input := &get.Input{
-				OutputFormat: tt.outputFormat,
-			}
+			input := &api.Input{}
 
 			err := input.Validate()
 			if (err != nil) != tt.wantErr {

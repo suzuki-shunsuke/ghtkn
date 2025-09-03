@@ -98,10 +98,6 @@ func TestNewInput(t *testing.T) {
 		t.Error("NewInput().Env is nil")
 	}
 
-	if input.AppTokenClient == nil {
-		t.Error("NewInput().AppTokenClient is nil")
-	}
-
 	if input.Stdout == nil {
 		t.Error("NewInput().Stdout is nil")
 	}
