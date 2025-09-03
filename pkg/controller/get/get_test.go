@@ -19,7 +19,6 @@ import (
 func TestController_Run(t *testing.T) {
 	t.Parallel()
 
-	fixedTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
 	futureTime := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
 
 	tests := []struct {
@@ -56,7 +55,6 @@ func TestController_Run(t *testing.T) {
 						},
 					},
 					Stdout: &bytes.Buffer{},
-					Now:    func() time.Time { return fixedTime },
 				}
 			},
 			wantErr:    false,
@@ -89,7 +87,6 @@ func TestController_Run(t *testing.T) {
 						},
 					},
 					Stdout: &bytes.Buffer{},
-					Now:    func() time.Time { return fixedTime },
 				}
 			},
 			wantErr:    false,
@@ -122,7 +119,6 @@ func TestController_Run(t *testing.T) {
 						},
 					},
 					Stdout: &bytes.Buffer{},
-					Now:    func() time.Time { return fixedTime },
 				}
 			},
 			wantErr:    false,
@@ -182,7 +178,6 @@ func TestController_Run(t *testing.T) {
 					// 	err: errors.New("token creation failed"),
 					// },
 					Stdout: &bytes.Buffer{},
-					Now:    func() time.Time { return fixedTime },
 				}
 			},
 			wantErr: true,
@@ -214,7 +209,6 @@ func TestController_Run(t *testing.T) {
 					// 	},
 					// },
 					Stdout: &bytes.Buffer{},
-					Now:    func() time.Time { return fixedTime },
 				}
 			},
 			wantErr: true,
@@ -242,7 +236,6 @@ func TestController_Run(t *testing.T) {
 						err: errors.New("GitHub API rate limit error"),
 					},
 					Stdout: &bytes.Buffer{},
-					Now:    func() time.Time { return fixedTime },
 				}
 			},
 			wantErr: true,
@@ -274,7 +267,6 @@ func TestController_Run(t *testing.T) {
 						},
 					},
 					Stdout: &bytes.Buffer{},
-					Now:    func() time.Time { return fixedTime },
 				}
 			},
 			wantErr: false,

@@ -113,10 +113,6 @@ func TestNewInput(t *testing.T) {
 	if input.Stdout == nil {
 		t.Error("NewInput().Stdout is nil")
 	}
-
-	if input.Now == nil {
-		t.Error("NewInput().Now is nil")
-	}
 }
 
 func TestInput_IsJSON(t *testing.T) {

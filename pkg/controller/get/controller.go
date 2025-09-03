@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
-	"time"
 
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/api"
@@ -41,15 +40,14 @@ type TokenManager interface {
 // It encapsulates file system access, configuration reading, token generation, and output handling.
 // The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
-	ConfigFilePath  string           // Path to the configuration file
-	OutputFormat    string           // Output format ("json" or empty for plain text)
-	FS              afero.Fs         // File system abstraction for testing
-	ConfigReader    ConfigReader     // Configuration file reader
-	Env             *config.Env      // Environment variable provider
-	Stdout          io.Writer        // Output writer
-	Now             func() time.Time // Current time provider for testing
-	IsGitCredential bool             // Whether to output in Git credential helper format
-	TokenManager    TokenManager     // TokenManager for handling token retrieval and creation
+	ConfigFilePath  string       // Path to the configuration file
+	OutputFormat    string       // Output format ("json" or empty for plain text)
+	FS              afero.Fs     // File system abstraction for testing
+	ConfigReader    ConfigReader // Configuration file reader
+	Env             *config.Env  // Environment variable provider
+	Stdout          io.Writer    // Output writer
+	IsGitCredential bool         // Whether to output in Git credential helper format
+	TokenManager    TokenManager // TokenManager for handling token retrieval and creation
 }
 
 // NewInput creates a new Input instance with default production values.
@@ -63,7 +61,6 @@ func NewInput(configFilePath string) *Input {
 		ConfigReader:   config.NewReader(fs),
 		Env:            config.NewEnv(os.Getenv, runtime.GOOS),
 		Stdout:         os.Stdout,
-		Now:            time.Now,
 	}
 }
 
