@@ -10,7 +10,6 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/api"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/github"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 )
 
@@ -31,21 +30,16 @@ func TestTokenManager_Get(t *testing.T) {
 		{
 			name: "successful token creation without persistence",
 			setupInput: func() *api.Input {
-				return &api.Input{
-					MinExpiration: time.Hour,
-					AppTokenClient: &mockAppTokenClient{
-						token: &apptoken.AccessToken{
-							AccessToken:    "test-token-123",
-							ExpirationDate: keyring.FormatDate(futureTime),
-						},
+				input := api.NewMockInput()
+				input.AppTokenClient = &mockAppTokenClient{
+					token: &apptoken.AccessToken{
+						AccessToken:    "test-token-123",
+						ExpirationDate: keyring.FormatDate(futureTime),
 					},
-					Keyring: &mockKeyring{},
-					Now:     func() time.Time { return fixedTime },
-					Logger:  api.NewLogger(),
-					NewGitHub: api.NewMockGitHub(&github.User{
-						Login: "test-user",
-					}, nil),
 				}
+				input.Keyring = &mockKeyring{}
+				input.Now = func() time.Time { return fixedTime }
+				return input
 			},
 			clientID:   "test-client-id",
 			wantErr:    false,
@@ -54,30 +48,25 @@ func TestTokenManager_Get(t *testing.T) {
 		{
 			name: "successful token retrieval from keyring",
 			setupInput: func() *api.Input {
-				return &api.Input{
-					MinExpiration: time.Hour,
-					AppTokenClient: &mockAppTokenClient{
-						token: &apptoken.AccessToken{
-							AccessToken:    "new-token",
-							ExpirationDate: keyring.FormatDate(futureTime),
-						},
+				input := api.NewMockInput()
+				input.AppTokenClient = &mockAppTokenClient{
+					token: &apptoken.AccessToken{
+						AccessToken:    "new-token",
+						ExpirationDate: keyring.FormatDate(futureTime),
 					},
-					Keyring: &mockKeyring{
-						tokens: map[string]*keyring.AccessToken{
-							"test-client-id": {
-								App:            "test-app",
-								AccessToken:    "cached-token",
-								ExpirationDate: keyring.FormatDate(futureTime),
-								Login:          "cached-user",
-							},
-						},
-					},
-					Now: func() time.Time { return fixedTime },
-					NewGitHub: api.NewMockGitHub(&github.User{
-						Login: "test-user",
-					}, nil),
-					Logger: api.NewLogger(),
 				}
+				input.Keyring = &mockKeyring{
+					tokens: map[string]*keyring.AccessToken{
+						"test-client-id": {
+							App:            "test-app",
+							AccessToken:    "cached-token",
+							ExpirationDate: keyring.FormatDate(futureTime),
+							Login:          "cached-user",
+						},
+					},
+				}
+				input.Now = func() time.Time { return fixedTime }
+				return input
 			},
 			clientID:   "test-client-id",
 			wantErr:    false,
@@ -87,29 +76,25 @@ func TestTokenManager_Get(t *testing.T) {
 			name: "expired token in keyring triggers new token creation",
 			setupInput: func() *api.Input {
 				expiredTime := fixedTime.Add(30 * time.Minute)
-				return &api.Input{
-					MinExpiration: time.Hour,
-					AppTokenClient: &mockAppTokenClient{
-						token: &apptoken.AccessToken{
-							AccessToken:    "new-token",
-							ExpirationDate: keyring.FormatDate(futureTime),
-						},
+				input := api.NewMockInput()
+				input.MinExpiration = time.Hour
+				input.AppTokenClient = &mockAppTokenClient{
+					token: &apptoken.AccessToken{
+						AccessToken:    "new-token",
+						ExpirationDate: keyring.FormatDate(futureTime),
 					},
-					Keyring: &mockKeyring{
-						tokens: map[string]*keyring.AccessToken{
-							"test-client-id": {
-								App:            "test-app",
-								AccessToken:    "expired-token",
-								ExpirationDate: keyring.FormatDate(expiredTime),
-							},
-						},
-					},
-					Now: func() time.Time { return fixedTime },
-					NewGitHub: api.NewMockGitHub(&github.User{
-						Login: "test-user",
-					}, nil),
-					Logger: api.NewLogger(),
 				}
+				input.Keyring = &mockKeyring{
+					tokens: map[string]*keyring.AccessToken{
+						"test-client-id": {
+							App:            "test-app",
+							AccessToken:    "expired-token",
+							ExpirationDate: keyring.FormatDate(expiredTime),
+						},
+					},
+				}
+				input.Now = func() time.Time { return fixedTime }
+				return input
 			},
 			clientID:     "test-client-id",
 			wantErr:      false,
@@ -119,15 +104,14 @@ func TestTokenManager_Get(t *testing.T) {
 		{
 			name: "config read error",
 			setupInput: func() *api.Input {
-				return &api.Input{
-					MinExpiration: time.Hour,
-					AppTokenClient: &mockAppTokenClient{
-						err: errors.New("app token client error"),
-					},
-					Keyring: &mockKeyring{},
-					Now:     func() time.Time { return fixedTime },
-					Logger:  api.NewLogger(),
+				input := api.NewMockInput()
+				input.MinExpiration = time.Hour
+				input.AppTokenClient = &mockAppTokenClient{
+					err: errors.New("app token client error"),
 				}
+				input.Keyring = &mockKeyring{}
+				input.Now = func() time.Time { return fixedTime }
+				return input
 			},
 			clientID: "test-client-id",
 			wantErr:  true,
@@ -135,15 +119,14 @@ func TestTokenManager_Get(t *testing.T) {
 		{
 			name: "invalid config",
 			setupInput: func() *api.Input {
-				return &api.Input{
-					MinExpiration: time.Hour,
-					AppTokenClient: &mockAppTokenClient{
-						err: errors.New("token creation failed"),
-					},
-					Keyring: &mockKeyring{},
-					Now:     func() time.Time { return fixedTime },
-					Logger:  api.NewLogger(),
+				input := api.NewMockInput()
+				input.MinExpiration = time.Hour
+				input.AppTokenClient = &mockAppTokenClient{
+					err: errors.New("token creation failed"),
 				}
+				input.Keyring = &mockKeyring{}
+				input.Now = func() time.Time { return fixedTime }
+				return input
 			},
 			clientID: "test-client-id",
 			wantErr:  true,
@@ -151,18 +134,14 @@ func TestTokenManager_Get(t *testing.T) {
 		{
 			name: "token creation error",
 			setupInput: func() *api.Input {
-				return &api.Input{
-					MinExpiration: time.Hour,
-					AppTokenClient: &mockAppTokenClient{
-						err: errors.New("token creation failed"),
-					},
-					Keyring: &mockKeyring{},
-					Now:     func() time.Time { return fixedTime },
-					Logger:  api.NewLogger(),
-					NewGitHub: api.NewMockGitHub(&github.User{
-						Login: "test-user",
-					}, nil),
+				input := api.NewMockInput()
+				input.MinExpiration = time.Hour
+				input.AppTokenClient = &mockAppTokenClient{
+					err: errors.New("token creation failed"),
 				}
+				input.Keyring = &mockKeyring{}
+				input.Now = func() time.Time { return fixedTime }
+				return input
 			},
 			clientID: "test-client-id",
 			wantErr:  true,
@@ -170,18 +149,18 @@ func TestTokenManager_Get(t *testing.T) {
 		{
 			name: "GitHub API GetUser error",
 			setupInput: func() *api.Input {
-				return &api.Input{
-					MinExpiration: time.Hour,
-					AppTokenClient: &mockAppTokenClient{
-						token: &apptoken.AccessToken{
-							AccessToken:    "test-token-123",
-							ExpirationDate: keyring.FormatDate(futureTime),
-						},
+				input := api.NewMockInput()
+				input.MinExpiration = time.Hour
+				input.AppTokenClient = &mockAppTokenClient{
+					token: &apptoken.AccessToken{
+						AccessToken:    "test-token-123",
+						ExpirationDate: keyring.FormatDate(futureTime),
 					},
-					Keyring:   &mockKeyring{},
-					Now:       func() time.Time { return fixedTime },
-					NewGitHub: api.NewMockGitHub(nil, errors.New("GitHub API error")),
 				}
+				input.Keyring = &mockKeyring{}
+				input.Now = func() time.Time { return fixedTime }
+				input.NewGitHub = api.NewMockGitHub(nil, errors.New("GitHub API error"))
+				return input
 			},
 			clientID: "test-client-id",
 			wantErr:  true,
@@ -189,27 +168,27 @@ func TestTokenManager_Get(t *testing.T) {
 		{
 			name: "cached token without login and GitHub API error",
 			setupInput: func() *api.Input {
-				return &api.Input{
-					MinExpiration: time.Hour,
-					AppTokenClient: &mockAppTokenClient{
-						token: &apptoken.AccessToken{
-							AccessToken:    "new-token",
-							ExpirationDate: keyring.FormatDate(futureTime),
-						},
+				input := api.NewMockInput()
+				input.MinExpiration = time.Hour
+				input.AppTokenClient = &mockAppTokenClient{
+					token: &apptoken.AccessToken{
+						AccessToken:    "new-token",
+						ExpirationDate: keyring.FormatDate(futureTime),
 					},
-					Keyring: &mockKeyring{
-						tokens: map[string]*keyring.AccessToken{
-							"test-client-id": {
-								App:            "test-app",
-								AccessToken:    "cached-token",
-								ExpirationDate: keyring.FormatDate(futureTime),
-								// Login is empty, will trigger GetUser call
-							},
-						},
-					},
-					Now:       func() time.Time { return fixedTime },
-					NewGitHub: api.NewMockGitHub(nil, errors.New("GitHub API rate limit exceeded")),
 				}
+				input.Keyring = &mockKeyring{
+					tokens: map[string]*keyring.AccessToken{
+						"test-client-id": {
+							App:            "test-app",
+							AccessToken:    "cached-token",
+							ExpirationDate: keyring.FormatDate(futureTime),
+							// Login is empty, will trigger GetUser call
+						},
+					},
+				}
+				input.Now = func() time.Time { return fixedTime }
+				input.NewGitHub = api.NewMockGitHub(nil, errors.New("GitHub API rate limit exceeded"))
+				return input
 			},
 			clientID: "test-client-id",
 			wantErr:  true,
@@ -217,21 +196,17 @@ func TestTokenManager_Get(t *testing.T) {
 		{
 			name: "JSON output format",
 			setupInput: func() *api.Input {
-				return &api.Input{
-					MinExpiration: time.Hour,
-					AppTokenClient: &mockAppTokenClient{
-						token: &apptoken.AccessToken{
-							AccessToken:    "test-token-json",
-							ExpirationDate: keyring.FormatDate(futureTime),
-						},
+				input := api.NewMockInput()
+				input.MinExpiration = time.Hour
+				input.AppTokenClient = &mockAppTokenClient{
+					token: &apptoken.AccessToken{
+						AccessToken:    "test-token-json",
+						ExpirationDate: keyring.FormatDate(futureTime),
 					},
-					Keyring: &mockKeyring{},
-					Now:     func() time.Time { return fixedTime },
-					Logger:  api.NewLogger(),
-					NewGitHub: api.NewMockGitHub(&github.User{
-						Login: "test-user",
-					}, nil),
 				}
+				input.Keyring = &mockKeyring{}
+				input.Now = func() time.Time { return fixedTime }
+				return input
 			},
 			clientID: "test-client-id",
 			wantErr:  false,
