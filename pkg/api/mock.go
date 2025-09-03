@@ -26,7 +26,7 @@ func NewMockTokenManager(token *keyring.AccessToken, err error) *MockTokenManage
 	}
 }
 
-func (m *MockTokenManager) Get(ctx context.Context, logger *slog.Logger, clientID string) (*keyring.AccessToken, error) {
+func (m *MockTokenManager) Get(_ context.Context, _ *slog.Logger, _ string) (*keyring.AccessToken, error) {
 	if m.err != nil {
 		return nil, m.err
 	}

@@ -1,4 +1,3 @@
-//nolint:cyclop,funlen
 package keyring
 
 import (
