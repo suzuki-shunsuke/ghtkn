@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
@@ -24,42 +23,6 @@ func (m *mockConfigReader) Read(cfg *config.Config, _ string) error {
 	if m.cfg != nil {
 		*cfg = *m.cfg
 	}
-	return nil
-}
-
-type mockAppTokenClient struct {
-	token *apptoken.AccessToken
-	err   error
-}
-
-func (m *mockAppTokenClient) Create(_ context.Context, logger *slog.Logger, clientID string) (*apptoken.AccessToken, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	return m.token, nil
-}
-
-type mockKeyring struct {
-	tokens map[string]*keyring.AccessToken
-	getErr error
-	setErr error
-}
-
-func (m *mockKeyring) Get(key string) (*keyring.AccessToken, error) {
-	if m.getErr != nil {
-		return nil, m.getErr
-	}
-	return m.tokens[key], nil
-}
-
-func (m *mockKeyring) Set(key string, token *keyring.AccessToken) error {
-	if m.setErr != nil {
-		return m.setErr
-	}
-	if m.tokens == nil {
-		m.tokens = make(map[string]*keyring.AccessToken)
-	}
-	m.tokens[key] = token
 	return nil
 }
 

@@ -13,9 +13,7 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/api"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/github"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 )
 
@@ -81,21 +79,4 @@ func (i *Input) Validate() error {
 // ConfigReader defines the interface for reading configuration files.
 type ConfigReader interface {
 	Read(cfg *config.Config, configFilePath string) error
-}
-
-// AppTokenClient defines the interface for creating GitHub App access tokens.
-type AppTokenClient interface {
-	Create(ctx context.Context, logger *slog.Logger, clientID string) (*apptoken.AccessToken, error)
-}
-
-// Keyring defines the interface for storing and retrieving tokens from the system keyring.
-type Keyring interface {
-	Get(key string) (*keyring.AccessToken, error)
-	Set(key string, token *keyring.AccessToken) error
-}
-
-// GitHub defines the interface for interacting with the GitHub API.
-// It is used to retrieve authenticated user information needed for Git Credential Helper.
-type GitHub interface {
-	Get(ctx context.Context) (*github.User, error)
 }

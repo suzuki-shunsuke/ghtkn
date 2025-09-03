@@ -1,15 +1,10 @@
-//nolint:cyclop,funlen,revive
 package get
 
 import (
-	"context"
 	"errors"
-	"log/slog"
 	"testing"
 
-	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 )
 
 type testConfigReader struct {
@@ -24,42 +19,6 @@ func (m *testConfigReader) Read(cfg *config.Config, _ string) error {
 	if m.cfg != nil {
 		*cfg = *m.cfg
 	}
-	return nil
-}
-
-type testAppTokenClient struct {
-	token *apptoken.AccessToken
-	err   error
-}
-
-func (m *testAppTokenClient) Create(_ context.Context, logger *slog.Logger, clientID string) (*apptoken.AccessToken, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	return m.token, nil
-}
-
-type testKeyring struct {
-	tokens map[string]*keyring.AccessToken
-	getErr error
-	setErr error
-}
-
-func (m *testKeyring) Get(key string) (*keyring.AccessToken, error) {
-	if m.getErr != nil {
-		return nil, m.getErr
-	}
-	return m.tokens[key], nil
-}
-
-func (m *testKeyring) Set(key string, token *keyring.AccessToken) error {
-	if m.setErr != nil {
-		return m.setErr
-	}
-	if m.tokens == nil {
-		m.tokens = make(map[string]*keyring.AccessToken)
-	}
-	m.tokens[key] = token
 	return nil
 }
 
