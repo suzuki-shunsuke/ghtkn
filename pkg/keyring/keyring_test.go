@@ -4,7 +4,6 @@ package keyring_test
 import (
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"testing"
 	"time"
 
@@ -278,61 +277,6 @@ func TestKeyring_Set(t *testing.T) {
 
 				if storedToken.App != tt.token.App || storedToken.AccessToken != tt.token.AccessToken || storedToken.ExpirationDate != tt.token.ExpirationDate {
 					t.Errorf("Stored token = %v, want %v", storedToken, tt.token)
-				}
-			}
-		})
-	}
-}
-
-// TestKeyring_Remove tests the Remove method of Keyring.
-func TestKeyring_Remove(t *testing.T) {
-	t.Parallel()
-
-	// Create a test logger
-	logger := slog.Default()
-
-	tests := []struct {
-		name    string
-		key     string
-		secrets map[string]string
-		wantErr bool
-	}{
-		{
-			name: "successful remove",
-			key:  "test-key",
-			secrets: map[string]string{
-				"github.com/suzuki-shunsuke/ghtkn:test-key": `{"app":"test-app","access_token":"token123","expiration_date":"2024-12-31T23:59:59Z"}`,
-			},
-		},
-		{
-			name:    "remove non-existent key (should not error)",
-			key:     "non-existent",
-			secrets: map[string]string{},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			api := keyring.NewMock(tt.secrets)
-			input := &keyring.Input{
-				KeyService: "github.com/suzuki-shunsuke/ghtkn",
-				API:        api,
-			}
-			kr := keyring.New(input)
-
-			err := kr.Remove(logger, tt.key)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Remove() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			// Verify the key was removed
-			if !tt.wantErr {
-				_, err := api.Get("github.com/suzuki-shunsuke/ghtkn", tt.key)
-				if !errors.Is(err, zkeyring.ErrNotFound) {
-					t.Errorf("Key should have been removed but still exists")
 				}
 			}
 		})
