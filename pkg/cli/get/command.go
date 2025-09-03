@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/suzuki-shunsuke/ghtkn/pkg/api"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
@@ -93,11 +94,13 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		input.OutputFormat = flag.FormatValue(c)
 	}
 	if m := flag.MinExpirationValue(c); m != "" {
+		tmInput := api.NewInput()
 		d, err := time.ParseDuration(m)
 		if err != nil {
 			return fmt.Errorf("parse the min expiration: %w", slogerr.With(err, "min_expiration", m))
 		}
-		input.MinExpiration = d
+		tmInput.MinExpiration = d
+		input.TokenManager = api.New(tmInput)
 	}
 	if err := input.Validate(); err != nil {
 		return err //nolint:wrapcheck

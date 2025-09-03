@@ -43,7 +43,6 @@ type TokenManager interface {
 type Input struct {
 	ConfigFilePath  string           // Path to the configuration file
 	OutputFormat    string           // Output format ("json" or empty for plain text)
-	MinExpiration   time.Duration    // Minimum token expiration duration required
 	FS              afero.Fs         // File system abstraction for testing
 	ConfigReader    ConfigReader     // Configuration file reader
 	Env             *config.Env      // Environment variable provider

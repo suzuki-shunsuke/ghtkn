@@ -35,7 +35,6 @@ func TestController_Run(t *testing.T) {
 				return &get.Input{
 					ConfigFilePath: "test.yaml",
 					OutputFormat:   "",
-					MinExpiration:  time.Hour,
 					FS:             afero.NewMemMapFs(),
 					ConfigReader: &mockConfigReader{
 						cfg: &config.Config{
@@ -69,7 +68,6 @@ func TestController_Run(t *testing.T) {
 				return &get.Input{
 					ConfigFilePath: "test.yaml",
 					OutputFormat:   "",
-					MinExpiration:  time.Hour,
 					FS:             afero.NewMemMapFs(),
 					ConfigReader: &mockConfigReader{
 						cfg: &config.Config{
@@ -103,7 +101,6 @@ func TestController_Run(t *testing.T) {
 				return &get.Input{
 					ConfigFilePath: "test.yaml",
 					OutputFormat:   "",
-					MinExpiration:  time.Hour,
 					FS:             afero.NewMemMapFs(),
 					ConfigReader: &mockConfigReader{
 						cfg: &config.Config{
@@ -167,7 +164,6 @@ func TestController_Run(t *testing.T) {
 				return &get.Input{
 					ConfigFilePath: "test.yaml",
 					OutputFormat:   "",
-					MinExpiration:  time.Hour,
 					FS:             afero.NewMemMapFs(),
 					ConfigReader: &mockConfigReader{
 						cfg: &config.Config{
@@ -197,7 +193,6 @@ func TestController_Run(t *testing.T) {
 				return &get.Input{
 					ConfigFilePath: "test.yaml",
 					OutputFormat:   "",
-					MinExpiration:  time.Hour,
 					FS:             afero.NewMemMapFs(),
 					ConfigReader: &mockConfigReader{
 						cfg: &config.Config{
@@ -230,7 +225,6 @@ func TestController_Run(t *testing.T) {
 				return &get.Input{
 					ConfigFilePath: "test.yaml",
 					OutputFormat:   "",
-					MinExpiration:  time.Hour,
 					FS:             afero.NewMemMapFs(),
 					ConfigReader: &mockConfigReader{
 						cfg: &config.Config{
@@ -259,7 +253,6 @@ func TestController_Run(t *testing.T) {
 				return &get.Input{
 					ConfigFilePath: "test.yaml",
 					OutputFormat:   "json",
-					MinExpiration:  time.Hour,
 					FS:             afero.NewMemMapFs(),
 					ConfigReader: &mockConfigReader{
 						cfg: &config.Config{
