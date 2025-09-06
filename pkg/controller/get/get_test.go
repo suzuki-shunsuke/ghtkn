@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/apptoken"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/github"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/github"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 )
 
 type mockGitHub struct {
@@ -22,7 +22,7 @@ type mockGitHub struct {
 	err  error
 }
 
-func (m *mockGitHub) GetUser(_ context.Context) (*github.User, error) {
+func (m *mockGitHub) Get(_ context.Context) (*github.User, error) {
 	return m.user, m.err
 }
 

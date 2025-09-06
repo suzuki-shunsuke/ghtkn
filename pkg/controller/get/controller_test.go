@@ -6,10 +6,11 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/apptoken"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
 )
 
 type mockConfigReader struct {
@@ -66,8 +67,8 @@ func (m *mockKeyring) Set(key string, token *keyring.AccessToken) error {
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	input := &get.Input{}
-	controller := get.New(input)
+	input := &ghtkn.Input{}
+	controller := ghtkn.New(input)
 	if controller == nil {
 		t.Error("New() returned nil")
 	}
@@ -76,7 +77,7 @@ func TestNew(t *testing.T) {
 func TestNewInput(t *testing.T) {
 	t.Parallel()
 
-	input := get.NewInput("/path/to/config")
+	input := ghtkn.NewInput("/path/to/config")
 	if input == nil {
 		t.Error("NewInput() returned nil")
 		return
@@ -98,20 +99,12 @@ func TestNewInput(t *testing.T) {
 		t.Error("NewInput().Env is nil")
 	}
 
-	if input.AppTokenClient == nil {
-		t.Error("NewInput().AppTokenClient is nil")
+	if input.TokenManager == nil {
+		t.Error("NewInput().TokenManager is nil")
 	}
 
 	if input.Stdout == nil {
 		t.Error("NewInput().Stdout is nil")
-	}
-
-	if input.Keyring == nil {
-		t.Error("NewInput().Keyring is nil")
-	}
-
-	if input.Now == nil {
-		t.Error("NewInput().Now is nil")
 	}
 }
 

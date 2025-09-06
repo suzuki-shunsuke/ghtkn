@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 )
 
 // File and directory permissions for created configuration files

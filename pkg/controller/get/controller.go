@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/apptoken"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/github"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/apptoken"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/github"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 )
 
 // Controller manages the process of retrieving GitHub App access tokens.
@@ -102,5 +102,5 @@ type Keyring interface {
 // GitHub defines the interface for interacting with the GitHub API.
 // It is used to retrieve authenticated user information needed for Git Credential Helper.
 type GitHub interface {
-	GetUser(ctx context.Context) (*github.User, error)
+	Get(ctx context.Context) (*github.User, error)
 }
