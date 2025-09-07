@@ -14,7 +14,7 @@ require (
 	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.0.8-0.20250830063646-87773e1bf444
 	github.com/urfave/cli/v3 v3.4.1
 	github.com/zalando/go-keyring v0.2.6
-	golang.org/x/oauth2 v0.30.0
+	golang.org/x/oauth2 v0.31.0
 	golang.org/x/sys v0.35.0
 	gopkg.in/yaml.v3 v3.0.1
 )
