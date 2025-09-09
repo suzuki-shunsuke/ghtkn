@@ -4,12 +4,26 @@ package get_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
 )
+
+type mockClient struct {
+	token *keyring.AccessToken
+	app   *config.App
+	err   error
+}
+
+func (m *mockClient) Get(_ context.Context, _ *slog.Logger, _ *ghtkn.InputGet) (*keyring.AccessToken, *config.App, error) {
+	return m.token, m.app, m.err
+}
 
 func TestController_Run(t *testing.T) {
 	t.Parallel()
@@ -22,11 +36,20 @@ func TestController_Run(t *testing.T) {
 		checkKeyring bool
 	}{
 		{
-			name: "successful token creation without persistence",
+			name: "successful token creation",
 			setupInput: func() *get.Input {
 				return &get.Input{
 					OutputFormat: "",
 					Stdout:       &bytes.Buffer{},
+					Client: &mockClient{
+						token: &keyring.AccessToken{
+							AccessToken:    "test-token-123",
+							ExpirationDate: time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC),
+						},
+						app: &config.App{
+							Name: "test",
+						},
+					},
 				}
 			},
 			wantErr:    false,
@@ -38,6 +61,9 @@ func TestController_Run(t *testing.T) {
 				return &get.Input{
 					OutputFormat: "",
 					Stdout:       &bytes.Buffer{},
+					Client: &mockClient{
+						err: errors.New("failed to create token"),
+					},
 				}
 			},
 			wantErr: true,
@@ -48,6 +74,15 @@ func TestController_Run(t *testing.T) {
 				return &get.Input{
 					OutputFormat: "json",
 					Stdout:       &bytes.Buffer{},
+					Client: &mockClient{
+						token: &keyring.AccessToken{
+							AccessToken:    "test-token-123",
+							ExpirationDate: time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC),
+						},
+						app: &config.App{
+							Name: "test",
+						},
+					},
 				}
 			},
 			wantErr: false,
@@ -60,7 +95,7 @@ func TestController_Run(t *testing.T) {
 
 			input := tt.setupInput()
 			controller := get.New(input)
-			ctx := context.Background()
+			ctx := t.Context()
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
 			err := controller.Run(ctx, logger, &ghtkn.InputGet{})

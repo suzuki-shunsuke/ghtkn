@@ -87,8 +87,8 @@ func TestController_output(t *testing.T) {
 					if result["access_token"] != tt.token.AccessToken {
 						t.Errorf("JSON output missing or incorrect access_token")
 					}
-					if result["expiration_date"] != tt.token.ExpirationDate {
-						t.Errorf("JSON output missing or incorrect expiration_date")
+					if result["expiration_date"] != tt.token.ExpirationDate.Format(time.RFC3339) {
+						t.Errorf("expiration_date: wanted %s, got %s", tt.token.ExpirationDate.Format(time.RFC3339), result["expiration_date"])
 					}
 				} else {
 					if output != tt.wantOutput {

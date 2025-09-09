@@ -29,7 +29,7 @@ func core() int {
 	logger := log.New(version, slog.LevelInfo)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	if err := cli.Run(ctx, logger, &stdutil.LDFlags{ //nolint:wrapcheck
+	if err := cli.Run(ctx, logger, &stdutil.LDFlags{
 		Version: version,
 		Commit:  commit,
 		Date:    date,
