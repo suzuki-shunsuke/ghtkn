@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/initcmd"
 )
 
@@ -98,10 +97,7 @@ func TestController_Init(t *testing.T) { //nolint:gocognit,cyclop,funlen
 			}))
 
 			// Create controller
-			env := &config.Env{
-				XDGConfigHome: "/home/user/.config",
-			}
-			ctrl := initcmd.New(fs, env)
+			ctrl := initcmd.New(fs)
 
 			// Execute Init
 			err := ctrl.Init(logger, tt.configFilePath)
@@ -181,7 +177,7 @@ func TestController_Init(t *testing.T) { //nolint:gocognit,cyclop,funlen
 	}
 }
 
-func TestController_Init_ErrorCases(t *testing.T) { //nolint:funlen
+func TestController_Init_ErrorCases(t *testing.T) {
 	t.Parallel()
 
 	t.Run("filesystem error on exists check", func(t *testing.T) {
@@ -192,8 +188,7 @@ func TestController_Init_ErrorCases(t *testing.T) { //nolint:funlen
 			existsErr: true,
 		}
 
-		env := &config.Env{}
-		ctrl := initcmd.New(fs, env)
+		ctrl := initcmd.New(fs)
 		logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
 		if err := ctrl.Init(logger, "/test/config.yaml"); err != nil {
@@ -212,8 +207,7 @@ func TestController_Init_ErrorCases(t *testing.T) { //nolint:funlen
 			mkdirErr: true,
 		}
 
-		env := &config.Env{}
-		ctrl := initcmd.New(fs, env)
+		ctrl := initcmd.New(fs)
 		logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
 		if err := ctrl.Init(logger, "/test/config.yaml"); err != nil {
@@ -232,8 +226,7 @@ func TestController_Init_ErrorCases(t *testing.T) { //nolint:funlen
 			writeErr: true,
 		}
 
-		env := &config.Env{}
-		ctrl := initcmd.New(fs, env)
+		ctrl := initcmd.New(fs)
 		logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
 		if err := ctrl.Init(logger, "/test/config.yaml"); err != nil {

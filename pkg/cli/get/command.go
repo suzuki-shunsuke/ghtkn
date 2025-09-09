@@ -11,8 +11,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/log"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
@@ -75,7 +75,19 @@ func (r *runner) Command() *cli.Command {
 // It configures the controller with flags and arguments, then executes the token retrieval.
 // Returns an error if configuration is invalid or token retrieval fails.
 func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cyclop
-	input := get.NewInput(flag.ConfigValue(c))
+	inputGet := &ghtkn.InputGet{
+		UseConfig: true,
+	}
+	if m := flag.MinExpirationValue(c); m != "" {
+		d, err := time.ParseDuration(m)
+		if err != nil {
+			return fmt.Errorf("parse the min expiration: %w", slogerr.With(err, "min_expiration", m))
+		}
+		inputGet.MinExpiration = d
+	}
+	inputGet.ConfigFilePath = flag.ConfigValue(c)
+
+	input := get.NewInput()
 	if r.isGitCredential {
 		input.IsGitCredential = true
 		if arg := c.Args().First(); arg != "get" {
@@ -90,30 +102,23 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		}
 		logger = log.New(r.version, lvl)
 	}
-	if input.ConfigFilePath == "" {
-		p, err := config.GetPath(input.Env)
+	if inputGet.ConfigFilePath == "" {
+		p, err := ghtkn.GetConfigPath()
 		if err != nil {
 			return fmt.Errorf("get the config path: %w", err)
 		}
-		input.ConfigFilePath = p
+		inputGet.ConfigFilePath = p
 	}
 	if !r.isGitCredential {
 		input.OutputFormat = flag.FormatValue(c)
-	}
-	if m := flag.MinExpirationValue(c); m != "" {
-		d, err := time.ParseDuration(m)
-		if err != nil {
-			return fmt.Errorf("parse the min expiration: %w", slogerr.With(err, "min_expiration", m))
-		}
-		input.MinExpiration = d
 	}
 	if err := input.Validate(); err != nil {
 		return err //nolint:wrapcheck
 	}
 	if !r.isGitCredential {
 		if arg := c.Args().First(); arg != "" {
-			input.Env.App = arg
+			inputGet.AppName = arg
 		}
 	}
-	return get.New(input).Run(ctx, logger) //nolint:wrapcheck
+	return get.New(input).Run(ctx, logger, inputGet) //nolint:wrapcheck
 }
