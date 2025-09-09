@@ -11,8 +11,6 @@ import (
 	"os"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 )
 
 // Controller manages the process of retrieving GitHub App access tokens.
@@ -29,7 +27,7 @@ func New(input *Input) *Controller {
 }
 
 type Client interface {
-	Get(ctx context.Context, logger *slog.Logger, input *ghtkn.InputGet) (*keyring.AccessToken, *config.App, error)
+	Get(ctx context.Context, logger *slog.Logger, input *ghtkn.InputGet) (*ghtkn.AccessToken, *ghtkn.AppConfig, error)
 }
 
 // Input contains all the dependencies and configuration needed by the Controller.

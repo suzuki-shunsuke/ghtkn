@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 )
 
 func TestController_output(t *testing.T) {
@@ -16,7 +16,7 @@ func TestController_output(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		token           *keyring.AccessToken
+		token           *ghtkn.AccessToken
 		outputFormat    string
 		isGitCredential bool
 		wantOutput      string
@@ -24,7 +24,7 @@ func TestController_output(t *testing.T) {
 	}{
 		{
 			name: "plain text output",
-			token: &keyring.AccessToken{
+			token: &ghtkn.AccessToken{
 				AccessToken:    "test-token-123",
 				ExpirationDate: time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC),
 			},
@@ -35,7 +35,7 @@ func TestController_output(t *testing.T) {
 		},
 		{
 			name: "JSON output",
-			token: &keyring.AccessToken{
+			token: &ghtkn.AccessToken{
 				AccessToken:    "test-token-json",
 				ExpirationDate: time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC),
 			},
@@ -46,7 +46,7 @@ func TestController_output(t *testing.T) {
 		},
 		{
 			name: "Git credential helper output",
-			token: &keyring.AccessToken{
+			token: &ghtkn.AccessToken{
 				AccessToken:    "test-token-git",
 				ExpirationDate: time.Time{},
 				Login:          "testuser",
@@ -118,7 +118,7 @@ func TestController_outputJSON(t *testing.T) {
 		},
 		{
 			name: "access token",
-			data: &keyring.AccessToken{
+			data: &ghtkn.AccessToken{
 				AccessToken:    "test-token",
 				ExpirationDate: time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC),
 			},

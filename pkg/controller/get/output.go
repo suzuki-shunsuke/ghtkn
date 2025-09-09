@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 )
 
 type JSONOutputToken struct {
@@ -22,7 +22,7 @@ type JSONOutputToken struct {
 //	password=<token>
 //
 // For standard mode, it outputs either the raw token string (default) or a JSON object based on OutputFormat.
-func (c *Controller) output(appName string, token *keyring.AccessToken) error {
+func (c *Controller) output(appName string, token *ghtkn.AccessToken) error {
 	if c.input.IsGitCredential {
 		fmt.Fprintf(c.input.Stdout, "username=%s\n", token.Login)
 		fmt.Fprintf(c.input.Stdout, "password=%s\n\n", token.AccessToken)

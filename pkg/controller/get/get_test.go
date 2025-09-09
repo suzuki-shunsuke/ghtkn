@@ -10,18 +10,16 @@ import (
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
 )
 
 type mockClient struct {
-	token *keyring.AccessToken
-	app   *config.App
+	token *ghtkn.AccessToken
+	app   *ghtkn.AppConfig
 	err   error
 }
 
-func (m *mockClient) Get(_ context.Context, _ *slog.Logger, _ *ghtkn.InputGet) (*keyring.AccessToken, *config.App, error) {
+func (m *mockClient) Get(_ context.Context, _ *slog.Logger, _ *ghtkn.InputGet) (*ghtkn.AccessToken, *ghtkn.AppConfig, error) {
 	return m.token, m.app, m.err
 }
 
@@ -42,11 +40,11 @@ func TestController_Run(t *testing.T) {
 					OutputFormat: "",
 					Stdout:       &bytes.Buffer{},
 					Client: &mockClient{
-						token: &keyring.AccessToken{
+						token: &ghtkn.AccessToken{
 							AccessToken:    "test-token-123",
 							ExpirationDate: time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC),
 						},
-						app: &config.App{
+						app: &ghtkn.AppConfig{
 							Name: "test",
 						},
 					},
@@ -75,11 +73,11 @@ func TestController_Run(t *testing.T) {
 					OutputFormat: "json",
 					Stdout:       &bytes.Buffer{},
 					Client: &mockClient{
-						token: &keyring.AccessToken{
+						token: &ghtkn.AccessToken{
 							AccessToken:    "test-token-123",
 							ExpirationDate: time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC),
 						},
-						app: &config.App{
+						app: &ghtkn.AppConfig{
 							Name: "test",
 						},
 					},

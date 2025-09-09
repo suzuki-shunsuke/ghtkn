@@ -9,11 +9,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
-	"runtime"
 
 	"github.com/spf13/afero"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/initcmd"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/log"
@@ -64,15 +62,14 @@ func (r *runner) action(_ context.Context, c *cli.Command) error {
 	if configFilePath == "" {
 		configFilePath = flag.ConfigValue(c)
 	}
-	env := config.NewEnv(os.Getenv, runtime.GOOS)
 	if configFilePath == "" {
-		p, err := config.GetPath(env)
+		p, err := ghtkn.GetConfigPath()
 		if err != nil {
 			return fmt.Errorf("get the config path: %w", err)
 		}
 		configFilePath = p
 	}
 	fs := afero.NewOsFs()
-	ctrl := initcmd.New(fs, env)
+	ctrl := initcmd.New(fs)
 	return ctrl.Init(logger, configFilePath) //nolint:wrapcheck
 }

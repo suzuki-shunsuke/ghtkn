@@ -9,12 +9,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
-	"runtime"
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/log"
@@ -87,7 +84,6 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		inputGet.MinExpiration = d
 	}
 	inputGet.ConfigFilePath = flag.ConfigValue(c)
-	env := config.NewEnv(os.Getenv, runtime.GOOS)
 
 	input := get.NewInput()
 	if r.isGitCredential {
@@ -105,7 +101,7 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		logger = log.New(r.version, lvl)
 	}
 	if inputGet.ConfigFilePath == "" {
-		p, err := config.GetPath(env)
+		p, err := ghtkn.GetConfigPath()
 		if err != nil {
 			return fmt.Errorf("get the config path: %w", err)
 		}
