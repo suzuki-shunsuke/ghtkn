@@ -19,18 +19,10 @@ func TestNew(t *testing.T) {
 func TestNewInput(t *testing.T) {
 	t.Parallel()
 
-	input := get.NewInput("/path/to/config", 0)
+	input := get.NewInput()
 	if input == nil {
 		t.Error("NewInput() returned nil")
 		return
-	}
-
-	if input.ConfigFilePath != "/path/to/config" {
-		t.Errorf("NewInput().ConfigFilePath = %v, want /path/to/config", input.ConfigFilePath)
-	}
-
-	if input.Env == nil {
-		t.Error("NewInput().Env is nil")
 	}
 
 	if input.Stdout == nil {

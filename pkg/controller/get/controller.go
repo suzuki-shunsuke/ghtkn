@@ -9,8 +9,6 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"runtime"
-	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
@@ -38,22 +36,18 @@ type Client interface {
 // It encapsulates file system access, configuration reading, token generation, and output handling.
 // The IsGitCredential flag determines whether to format output for Git's credential helper protocol.
 type Input struct {
-	ConfigFilePath  string      // Path to the configuration file
-	OutputFormat    string      // Output format ("json" or empty for plain text)
-	Env             *config.Env // Environment variable provider
-	Stdout          io.Writer   // Output writer
-	IsGitCredential bool        // Whether to output in Git credential helper format
+	OutputFormat    string    // Output format ("json" or empty for plain text)
+	Stdout          io.Writer // Output writer
+	IsGitCredential bool      // Whether to output in Git credential helper format
 	Client          Client
 }
 
 // NewInput creates a new Input instance with default production values.
 // It sets up all necessary dependencies including file system, HTTP client, and keyring access.
-func NewInput(configFilePath string, minExpiration time.Duration) *Input {
+func NewInput() *Input {
 	return &Input{
-		ConfigFilePath: configFilePath,
-		Env:            config.NewEnv(os.Getenv, runtime.GOOS),
-		Stdout:         os.Stdout,
-		Client:         ghtkn.New(),
+		Stdout: os.Stdout,
+		Client: ghtkn.New(),
 	}
 }
 

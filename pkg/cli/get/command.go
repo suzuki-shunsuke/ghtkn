@@ -9,6 +9,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"runtime"
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
@@ -76,16 +78,18 @@ func (r *runner) Command() *cli.Command {
 // It configures the controller with flags and arguments, then executes the token retrieval.
 // Returns an error if configuration is invalid or token retrieval fails.
 func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cyclop
-	var minExpiration time.Duration
+	inputGet := &ghtkn.InputGet{}
 	if m := flag.MinExpirationValue(c); m != "" {
 		d, err := time.ParseDuration(m)
 		if err != nil {
 			return fmt.Errorf("parse the min expiration: %w", slogerr.With(err, "min_expiration", m))
 		}
-		minExpiration = d
+		inputGet.MinExpiration = d
 	}
+	inputGet.ConfigFilePath = flag.ConfigValue(c)
+	env := config.NewEnv(os.Getenv, runtime.GOOS)
 
-	input := get.NewInput(flag.ConfigValue(c), minExpiration)
+	input := get.NewInput()
 	if r.isGitCredential {
 		input.IsGitCredential = true
 		if arg := c.Args().First(); arg != "get" {
@@ -100,12 +104,12 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		}
 		logger = log.New(r.version, lvl)
 	}
-	if input.ConfigFilePath == "" {
-		p, err := config.GetPath(input.Env)
+	if inputGet.ConfigFilePath == "" {
+		p, err := config.GetPath(env)
 		if err != nil {
 			return fmt.Errorf("get the config path: %w", err)
 		}
-		input.ConfigFilePath = p
+		inputGet.ConfigFilePath = p
 	}
 	if !r.isGitCredential {
 		input.OutputFormat = flag.FormatValue(c)
@@ -115,9 +119,8 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 	}
 	if !r.isGitCredential {
 		if arg := c.Args().First(); arg != "" {
-			input.Env.App = arg
+			inputGet.AppName = arg
 		}
 	}
-	inputGet := &ghtkn.InputGet{}
 	return get.New(input).Run(ctx, logger, inputGet) //nolint:wrapcheck
 }

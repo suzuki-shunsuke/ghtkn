@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
 )
 
@@ -26,10 +25,8 @@ func TestController_Run(t *testing.T) {
 			name: "successful token creation without persistence",
 			setupInput: func() *get.Input {
 				return &get.Input{
-					ConfigFilePath: "test.yaml",
-					OutputFormat:   "",
-					Env:            &config.Env{App: "test-app"},
-					Stdout:         &bytes.Buffer{},
+					OutputFormat: "",
+					Stdout:       &bytes.Buffer{},
 				}
 			},
 			wantErr:    false,
@@ -39,10 +36,8 @@ func TestController_Run(t *testing.T) {
 			name: "token creation error",
 			setupInput: func() *get.Input {
 				return &get.Input{
-					ConfigFilePath: "test.yaml",
-					OutputFormat:   "",
-					Env:            &config.Env{App: "test-app"},
-					Stdout:         &bytes.Buffer{},
+					OutputFormat: "",
+					Stdout:       &bytes.Buffer{},
 				}
 			},
 			wantErr: true,
@@ -51,10 +46,8 @@ func TestController_Run(t *testing.T) {
 			name: "JSON output format",
 			setupInput: func() *get.Input {
 				return &get.Input{
-					ConfigFilePath: "test.yaml",
-					OutputFormat:   "json",
-					Env:            &config.Env{App: "test-app"},
-					Stdout:         &bytes.Buffer{},
+					OutputFormat: "json",
+					Stdout:       &bytes.Buffer{},
 				}
 			},
 			wantErr: false,
