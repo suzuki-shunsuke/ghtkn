@@ -289,6 +289,11 @@ All environment variables are optional.
 - GHTKN_CONFIG: The configuration file path
 - XDG_CONFIG_HOME
 
+## Go SDK
+
+You can enable your CLI application to create GitHub User Access Tokens using [ghtkn Go SDK](pkg.go.dev/github.com/suzuki-shunsuke/ghtkn-go-sdk).
+ghtkn itself uses this.
+
 ## Comparison between GitHub App User Access Token and other access tokens
 
 ### GitHub CLI OAuth App access token
