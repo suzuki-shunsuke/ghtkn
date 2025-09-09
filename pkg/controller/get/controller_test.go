@@ -1,74 +1,16 @@
-//nolint:revive
 package get_test
 
 import (
-	"context"
-	"log/slog"
 	"testing"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/apptoken"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/keyring"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
 )
-
-type mockConfigReader struct {
-	cfg *config.Config
-	err error
-}
-
-func (m *mockConfigReader) Read(cfg *config.Config, _ string) error {
-	if m.err != nil {
-		return m.err
-	}
-	if m.cfg != nil {
-		*cfg = *m.cfg
-	}
-	return nil
-}
-
-type mockAppTokenClient struct {
-	token *apptoken.AccessToken
-	err   error
-}
-
-func (m *mockAppTokenClient) Create(_ context.Context, logger *slog.Logger, clientID string) (*apptoken.AccessToken, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	return m.token, nil
-}
-
-type mockKeyring struct {
-	tokens map[string]*keyring.AccessToken
-	getErr error
-	setErr error
-}
-
-func (m *mockKeyring) Get(key string) (*keyring.AccessToken, error) {
-	if m.getErr != nil {
-		return nil, m.getErr
-	}
-	return m.tokens[key], nil
-}
-
-func (m *mockKeyring) Set(key string, token *keyring.AccessToken) error {
-	if m.setErr != nil {
-		return m.setErr
-	}
-	if m.tokens == nil {
-		m.tokens = make(map[string]*keyring.AccessToken)
-	}
-	m.tokens[key] = token
-	return nil
-}
 
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	input := &ghtkn.Input{}
-	controller := ghtkn.New(input)
+	input := &get.Input{}
+	controller := get.New(input)
 	if controller == nil {
 		t.Error("New() returned nil")
 	}
@@ -77,7 +19,7 @@ func TestNew(t *testing.T) {
 func TestNewInput(t *testing.T) {
 	t.Parallel()
 
-	input := ghtkn.NewInput("/path/to/config")
+	input := get.NewInput("/path/to/config", 0)
 	if input == nil {
 		t.Error("NewInput() returned nil")
 		return
@@ -87,20 +29,8 @@ func TestNewInput(t *testing.T) {
 		t.Errorf("NewInput().ConfigFilePath = %v, want /path/to/config", input.ConfigFilePath)
 	}
 
-	if input.FS == nil {
-		t.Error("NewInput().FS is nil")
-	}
-
-	if input.ConfigReader == nil {
-		t.Error("NewInput().ConfigReader is nil")
-	}
-
 	if input.Env == nil {
 		t.Error("NewInput().Env is nil")
-	}
-
-	if input.TokenManager == nil {
-		t.Error("NewInput().TokenManager is nil")
 	}
 
 	if input.Stdout == nil {

@@ -14,9 +14,9 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/initcmd"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/log"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/urfave/cli/v3"
 )

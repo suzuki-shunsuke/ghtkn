@@ -11,10 +11,11 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/log"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/urfave/cli/v3"
 )
@@ -75,7 +76,16 @@ func (r *runner) Command() *cli.Command {
 // It configures the controller with flags and arguments, then executes the token retrieval.
 // Returns an error if configuration is invalid or token retrieval fails.
 func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cyclop
-	input := get.NewInput(flag.ConfigValue(c))
+	var minExpiration time.Duration
+	if m := flag.MinExpirationValue(c); m != "" {
+		d, err := time.ParseDuration(m)
+		if err != nil {
+			return fmt.Errorf("parse the min expiration: %w", slogerr.With(err, "min_expiration", m))
+		}
+		minExpiration = d
+	}
+
+	input := get.NewInput(flag.ConfigValue(c), minExpiration)
 	if r.isGitCredential {
 		input.IsGitCredential = true
 		if arg := c.Args().First(); arg != "get" {
@@ -100,13 +110,6 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 	if !r.isGitCredential {
 		input.OutputFormat = flag.FormatValue(c)
 	}
-	if m := flag.MinExpirationValue(c); m != "" {
-		d, err := time.ParseDuration(m)
-		if err != nil {
-			return fmt.Errorf("parse the min expiration: %w", slogerr.With(err, "min_expiration", m))
-		}
-		input.MinExpiration = d
-	}
 	if err := input.Validate(); err != nil {
 		return err //nolint:wrapcheck
 	}
@@ -115,5 +118,6 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 			input.Env.App = arg
 		}
 	}
-	return get.New(input).Run(ctx, logger) //nolint:wrapcheck
+	inputGet := &ghtkn.InputGet{}
+	return get.New(input).Run(ctx, logger, inputGet) //nolint:wrapcheck
 }

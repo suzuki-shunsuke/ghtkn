@@ -25,9 +25,8 @@ func TestController_output(t *testing.T) {
 		{
 			name: "plain text output",
 			token: &keyring.AccessToken{
-				App:            "test-app",
 				AccessToken:    "test-token-123",
-				ExpirationDate: "2024-12-31T23:59:59Z",
+				ExpirationDate: time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC),
 			},
 			outputFormat:    "",
 			isGitCredential: false,
@@ -37,9 +36,8 @@ func TestController_output(t *testing.T) {
 		{
 			name: "JSON output",
 			token: &keyring.AccessToken{
-				App:            "test-app",
 				AccessToken:    "test-token-json",
-				ExpirationDate: "2024-12-31T23:59:59Z",
+				ExpirationDate: time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC),
 			},
 			outputFormat:    "json",
 			isGitCredential: false,
@@ -49,9 +47,8 @@ func TestController_output(t *testing.T) {
 		{
 			name: "Git credential helper output",
 			token: &keyring.AccessToken{
-				App:            "test-app",
 				AccessToken:    "test-token-git",
-				ExpirationDate: "2024-12-31T23:59:59Z",
+				ExpirationDate: time.Time{},
 				Login:          "testuser",
 			},
 			outputFormat:    "",
@@ -73,7 +70,7 @@ func TestController_output(t *testing.T) {
 			}
 			controller := &Controller{input: input}
 
-			err := controller.output(tt.token)
+			err := controller.output("", tt.token)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("output() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -89,9 +86,6 @@ func TestController_output(t *testing.T) {
 					}
 					if result["access_token"] != tt.token.AccessToken {
 						t.Errorf("JSON output missing or incorrect access_token")
-					}
-					if result["app"] != tt.token.App {
-						t.Errorf("JSON output missing or incorrect app")
 					}
 					if result["expiration_date"] != tt.token.ExpirationDate {
 						t.Errorf("JSON output missing or incorrect expiration_date")
@@ -125,9 +119,8 @@ func TestController_outputJSON(t *testing.T) {
 		{
 			name: "access token",
 			data: &keyring.AccessToken{
-				App:            "test-app",
 				AccessToken:    "test-token",
-				ExpirationDate: keyring.FormatDate(time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC)),
+				ExpirationDate: time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC),
 			},
 			wantErr: false,
 		},

@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/log"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/log"
 	"github.com/suzuki-shunsuke/go-stdutil"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
@@ -20,19 +20,22 @@ var (
 )
 
 func main() {
-	logger := log.New(version, slog.LevelInfo)
-	if err := core(logger); err != nil {
-		slogerr.WithError(logger, err).Error("ghtkn failed")
-		os.Exit(1)
+	if code := core(); code != 0 {
+		os.Exit(code)
 	}
 }
 
-func core(logger *slog.Logger) error {
+func core() int {
+	logger := log.New(version, slog.LevelInfo)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return cli.Run(ctx, logger, &stdutil.LDFlags{ //nolint:wrapcheck
+	if err := cli.Run(ctx, logger, &stdutil.LDFlags{ //nolint:wrapcheck
 		Version: version,
 		Commit:  commit,
 		Date:    date,
-	}, os.Args...)
+	}, os.Args...); err != nil {
+		slogerr.WithError(logger, err).Error("ghtkn failed")
+		return 1
+	}
+	return 0
 }
