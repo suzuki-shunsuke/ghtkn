@@ -9,9 +9,9 @@ import (
 	"github.com/spf13/afero"
 )
 
-// defaultConfig provides a default configuration template for ghtkn.
+// DefaultConfig provides a default configuration template for ghtkn.
 // This template can be used to create an initial configuration file.
-const defaultConfig = `# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn-go-sdk/refs/heads/main/json-schema/ghtkn.json
+const DefaultConfig = `# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn-go-sdk/refs/heads/main/json-schema/ghtkn.json
 # ghtkn - https://github.com/suzuki-shunsuke/ghtkn
 users:
   - login: octocat # Your GitHub login
@@ -44,7 +44,7 @@ func (c *Controller) Init(logger *slog.Logger, configFilePath string) error {
 	if err := c.fs.MkdirAll(filepath.Dir(configFilePath), dirPermission); err != nil {
 		return fmt.Errorf("create config dir: %w", err)
 	}
-	if err := afero.WriteFile(c.fs, configFilePath, []byte(defaultConfig), filePermission); err != nil {
+	if err := afero.WriteFile(c.fs, configFilePath, []byte(DefaultConfig), filePermission); err != nil {
 		return fmt.Errorf("create a configuration file: %w", err)
 	}
 	logger.Info("The configuration file has been created", slog.String("path", configFilePath))

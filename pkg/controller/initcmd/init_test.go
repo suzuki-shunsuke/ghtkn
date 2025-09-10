@@ -138,15 +138,8 @@ func TestController_Init(t *testing.T) { //nolint:gocognit,cyclop,funlen
 					t.Fatalf("failed to read created file: %v", err)
 				}
 
-				// Should contain the default template
-				if !strings.Contains(string(content), "persist:") {
-					t.Error("created file does not contain expected 'persist:' field")
-				}
-				if !strings.Contains(string(content), "apps:") {
-					t.Error("created file does not contain expected 'apps:' field")
-				}
-				if !strings.Contains(string(content), "client_id:") {
-					t.Error("created file does not contain expected 'client_id:' field")
+				if string(content) != initcmd.DefaultConfig {
+					t.Errorf("file content = %s, want %s", string(content), initcmd.DefaultConfig)
 				}
 
 				// Check file permissions
