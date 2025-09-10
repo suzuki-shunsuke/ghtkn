@@ -24,11 +24,11 @@ ghtkn allows you to manage multiple GitHub Apps through configuration files and 
 > [!NOTE]
 > In this document, we call Windows Credential Manger, macOS KeyChain, and GNOME Keyring as secret manager.
 
-## :rocket: Getting Started
+## Requirements
 
-> [!WARNING]
-> As a prerequisite, a secret manager is required.
-> It will work without it, but in that case, you'll need to generate access tokens via device flow every time.
+A secret manager is required.
+
+## :rocket: Getting Started
 
 1. [Install ghtkn](INSTALL.md)
 2. Create a GitHub App
@@ -52,14 +52,19 @@ ghtkn init
 - macOS, Linux: `${XDG_CONFIG_HOME:-${HOME}/.config}/ghtkn/ghtkn.yaml`
 
 ```yaml:ghtkn.yaml
-persist: true
-apps:
-  - name: suzuki-shunsuke/none
-    client_id: xxx # Mandatory. GitHub App Client ID
+users:
+  - login: octocat # Your GitHub login
+    default: true
+    apps:
+      - name: octocat/write # The unique name to identify the app. You can use any name.
+        app_id: 1234567 # Your GitHub App ID
+        default: true
 ```
 
+Please look into your GitHub App ID from the app's setting page.
+
 > [!NOTE]  
-> The GitHub App Client ID is not a secret, so there's generally no problem writing it in plain text in local configuration files.
+> The GitHub App ID is not a secret, so there's generally no problem writing it in plain text in local configuration files.
 
 4. Run `ghtkn get` and create a user access token
 
@@ -67,7 +72,28 @@ apps:
 ghtkn get
 ```
 
+ghtkn asks you to input the client id only once per app:
+
+```
+Enter GitHub App Client ID (id: 1234567, name: octocat/write): 
+```
+
 https://github.com/login/device will open in your browser, so enter the code displayed in the terminal and approve it.
+
+```
+Enter GitHub App Client ID (id: 1234567, name: octocat/write): 
+The application uses the device flow to generate your GitHub User Access Token.
+Copy your one-time code: AAAA-BBBB
+This code is valid until 2025-09-11T06:17:17+09:00
+Press Enter to open https://github.com/login/device in your browser...
+```
+
+![image](https://github.com/user-attachments/assets/87d8faf7-4c0b-4a55-a372-5d5d71855706)
+
+--
+
+![image](https://github.com/user-attachments/assets/c7f4e866-a07f-4cb2-99ba-23c6c2c13987)
+
 Then a user access token starting with `ghu_` is outputted.
 You can close the opened tab.
 
@@ -194,7 +220,7 @@ sudo vi /Library/Developer/CommandLineTools/usr/share/git-core/gitconfig
 # 	helper = osxkeychain
 ```
 
-## Use Multiple Apps
+## Using Multiple Apps
 
 You can configure multiple GitHub Apps in the `apps` section of the configuration file and create and use different Apps for each Organization or User.
 By default, the one with `default: true` is used.
@@ -239,6 +265,13 @@ apps:
 ```
 
 With this setup, the access token is transparently switched depending on the working directory. What's written in the `.envrc` is the `GHTKN_APP`, not the access token itself, which is safe because it's not a secret.
+
+## Using Multiple GitHub Accounts
+
+You can configure multiple GitHub Accounts in the `users` section of the configuration file.
+By default, the one with `default: true` is used.
+If there's no `default: true`, the first user in `users` is used.
+You can also specify it with the environment variable `GHTKN_USER`.
 
 ## Access Token Regeneration
 
@@ -285,9 +318,20 @@ All environment variables are optional.
 - GHTKN_OUTPUT_FORMAT: The output format of `ghtkn get` command
   - `json`: JSON Format
 - GHTKN_APP: The app identifier to get an access token
+- GHTKN_USER: The GitHub User login
 - GHTKN_MIN_EXPIRATION: The minimum expiration duration of access token. If `ghtkn get` gets the access token from keying but the expiration duration is shorter than the minimum expiratino duration, `ghtkn get` creates a new access token via Device Flow
 - GHTKN_CONFIG: The configuration file path
 - XDG_CONFIG_HOME
+
+## Configuration file path
+
+The priority:
+
+1. `ghtkn get`'s `-config (-c)` option
+1. `$GHTKN_CONFIG`
+1. default configuration file path
+  1. Windows: `%APPDATA%\ghtkn\ghtkn.yaml`
+  1. macOS, Linux: `${XDG_CONFIG_HOME:-${HOME}/.config}/ghtkn/ghtkn.yaml`
 
 ## Go SDK
 
