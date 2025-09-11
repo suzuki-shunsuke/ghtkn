@@ -9,6 +9,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/app"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/get"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/initcmd"
@@ -40,6 +41,7 @@ func Run(ctx context.Context, logger *slog.Logger, ldFlags *stdutil.LDFlags, arg
 			initcmd.New(logger, ldFlags.Version),
 			get.New(logger, ldFlags.Version, true),
 			get.New(logger, ldFlags.Version, false),
+			app.New(logger, ldFlags.Version),
 		},
 	}).Run(ctx, args)
 }
