@@ -17,7 +17,6 @@ persist: true
 apps:
   - name: suzuki-shunsuke/write # The name to identify the app
     client_id: xxx # Your GitHub App Client ID
-    default: true
 `
 
 // File and directory permissions for created configuration files

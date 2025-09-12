@@ -197,8 +197,7 @@ sudo vi /Library/Developer/CommandLineTools/usr/share/git-core/gitconfig
 ## Using Multiple Apps
 
 You can configure multiple GitHub Apps in the `apps` section of the configuration file and create and use different Apps for each Organization or User.
-By default, the one with `default: true` is used.
-If there's no `default: true`, the first App in `apps` is used.
+By default, the first App in `apps` is used.
 
 You can specify the App by command line argument:
 
@@ -235,7 +234,6 @@ So, it's quite useful.
 apps:
   - name: suzuki-shunsuke/none
     client_id: xxx
-    default: true
 ```
 
 With this setup, the access token is transparently switched depending on the working directory. What's written in the `.envrc` is the `GHTKN_APP`, not the access token itself, which is safe because it's not a secret.
