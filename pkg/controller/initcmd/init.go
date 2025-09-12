@@ -11,12 +11,12 @@ import (
 
 // defaultConfig provides a default configuration template for ghtkn.
 // This template can be used to create an initial configuration file.
-const defaultConfig = `# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn/refs/heads/main/json-schema/ghtkn.json
+const defaultConfig = `# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn-go-sdk/refs/heads/main/json-schema/ghtkn.json
 # ghtkn - https://github.com/suzuki-shunsuke/ghtkn
 persist: true
 apps:
-  - name: suzuki-shunsuke/write (The name to identify the app)
-    client_id: <Your GitHub App Client ID>
+  - name: suzuki-shunsuke/write # The name to identify the app
+    client_id: xxx # Your GitHub App Client ID
     default: true
 `
 
