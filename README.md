@@ -24,11 +24,11 @@ ghtkn allows you to manage multiple GitHub Apps through configuration files and 
 > [!NOTE]
 > In this document, we call Windows Credential Manger, macOS KeyChain, and GNOME Keyring as secret manager.
 
-## :rocket: Getting Started
+## Requirements
 
-> [!WARNING]
-> As a prerequisite, a secret manager is required.
-> It will work without it, but in that case, you'll need to generate access tokens via device flow every time.
+A secret manager is required.
+
+## :rocket: Getting Started
 
 1. [Install ghtkn](INSTALL.md)
 2. Create a GitHub App
@@ -194,7 +194,7 @@ sudo vi /Library/Developer/CommandLineTools/usr/share/git-core/gitconfig
 # 	helper = osxkeychain
 ```
 
-## Use Multiple Apps
+## Using Multiple Apps
 
 You can configure multiple GitHub Apps in the `apps` section of the configuration file and create and use different Apps for each Organization or User.
 By default, the one with `default: true` is used.
