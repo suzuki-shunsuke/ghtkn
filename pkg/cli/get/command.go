@@ -8,7 +8,9 @@ package get
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
+	"os"
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
@@ -28,6 +30,7 @@ func New(logger *slog.Logger, version string, isGitCredential bool) *cli.Command
 		logger:          logger,
 		version:         version,
 		isGitCredential: isGitCredential,
+		stdin:           os.Stdin,
 	}
 	return r.Command()
 }
@@ -37,6 +40,7 @@ type runner struct {
 	logger          *slog.Logger
 	version         string
 	isGitCredential bool
+	stdin           io.Reader
 }
 
 // Command returns the CLI command definition for either the get or git-credential subcommand.
@@ -91,6 +95,14 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		if arg := c.Args().First(); arg != "get" {
 			return nil
 		}
+		if _, err := r.readStdinForGitCredentialHelper(ctx); err != nil {
+			return fmt.Errorf("read stdin: %w", err)
+		}
+	} else {
+		input.OutputFormat = flag.FormatValue(c)
+		if arg := c.Args().First(); arg != "" {
+			inputGet.AppName = arg
+		}
 	}
 	logger := r.logger
 	if lvlS := flag.LogLevelValue(c); lvlS != "" {
@@ -107,16 +119,8 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		}
 		inputGet.ConfigFilePath = p
 	}
-	if !r.isGitCredential {
-		input.OutputFormat = flag.FormatValue(c)
-	}
 	if err := input.Validate(); err != nil {
 		return err //nolint:wrapcheck
-	}
-	if !r.isGitCredential {
-		if arg := c.Args().First(); arg != "" {
-			inputGet.AppName = arg
-		}
 	}
 	return get.New(input).Run(ctx, logger, inputGet) //nolint:wrapcheck
 }
