@@ -153,6 +153,35 @@ You can use ghtkn as a [Git Credential Helper](https://git-scm.com/book/en/v2/Gi
 	helper = !ghtkn git-credential
 ```
 
+### Switching GitHub Apps by repository owner
+
+If you want to switch GitHub Apps by repository owner,
+
+1. Set `.apps[].git_owner` in a configuration file
+1. Configure Git `git config credential.useHttpPath true`
+
+```yaml
+apps:
+  - name: suzuki-shunsuke/write
+    client_id: xxx
+    git_owner: suzuki-shunsuke # Using this app if the repository owner is suzuki-shunsuke
+```
+
+> [!NOTE]
+> `git_owner` must be unique.
+> Please set `git_owner` to only one app per repository owner (organization and user).
+> For instance, if you use a read-only app and a write app for a repository owner and you want to push commits, you should set `git_owner` to the write app.
+>
+> ```yaml
+> apps:
+>   - name: suzuki-shunsuke/write
+>     client_id: xxx
+>     git_owner: suzuki-shunsuke # Using this app if the repository owner is suzuki-shunsuke
+>   - name: suzuki-shunsuke/read-only
+>     client_id: xxx
+>     # git_owner: suzuki-shunsuke # Don't set `git_owner` to read-only app to push commits
+> ```
+
 ### :warning: Troubleshooting of Git Credential Helper on macOS
 
 If Git Credential Helper doesn't work on macOS, please check if osxkeychain is used.

@@ -95,9 +95,11 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		if arg := c.Args().First(); arg != "get" {
 			return nil
 		}
-		if _, err := r.readStdinForGitCredentialHelper(ctx); err != nil {
+		result, err := r.readStdinForGitCredentialHelper(ctx)
+		if err != nil {
 			return fmt.Errorf("read stdin: %w", err)
 		}
+		inputGet.AppOwner = result.Owner
 	} else {
 		input.OutputFormat = flag.FormatValue(c)
 		if arg := c.Args().First(); arg != "" {

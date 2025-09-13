@@ -12,6 +12,7 @@ type scanResult struct {
 	Username string
 	Path     string
 	Password string
+	Owner    string
 	Err      error
 }
 
@@ -38,7 +39,13 @@ func (r *runner) readStdinForGitCredentialHelper(ctx context.Context) (*scanResu
 			case "username":
 				result.Username = value
 			case "path":
+				// path is used to switch GitHub Apps by repository
+				// But path may not be passed.
+				// To guarantee the path is passed, you can configure Git like below:
+				//
+				//   $ git config credential.useHttpPath true
 				result.Path = value
+				result.Owner = strings.Split(value, "/")[0]
 			case "password":
 				result.Password = value
 			default:
