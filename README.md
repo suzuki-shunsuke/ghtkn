@@ -1,4 +1,4 @@
-# ghtkn
+# ghtkn (GH-Token)
 
 [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn/main/LICENSE) | [Install](INSTALL.md) | [Usage](USAGE.md)
 
@@ -19,7 +19,7 @@ ghtkn generates **8-hour User Access Tokens** from GitHub Apps using Device Flow
 - **User-attributed actions** - Operations are performed as you, not as an app
 - **Automatic token management** - Integrates with OS keychains for secure storage and reuse
 
-ghtkn allows you to manage multiple GitHub Apps through configuration files and securely store tokens using Windows Credential Manager, macOS Keychain, or GNOME Keyring.
+ghtkn (pronounced `GH-Token`) allows you to manage multiple GitHub Apps through configuration files and securely store tokens using Windows Credential Manager, macOS Keychain, or GNOME Keyring.
 
 > [!NOTE]
 > In this document, we call Windows Credential Manger, macOS KeyChain, and GNOME Keyring as secret manager.
