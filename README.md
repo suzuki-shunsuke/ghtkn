@@ -148,6 +148,10 @@ ghtkn >= v0.1.2
 
 You can use ghtkn as a [Git Credential Helper](https://git-scm.com/book/en/v2/Git-Tools-Credential-Storage):
 
+```sh
+git config --global credential.helper '!ghtkn git-credential'
+```
+
 ```ini
 [credential]
 	helper = !ghtkn git-credential
@@ -161,7 +165,7 @@ If you want to switch GitHub Apps by repository owner,
 1. Configure Git `git config credential.useHttpPath true`
 
 ```sh
-git config credential.useHttpPath true
+git config --global credential.useHttpPath true
 ```
 
 ```yaml
@@ -324,6 +328,20 @@ All environment variables are optional.
 
 You can enable your CLI application to create GitHub User Access Tokens using [ghtkn Go SDK](pkg.go.dev/github.com/suzuki-shunsuke/ghtkn-go-sdk).
 ghtkn itself uses this.
+
+## How does ghtkn work?
+
+ghtkn gets and outputs an access token in the following way:
+
+1. Read command line options and environment variables
+2. Read a configuration file. It has pairs of app name and client id
+3. [Determine the GitHub App](#using-multiple-apps)
+4. Get the client id from the configuration file
+5. Get the access token by client id from the keyring
+6. If the access token isn't found in the keyring or the access token expires, [creating a new access token through Device Flow. A user need to input the device code and approve the request](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app#using-the-device-flow-to-generate-a-user-access-token)
+7. Get the authenticated user login by GitHub API for Git Credential Helper
+8. Store the access token, expiration date, and authenticated user login in the keyring
+9. Output the access token
 
 ## Comparison between GitHub App User Access Token and other access tokens
 
