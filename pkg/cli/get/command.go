@@ -8,7 +8,9 @@ package get
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
+	"os"
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
@@ -28,6 +30,7 @@ func New(logger *slog.Logger, version string, isGitCredential bool) *cli.Command
 		logger:          logger,
 		version:         version,
 		isGitCredential: isGitCredential,
+		stdin:           os.Stdin,
 	}
 	return r.Command()
 }
@@ -37,6 +40,7 @@ type runner struct {
 	logger          *slog.Logger
 	version         string
 	isGitCredential bool
+	stdin           io.Reader
 }
 
 // Command returns the CLI command definition for either the get or git-credential subcommand.
@@ -75,9 +79,7 @@ func (r *runner) Command() *cli.Command {
 // It configures the controller with flags and arguments, then executes the token retrieval.
 // Returns an error if configuration is invalid or token retrieval fails.
 func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cyclop
-	inputGet := &ghtkn.InputGet{
-		UseConfig: true,
-	}
+	inputGet := &ghtkn.InputGet{}
 	if m := flag.MinExpirationValue(c); m != "" {
 		d, err := time.ParseDuration(m)
 		if err != nil {
@@ -92,6 +94,16 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		input.IsGitCredential = true
 		if arg := c.Args().First(); arg != "get" {
 			return nil
+		}
+		result, err := r.readStdinForGitCredentialHelper(ctx)
+		if err != nil {
+			return fmt.Errorf("read stdin: %w", err)
+		}
+		inputGet.AppOwner = result.Owner
+	} else {
+		input.OutputFormat = flag.FormatValue(c)
+		if arg := c.Args().First(); arg != "" {
+			inputGet.AppName = arg
 		}
 	}
 	logger := r.logger
@@ -109,16 +121,8 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		}
 		inputGet.ConfigFilePath = p
 	}
-	if !r.isGitCredential {
-		input.OutputFormat = flag.FormatValue(c)
-	}
 	if err := input.Validate(); err != nil {
 		return err //nolint:wrapcheck
-	}
-	if !r.isGitCredential {
-		if arg := c.Args().First(); arg != "" {
-			inputGet.AppName = arg
-		}
 	}
 	return get.New(input).Run(ctx, logger, inputGet) //nolint:wrapcheck
 }

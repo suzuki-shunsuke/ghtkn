@@ -24,11 +24,11 @@ ghtkn allows you to manage multiple GitHub Apps through configuration files and 
 > [!NOTE]
 > In this document, we call Windows Credential Manger, macOS KeyChain, and GNOME Keyring as secret manager.
 
-## :rocket: Getting Started
+## Requirements
 
-> [!WARNING]
-> As a prerequisite, a secret manager is required.
-> It will work without it, but in that case, you'll need to generate access tokens via device flow every time.
+A secret manager is required.
+
+## :rocket: Getting Started
 
 1. [Install ghtkn](INSTALL.md)
 2. Create a GitHub App
@@ -153,6 +153,39 @@ You can use ghtkn as a [Git Credential Helper](https://git-scm.com/book/en/v2/Gi
 	helper = !ghtkn git-credential
 ```
 
+### Switching GitHub Apps by repository owner
+
+If you want to switch GitHub Apps by repository owner,
+
+1. Set `.apps[].git_owner` in a configuration file
+1. Configure Git `git config credential.useHttpPath true`
+
+```sh
+git config credential.useHttpPath true
+```
+
+```yaml
+apps:
+  - name: suzuki-shunsuke/write
+    client_id: xxx
+    git_owner: suzuki-shunsuke # Using this app if the repository owner is suzuki-shunsuke
+```
+
+> [!WARNING]
+> `git_owner` must be unique.
+> Please set `git_owner` to only one app per repository owner (organization and user).
+> For instance, if you use a read-only app and a write app for a repository owner and you want to push commits, you should set `git_owner` to the write app.
+>
+> ```yaml
+> apps:
+>   - name: suzuki-shunsuke/write
+>     client_id: xxx
+>     git_owner: suzuki-shunsuke # Using this app if the repository owner is suzuki-shunsuke
+>   - name: suzuki-shunsuke/read-only
+>     client_id: xxx
+>     # git_owner: suzuki-shunsuke # Don't set `git_owner` to read-only app to push commits
+> ```
+
 ### :warning: Troubleshooting of Git Credential Helper on macOS
 
 If Git Credential Helper doesn't work on macOS, please check if osxkeychain is used.
@@ -194,11 +227,10 @@ sudo vi /Library/Developer/CommandLineTools/usr/share/git-core/gitconfig
 # 	helper = osxkeychain
 ```
 
-## Use Multiple Apps
+## Using Multiple Apps
 
 You can configure multiple GitHub Apps in the `apps` section of the configuration file and create and use different Apps for each Organization or User.
-By default, the one with `default: true` is used.
-If there's no `default: true`, the first App in `apps` is used.
+By default, the first App in `apps` is used.
 
 You can specify the App by command line argument:
 
@@ -235,7 +267,6 @@ So, it's quite useful.
 apps:
   - name: suzuki-shunsuke/none
     client_id: xxx
-    default: true
 ```
 
 With this setup, the access token is transparently switched depending on the working directory. What's written in the `.envrc` is the `GHTKN_APP`, not the access token itself, which is safe because it's not a secret.
