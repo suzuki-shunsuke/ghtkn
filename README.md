@@ -403,13 +403,16 @@ The rate limit for authenticated users is 5,000 per hour, so it should be fine f
 
 ### Limitation
 
-ghtkn doesn't support some operations that require Client Secrets as the risk of Client Secret leakage is high:
+First, ghtkn doesn't support some operations that require Client Secrets as the risk of Client Secret leakage is high:
 
 - [Refresh Token via GitHub API](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/refreshing-user-access-tokens#refreshing-a-user-access-token-with-a-refresh-token)
 - [Revoke Access Tokens via GitHub API](https://docs.github.com/en/rest/apps/oauth-applications?apiVersion=2022-11-28#delete-an-app-token)
 
 Instead of refreshing a token, ghtkn regenerates the token through Device Flow.
 While you can't revoke a token directly with `ghtkn`, if you absolutely need to, you can either go to the GitHub App settings page and select **"Revoke all user tokens"** or temporarily generate a client secret and [use the API to revoke the token](https://docs.github.com/en/rest/apps/oauth-applications?apiVersion=2022-11-28#delete-an-app-token).
+
+Second, GitHub App User Access Tokens can't write repositories where the GitHub App isn't installed. For instance, you can't create pull requests by `gh pr create` command to repositories where your GitHub App isn't installed.
+In case of `gh pr create`, `--web` option of `gh pr create` is useful.
 
 ## LICENSE
 
