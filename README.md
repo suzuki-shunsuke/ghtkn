@@ -160,6 +160,10 @@ If you want to switch GitHub Apps by repository owner,
 1. Set `.apps[].git_owner` in a configuration file
 1. Configure Git `git config credential.useHttpPath true`
 
+```sh
+git config credential.useHttpPath true
+```
+
 ```yaml
 apps:
   - name: suzuki-shunsuke/write
@@ -167,7 +171,7 @@ apps:
     git_owner: suzuki-shunsuke # Using this app if the repository owner is suzuki-shunsuke
 ```
 
-> [!NOTE]
+> [!WARNING]
 > `git_owner` must be unique.
 > Please set `git_owner` to only one app per repository owner (organization and user).
 > For instance, if you use a read-only app and a write app for a repository owner and you want to push commits, you should set `git_owner` to the write app.
