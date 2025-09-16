@@ -123,8 +123,12 @@ e.g. ~/bin/gh:
 
 set -eu
 
-GH_TOKEN="$(ghtkn get)" 
-export GH_TOKEN
+# If GH_TOKEN or GITHUB_TOKEN is set, use it.
+if [ -z "${GH_TOKEN:-}" ] && [ -z "${GITHUB_TOKEN:-}" ]; then
+  GH_TOKEN="$(ghtkn get)" 
+  export GH_TOKEN
+fi
+
 exec /opt/homebrew/bin/gh "$@" # Specify the absolute path to avoid infinite loop
 ```
 
