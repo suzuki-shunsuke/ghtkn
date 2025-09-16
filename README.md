@@ -343,6 +343,38 @@ ghtkn gets and outputs an access token in the following way:
 8. Store the access token, expiration date, and authenticated user login in the keyring
 9. Output the access token
 
+## How To Revoke Access Tokens
+
+If an access token is leaked, it must be immediately invalidated.
+However, revoking a User Access Token comes with several issues: it may require a Client Secret, and in some cases it does not behave as described in the official documentation.
+We hope GitHub will address these issues in the future.
+
+Currently, the recommended approach is to revoke the target app from the **Authorized GitHub Apps** section in the user’s settings page:
+
+https://github.com/settings/apps/authorizations
+
+Revoking the app will invalidate all User Access Tokens for the user.
+However, if the user reauthorizes the app, previously issued access tokens will become valid again as long as they have not yet expired.
+This means the app cannot be re-enabled until the leaked access token expires (up to 8 hours).
+During that time, it may be necessary to temporarily use a fine-grained access token instead.
+Since an access token leak is an emergency, such measures are unavoidable.
+
+### The `Revoke all user tokens` button in GitHub App settings does not revoke existing access tokens
+
+In the GitHub App settings page, there is a button `Revoke all user tokens`.
+However, it has been confirmed that even after pressing this button, access tokens remain usable.
+Even if this feature worked as expected, note that it would revoke **all** access tokens, not just the leaked one.
+
+### Revocation via GitHub API does not work even with a Client Secret
+
+There is a GitHub API for revoking a GitHub App’s User Access Token:
+[Revoke Access Tokens via GitHub API](https://docs.github.com/en/rest/apps/oauth-applications?apiVersion=2022-11-28#delete-an-app-token)
+However, it has been confirmed that even when executing this API, the user access token is not actually revoked.
+There are other APIs for revoking access tokens, but they don't work for GitHub App User Access Tokens:
+
+- [Revoke an installation access token](https://docs.github.com/en/rest/apps/installations?apiVersion=2022-11-28#revoke-an-installation-access-token): for GitHub App installation access tokens
+- [Revoke a list of credentials](https://docs.github.com/en/rest/credentials/revoke?apiVersion=2022-11-28): for classic PATs and fine-grained PATs
+
 ## Comparison between GitHub App User Access Token and other access tokens
 
 ### GitHub CLI OAuth App access token
@@ -403,15 +435,7 @@ The rate limit for authenticated users is 5,000 per hour, so it should be fine f
 
 ### Limitation
 
-First, ghtkn doesn't support some operations that require Client Secrets as the risk of Client Secret leakage is high:
-
-- [Refresh Token via GitHub API](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/refreshing-user-access-tokens#refreshing-a-user-access-token-with-a-refresh-token)
-- [Revoke Access Tokens via GitHub API](https://docs.github.com/en/rest/apps/oauth-applications?apiVersion=2022-11-28#delete-an-app-token)
-
-Instead of refreshing a token, ghtkn regenerates the token through Device Flow.
-While you can't revoke a token directly with `ghtkn`, if you absolutely need to, you can either go to the GitHub App settings page and select **"Revoke all user tokens"** or temporarily generate a client secret and [use the API to revoke the token](https://docs.github.com/en/rest/apps/oauth-applications?apiVersion=2022-11-28#delete-an-app-token).
-
-Second, GitHub App User Access Tokens can't write repositories where the GitHub App isn't installed. For instance, you can't create pull requests by `gh pr create` command to repositories where your GitHub App isn't installed.
+GitHub App User Access Tokens can't write repositories where the GitHub App isn't installed. For instance, you can't create pull requests by `gh pr create` command to repositories where your GitHub App isn't installed.
 In case of `gh pr create`, `--web` option of `gh pr create` is useful.
 
 ## LICENSE
