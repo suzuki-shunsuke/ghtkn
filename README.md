@@ -349,7 +349,9 @@ If an access token is leaked, it must be immediately invalidated.
 However, revoking a User Access Token comes with several issues: it may require a Client Secret, and in some cases it does not behave as described in the official documentation.
 We hope GitHub will address these issues in the future.
 
-Currently, the recommended approach is to revoke the target app from the **Authorized GitHub Apps** section in the user’s settings page:
+If it's okay to revoke all user tokens, you can revoke them by `Revoke all user tokens` button in the GitHub App setting page.
+
+If you want to revoke only specific access token, we recommend to revoke the target app from the **Authorized GitHub Apps** section in the user’s settings page:
 
 https://github.com/settings/apps/authorizations
 
@@ -357,12 +359,6 @@ Revoking the app will invalidate all User Access Tokens for the user.
 However, if the user reauthorizes the app, previously issued access tokens will become valid again as long as they have not yet expired.
 This means the app cannot be re-enabled until the leaked access token expires (up to 8 hours).
 During that time, it may be necessary to temporarily use another GitHub App instead.
-
-### The `Revoke all user tokens` button in GitHub App settings does not revoke existing access tokens
-
-In the GitHub App settings page, there is a button `Revoke all user tokens`.
-However, it has been confirmed that even after pressing this button, access tokens remain usable.
-Even if this feature worked as expected, note that it would revoke **all** access tokens, not just the leaked one.
 
 ### Revocation via GitHub API does not work even with a Client Secret
 
