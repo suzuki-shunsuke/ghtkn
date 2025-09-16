@@ -346,11 +346,8 @@ ghtkn gets and outputs an access token in the following way:
 ## How To Revoke Access Tokens
 
 If an access token is leaked, it must be immediately invalidated.
-However, revoking a User Access Token comes with several issues: it may require a Client Secret, and in some cases it does not behave as described in the official documentation.
-We hope GitHub will address these issues in the future.
-
-If it's okay to revoke all user tokens, you can revoke them by `Revoke all user tokens` button in the GitHub App setting page.
-
+You can revoke access tokens by `Revoke all user tokens` button in the GitHub App setting page.
+But note that this revokes all user tokens.
 If you want to revoke only specific access token, we recommend to revoke the target app from the **Authorized GitHub Apps** section in the user’s settings page:
 
 https://github.com/settings/apps/authorizations
