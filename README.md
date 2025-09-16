@@ -123,8 +123,12 @@ e.g. ~/bin/gh:
 
 set -eu
 
-GH_TOKEN="$(ghtkn get)" 
-export GH_TOKEN
+# If GH_TOKEN or GITHUB_TOKEN is set, use it.
+if [ -z "${GH_TOKEN:-}" ] && [ -z "${GITHUB_TOKEN:-}" ]; then
+  GH_TOKEN="$(ghtkn get)" 
+  export GH_TOKEN
+fi
+
 exec /opt/homebrew/bin/gh "$@" # Specify the absolute path to avoid infinite loop
 ```
 
@@ -346,10 +350,17 @@ ghtkn gets and outputs an access token in the following way:
 ## How To Revoke Access Tokens
 
 If an access token is leaked, it must be immediately invalidated.
-However, revoking a User Access Token comes with several issues: it may require a Client Secret, and in some cases it does not behave as described in the official documentation.
-We hope GitHub will address these issues in the future.
+[You can confirm if the leaked access token expires or not by GitHub API.](https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-the-authenticated-user)
 
-Currently, the recommended approach is to revoke the target app from the **Authorized GitHub Apps** section in the user’s settings page:
+```sh
+env GH_TOKEN=$LEAKED_GITHUB_TOKEN gh api \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  /user
+```
+
+You can revoke access tokens by `Revoke all user tokens` button in the GitHub App setting page.
+If you want to revoke only specific access token, we recommend to revoke the target app from the **Authorized GitHub Apps** section in the user’s settings page:
 
 https://github.com/settings/apps/authorizations
 
@@ -357,12 +368,6 @@ Revoking the app will invalidate all User Access Tokens for the user.
 However, if the user reauthorizes the app, previously issued access tokens will become valid again as long as they have not yet expired.
 This means the app cannot be re-enabled until the leaked access token expires (up to 8 hours).
 During that time, it may be necessary to temporarily use another GitHub App instead.
-
-### The `Revoke all user tokens` button in GitHub App settings does not revoke existing access tokens
-
-In the GitHub App settings page, there is a button `Revoke all user tokens`.
-However, it has been confirmed that even after pressing this button, access tokens remain usable.
-Even if this feature worked as expected, note that it would revoke **all** access tokens, not just the leaked one.
 
 ### Revocation via GitHub API does not work even with a Client Secret
 
