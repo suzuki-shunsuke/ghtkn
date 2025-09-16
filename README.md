@@ -370,6 +370,62 @@ However, if the user reauthorizes the app, previously issued access tokens will 
 This means the app cannot be re-enabled until the leaked access token expires (up to 8 hours).
 During that time, it may be necessary to temporarily use another GitHub App instead.
 
+### Revoking a user access token by GitHub Actions
+
+If you create a shared GitHub App and share it within the company, it's useful to allow users to revoke their access tokens themselves by GitHub Actions when their access tokens are leaked accidentally.
+It's so important to revoke leaked access tokens immediately, so it's undesirable that only administrators can revoke them.
+Revoking a user access token by GitHub API requires a client secret, but you should not share it widely.
+Instead, you can manage it by GitHub Environment Secret or Secrets Manager such as AWS SecretsManager securely, allowing people to revoke their access tokens via `workflow_dispatch` workflow.
+
+> [!WARNING]
+> Generally, passing secrets via inputs of `workflow_dispatch` isn't good, but in this case it can't be helped and the passed access token is revoked so there is no problem.
+
+<details>
+<summary>GitHub Actions Workflow</summary>
+
+```yaml
+---
+name: Revoke a User Access Token
+on:
+  workflow_dispatch:
+    inputs:
+      access_token:
+        description: 'The access token to revoke'
+        required: true
+        type: string
+jobs:
+  revoke:
+    timeout-minutes: 10
+    runs-on: ubuntu-24.04
+    permissions: {}
+    steps:
+      - name: Check if the access token is available
+        # This step is optional.
+        continue-on-error: true # Continue even if the access token is unavailable
+        env:
+          GH_TOKEN: ${{inputs.access_token}} # GitHub Actions automatically masks access tokens
+        run: |
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /user
+      - name: Revoke the access token
+        env:
+          GH_TOKEN: ${{inputs.access_token}} # GitHub Actions automatically masks access tokens
+          CLIENT_ID: ${{secrets.CLIENT_ID}}
+          CLIENT_SECRET: ${{secrets.CLIENT_SECRET}}
+        run: |
+          curl -L \
+            -X DELETE \
+            -H "Accept: application/vnd.github+json" \
+            -u "${CLIENT_ID}:${CLIENT_SECRET}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/applications/${CLIENT_ID}/token" \
+            -d '{"access_token":"'"${GH_TOKEN}"'"}'
+```
+
+</details>
+
 ## Comparison between GitHub App User Access Token and other access tokens
 
 ### GitHub CLI OAuth App access token
