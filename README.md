@@ -377,6 +377,9 @@ It's so important to revoke leaked access tokens immediately, so it's undesirabl
 Revoking a user access token by GitHub API requires a client secret, but you should not share it widely.
 Instead, you can manage it by GitHub Environment Secret or Secrets Manager such as AWS SecretsManager securely, allowing people to revoke their access tokens via `workflow_dispatch` workflow.
 
+> [!WARNING]
+> Generally, passing secrets via inputs of `workflow_dispatch` isn't good, but in this case it can't be helped and the passed access token is revoked so there is no problem.
+
 <details>
 <summary>GitHub Actions Workflow</summary>
 
