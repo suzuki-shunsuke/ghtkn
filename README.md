@@ -356,8 +356,7 @@ https://github.com/settings/apps/authorizations
 Revoking the app will invalidate all User Access Tokens for the user.
 However, if the user reauthorizes the app, previously issued access tokens will become valid again as long as they have not yet expired.
 This means the app cannot be re-enabled until the leaked access token expires (up to 8 hours).
-During that time, it may be necessary to temporarily use a fine-grained access token instead.
-Since an access token leak is an emergency, such measures are unavoidable.
+During that time, it may be necessary to temporarily use another GitHub App instead.
 
 ### The `Revoke all user tokens` button in GitHub App settings does not revoke existing access tokens
 
