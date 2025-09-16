@@ -365,7 +365,6 @@ If you want to revoke only a specific access token, [you can revoke it via GitHu
 This API requires a client secret. You should manage it securely.
 
 If you don't want to create a client secret, [you can revoke the target app from the `Authorized GitHub Apps` section in the user’s settings page](https://github.com/settings/apps/authorizations).
-
 Revoking the app will invalidate all User Access Tokens for the user.
 However, if the user reauthorizes the app, previously issued access tokens will become valid again as long as they have not yet expired.
 This means the app cannot be re-enabled until the leaked access token expires (up to 8 hours).
