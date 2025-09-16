@@ -360,24 +360,16 @@ env GH_TOKEN=$LEAKED_GITHUB_TOKEN gh api \
 ```
 
 You can revoke access tokens by `Revoke all user tokens` button in the GitHub App setting page.
-If you want to revoke only specific access token, we recommend to revoke the target app from the **Authorized GitHub Apps** section in the user’s settings page:
 
-https://github.com/settings/apps/authorizations
+If you want to revoke only a specific access token, [you can revoke it via GitHub API](https://docs.github.com/en/rest/apps/oauth-applications?apiVersion=2022-11-28#delete-an-app-token).
+This API requires a client secret. You should manage it securely.
+
+If you don't want to create a client secret, [you can revoke the target app from the `Authorized GitHub Apps` section in the user’s settings page](https://github.com/settings/apps/authorizations).
 
 Revoking the app will invalidate all User Access Tokens for the user.
 However, if the user reauthorizes the app, previously issued access tokens will become valid again as long as they have not yet expired.
 This means the app cannot be re-enabled until the leaked access token expires (up to 8 hours).
 During that time, it may be necessary to temporarily use another GitHub App instead.
-
-### Revocation via GitHub API does not work even with a Client Secret
-
-There is a GitHub API for revoking a GitHub App’s User Access Token:
-[Revoke Access Tokens via GitHub API](https://docs.github.com/en/rest/apps/oauth-applications?apiVersion=2022-11-28#delete-an-app-token)
-However, it has been confirmed that even when executing this API, the user access token is not actually revoked.
-There are other APIs for revoking access tokens, but they don't work for GitHub App User Access Tokens:
-
-- [Revoke an installation access token](https://docs.github.com/en/rest/apps/installations?apiVersion=2022-11-28#revoke-an-installation-access-token): for GitHub App installation access tokens
-- [Revoke a list of credentials](https://docs.github.com/en/rest/credentials/revoke?apiVersion=2022-11-28): for classic PATs and fine-grained PATs
 
 ## Comparison between GitHub App User Access Token and other access tokens
 
