@@ -386,6 +386,7 @@ Instead, you can manage it by GitHub Environment Secret or Secrets Manager such 
 ```yaml
 ---
 name: Revoke a User Access Token
+run-name: Revoke a User Access Token (${{github.actor}})
 on:
   workflow_dispatch:
     inputs:
@@ -422,6 +423,89 @@ jobs:
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/applications/${CLIENT_ID}/token" \
             -d '{"access_token":"'"${GH_TOKEN}"'"}'
+```
+
+</details>
+
+<details>
+<summary>GitHub Actions Workflow For Multiple GitHub Apps</summary>
+
+1. Register client ids and secrets to GitHub Environment Secrets, allowing only the default branch to access secrets
+
+Secret names:
+
+- `CLIENT_ID_${NAME}`
+- `CLIENT_SECRET_${NAME}`
+
+```yaml
+---
+name: Revoke a User Access Token
+run-name: Revoke a User Access Token (${{github.actor}}/${{inputs.app_name}})
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: GitHub App name
+        required: true
+        type: choice
+        default: write
+        options: # PLEASE CHANGE
+          - none
+          - read
+          - write
+          - full
+      access_token:
+        description: 'The access token to revoke'
+        required: true
+        type: string
+jobs:
+  revoke:
+    timeout-minutes: 10
+    runs-on: ubuntu-24.04
+    permissions: {}
+    environment: main
+    steps:
+      - name: Check if the access token is available
+        # This step is optional.
+        continue-on-error: true # Continue even if the access token is unavailable
+        env:
+          GH_TOKEN: ${{inputs.access_token}} # GitHub Actions automatically masks access tokens
+        run: |
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /user
+      - name: Choose the client id and client secret
+        id: secret_names
+        env:
+          APP_NAME: ${{inputs.app_name}}
+        run: |
+          UPPER_APP_NAME=$(echo "$APP_NAME" | tr '[:lower:]' '[:upper:]')
+          echo CLIENT_ID_NAME="CLIENT_ID_${UPPER_APP_NAME}" >> "$GITHUB_OUTPUT"
+          echo CLIENT_SECRET_NAME="CLIENT_SECRET_${UPPER_APP_NAME}" >> "$GITHUB_OUTPUT"
+      - name: Revoke the access token
+        env:
+          GH_TOKEN: ${{inputs.access_token}} # GitHub Actions automatically masks access tokens
+          CLIENT_ID: ${{secrets[steps.secret_names.outputs.CLIENT_ID_NAME]}}
+          CLIENT_SECRET: ${{secrets[steps.secret_names.outputs.CLIENT_SECRET_NAME]}}
+        run: |
+          curl -L \
+            -X DELETE \
+            -H "Accept: application/vnd.github+json" \
+            -u "${CLIENT_ID}:${CLIENT_SECRET}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/applications/${CLIENT_ID}/token" \
+            -d '{"access_token":"'"${GH_TOKEN}"'"}'
+      - name: Check if the access token has been revoked
+        # This step is optional.
+        continue-on-error: true # Continue even if the access token is unavailable
+        env:
+          GH_TOKEN: ${{inputs.access_token}} # GitHub Actions automatically masks access tokens
+        run: |
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /user
 ```
 
 </details>
