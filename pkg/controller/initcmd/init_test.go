@@ -139,9 +139,6 @@ func TestController_Init(t *testing.T) { //nolint:gocognit,cyclop,funlen
 				}
 
 				// Should contain the default template
-				if !strings.Contains(string(content), "persist:") {
-					t.Error("created file does not contain expected 'persist:' field")
-				}
 				if !strings.Contains(string(content), "apps:") {
 					t.Error("created file does not contain expected 'apps:' field")
 				}

@@ -52,7 +52,6 @@ ghtkn init
 - macOS, Linux: `${XDG_CONFIG_HOME:-${HOME}/.config}/ghtkn/ghtkn.yaml`
 
 ```yaml:ghtkn.yaml
-persist: true
 apps:
   - name: suzuki-shunsuke/none
     client_id: xxx # Mandatory. GitHub App Client ID
