@@ -6,5 +6,4 @@
     "github>aquaproj/aqua-renovate-config#2.9.0",
     "github>aquaproj/aqua-renovate-config:file#2.9.0(aqua/imports/.*\\.ya?ml)",
   ],
-  ignorePaths: ["testdata/**"],
 }
