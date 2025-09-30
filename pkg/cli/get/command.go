@@ -80,10 +80,10 @@ func (r *runner) Command() *cli.Command {
 // For get command, it supports different output formats (plain text or JSON).
 // It configures the controller with flags and arguments, then executes the token retrieval.
 // Returns an error if configuration is invalid or token retrieval fails.
-func (r *runner) action(ctx context.Context, c *cli.Command) error {
+func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cyclop
 	logger := r.logger
 	if lvlS := flag.LogLevelValue(c); lvlS != "" {
-		if err := log.SetLevel(logger, r.logLevel, lvlS); err != nil {
+		if err := log.SetLevel(r.logLevel, lvlS); err != nil {
 			return fmt.Errorf("set log level: %w", err)
 		}
 	}

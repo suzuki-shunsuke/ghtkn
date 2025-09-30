@@ -23,7 +23,7 @@ func New(w io.Writer, version string) (*slog.Logger, *slog.LevelVar) {
 // ErrUnknownLogLevel is returned when an invalid log level string is provided to ParseLevel.
 var ErrUnknownLogLevel = errors.New("unknown log level")
 
-func SetLevel(logger *slog.Logger, levelVar *slog.LevelVar, level string) error {
+func SetLevel(levelVar *slog.LevelVar, level string) error {
 	lvl, err := parseLevel(level)
 	if err != nil {
 		return err
