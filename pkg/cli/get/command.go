@@ -80,7 +80,7 @@ func (r *runner) Command() *cli.Command {
 // For get command, it supports different output formats (plain text or JSON).
 // It configures the controller with flags and arguments, then executes the token retrieval.
 // Returns an error if configuration is invalid or token retrieval fails.
-func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cyclop
+func (r *runner) action(ctx context.Context, c *cli.Command) error {
 	logger := r.logger
 	if lvlS := flag.LogLevelValue(c); lvlS != "" {
 		log.SetLevel(logger, r.logLevel, lvlS)
@@ -97,19 +97,9 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 
 	input := get.NewInput()
 	if r.isGitCredential {
-		input.IsGitCredential = true
-		if arg := c.Args().First(); arg != "get" {
-			return nil
+		if err := r.handleGitCredential(ctx, logger, c.Args().First(), input, inputGet); err != nil {
+			return err
 		}
-		logger.Debug("running in Git Credential Helper mode")
-		result, err := r.readStdinForGitCredentialHelper(ctx)
-		if err != nil {
-			return fmt.Errorf("read stdin: %w", err)
-		}
-		if result.Owner == "" {
-			logger.Warn("failed to get the repository owner from stdin for Git Credential Helper")
-		}
-		inputGet.AppOwner = result.Owner
 	} else {
 		input.OutputFormat = flag.FormatValue(c)
 		if arg := c.Args().First(); arg != "" {
