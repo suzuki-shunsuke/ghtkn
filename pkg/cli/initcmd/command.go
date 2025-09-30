@@ -21,17 +21,19 @@ import (
 
 // New creates a new init command instance with the provided logger.
 // It returns a CLI command that can be registered with the main CLI application.
-func New(logger *slog.Logger, version string) *cli.Command {
+func New(logger *slog.Logger, version string, logLevel *slog.LevelVar) *cli.Command {
 	r := &runner{
-		logger:  logger,
-		version: version,
+		logger:   logger,
+		version:  version,
+		logLevel: logLevel,
 	}
 	return r.Command()
 }
 
 type runner struct {
-	logger  *slog.Logger
-	version string
+	logger   *slog.Logger
+	version  string
+	logLevel *slog.LevelVar
 }
 
 // Command returns the CLI command definition for the init subcommand.
@@ -55,7 +57,7 @@ func (r *runner) action(_ context.Context, c *cli.Command) error {
 		if err != nil {
 			return slogerr.With(err, "log_level", lvlS) //nolint:wrapcheck
 		}
-		logger = log.New(r.version, lvl)
+		r.logLevel.Set(lvl)
 	}
 
 	configFilePath := c.Args().First()

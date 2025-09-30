@@ -31,6 +31,9 @@ func (r *runner) readStdinForGitCredentialHelper(ctx context.Context) (*scanResu
 			if !ok {
 				continue // ignore invalid stdin
 			}
+			if key != "password" {
+				r.logger.Debug("read a parameter from stdin for Git Credential Helper", key, value)
+			}
 			switch key {
 			case "protocol":
 				result.Protocol = value
@@ -44,8 +47,13 @@ func (r *runner) readStdinForGitCredentialHelper(ctx context.Context) (*scanResu
 				// To guarantee the path is passed, you can configure Git like below:
 				//
 				//   $ git config credential.useHttpPath true
+				a, _, ok := strings.Cut(value, "/")
+				if !ok {
+					r.logger.Warn("the path from stdin for Git Credential Helper is unexpected", "path", value)
+					continue
+				}
 				result.Path = value
-				result.Owner = strings.Split(value, "/")[0]
+				result.Owner = a
 			case "password":
 				result.Password = value
 			default:

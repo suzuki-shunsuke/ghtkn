@@ -25,12 +25,13 @@ import (
 // When isGitCredential is true, it creates a Git credential helper command.
 // When false, it creates a standard get command for general token retrieval.
 // It returns a CLI command that can be registered with the main CLI application.
-func New(logger *slog.Logger, version string, isGitCredential bool) *cli.Command {
+func New(logger *slog.Logger, version string, logLevel *slog.LevelVar, isGitCredential bool) *cli.Command {
 	r := &runner{
 		logger:          logger,
 		version:         version,
 		isGitCredential: isGitCredential,
 		stdin:           os.Stdin,
+		logLevel:        logLevel,
 	}
 	return r.Command()
 }
@@ -41,6 +42,7 @@ type runner struct {
 	version         string
 	isGitCredential bool
 	stdin           io.Reader
+	logLevel        *slog.LevelVar
 }
 
 // Command returns the CLI command definition for either the get or git-credential subcommand.
@@ -79,6 +81,14 @@ func (r *runner) Command() *cli.Command {
 // It configures the controller with flags and arguments, then executes the token retrieval.
 // Returns an error if configuration is invalid or token retrieval fails.
 func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cyclop
+	logger := r.logger
+	if lvlS := flag.LogLevelValue(c); lvlS != "" {
+		lvl, err := log.ParseLevel(lvlS)
+		if err != nil {
+			return fmt.Errorf("parse the log level: %w", slogerr.With(err, "log_level", lvlS))
+		}
+		r.logLevel.Set(lvl)
+	}
 	inputGet := &ghtkn.InputGet{}
 	if m := flag.MinExpirationValue(c); m != "" {
 		d, err := time.ParseDuration(m)
@@ -95,9 +105,13 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		if arg := c.Args().First(); arg != "get" {
 			return nil
 		}
+		logger.Debug("running in Git Credential Helper mode")
 		result, err := r.readStdinForGitCredentialHelper(ctx)
 		if err != nil {
 			return fmt.Errorf("read stdin: %w", err)
+		}
+		if result.Owner == "" {
+			logger.Warn("failed to get the repository owner from stdin for Git Credential Helper")
 		}
 		inputGet.AppOwner = result.Owner
 	} else {
@@ -105,14 +119,6 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 		if arg := c.Args().First(); arg != "" {
 			inputGet.AppName = arg
 		}
-	}
-	logger := r.logger
-	if lvlS := flag.LogLevelValue(c); lvlS != "" {
-		lvl, err := log.ParseLevel(lvlS)
-		if err != nil {
-			return fmt.Errorf("parse the log level: %w", slogerr.With(err, "log_level", lvlS))
-		}
-		logger = log.New(r.version, lvl)
 	}
 	if inputGet.ConfigFilePath == "" {
 		p, err := ghtkn.GetConfigPath()

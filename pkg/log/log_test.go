@@ -2,6 +2,7 @@ package log_test
 
 import (
 	"errors"
+	"io"
 	"log/slog"
 	"testing"
 
@@ -11,53 +12,9 @@ import (
 
 func TestNew(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
-		name    string
-		version string
-		level   slog.Level
-	}{
-		{
-			name:    "debug level logger",
-			version: "1.0.0",
-			level:   slog.LevelDebug,
-		},
-		{
-			name:    "info level logger",
-			version: "2.0.0",
-			level:   slog.LevelInfo,
-		},
-		{
-			name:    "warn level logger",
-			version: "3.0.0",
-			level:   slog.LevelWarn,
-		},
-		{
-			name:    "error level logger",
-			version: "4.0.0",
-			level:   slog.LevelError,
-		},
-		{
-			name:    "empty version",
-			version: "",
-			level:   slog.LevelInfo,
-		},
-		{
-			name:    "version with special characters",
-			version: "v1.2.3-beta+build123",
-			level:   slog.LevelDebug,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			logger := log.New(tt.version, tt.level)
-			if logger == nil {
-				t.Fatal("New() returned nil logger")
-			}
-			// We can't easily test the internal structure of slog.Logger,
-			// but we can verify it doesn't panic and returns a valid logger
-		})
+	logger := log.New(io.Discard, "v0.1.0", &slog.LevelVar{})
+	if logger == nil {
+		t.Fatal("New() returned nil logger")
 	}
 }
 

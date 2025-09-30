@@ -4,8 +4,8 @@ package log
 
 import (
 	"errors"
+	"io"
 	"log/slog"
-	"os"
 
 	"github.com/lmittmann/tint"
 )
@@ -13,8 +13,8 @@ import (
 // New creates a new structured logger with the specified version and log level.
 // The logger outputs to stderr with colored formatting using tint handler.
 // It includes "program" and "version" attributes in all log entries.
-func New(version string, level slog.Level) *slog.Logger {
-	return slog.New(tint.NewHandler(os.Stderr, &tint.Options{
+func New(w io.Writer, version string, level *slog.LevelVar) *slog.Logger {
+	return slog.New(tint.NewHandler(w, &tint.Options{
 		Level: level,
 	})).With("program", "ghtkn", "version", version)
 }

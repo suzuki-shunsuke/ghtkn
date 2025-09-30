@@ -26,14 +26,15 @@ func main() {
 }
 
 func core() int {
-	logger := log.New(version, slog.LevelInfo)
+	logLevel := &slog.LevelVar{}
+	logger := log.New(os.Stderr, version, logLevel)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if err := cli.Run(ctx, logger, &stdutil.LDFlags{
 		Version: version,
 		Commit:  commit,
 		Date:    date,
-	}, os.Args...); err != nil {
+	}, logLevel, os.Args...); err != nil {
 		slogerr.WithError(logger, err).Error("ghtkn failed")
 		return 1
 	}
