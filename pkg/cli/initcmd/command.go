@@ -52,7 +52,9 @@ func (r *runner) Command() *cli.Command {
 func (r *runner) action(_ context.Context, c *cli.Command) error {
 	logger := r.logger
 	if lvlS := flag.LogLevelValue(c); lvlS != "" {
-		log.SetLevel(logger, r.logLevel, lvlS)
+		if err := log.SetLevel(logger, r.logLevel, lvlS); err != nil {
+			return fmt.Errorf("set log level: %w", err)
+		}
 	}
 
 	configFilePath := c.Args().First()

@@ -8,7 +8,6 @@ import (
 	"log/slog"
 
 	"github.com/lmittmann/tint"
-	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
 // New creates a new structured logger with the specified version and log level.
@@ -24,13 +23,13 @@ func New(w io.Writer, version string) (*slog.Logger, *slog.LevelVar) {
 // ErrUnknownLogLevel is returned when an invalid log level string is provided to ParseLevel.
 var ErrUnknownLogLevel = errors.New("unknown log level")
 
-func SetLevel(logger *slog.Logger, levelVar *slog.LevelVar, level string) {
+func SetLevel(logger *slog.Logger, levelVar *slog.LevelVar, level string) error {
 	lvl, err := parseLevel(level)
 	if err != nil {
-		slogerr.WithError(logger, err).Warn("parse log level", "level", level)
-		return
+		return err
 	}
 	levelVar.Set(lvl)
+	return nil
 }
 
 // parseLevel converts a string log level to slog.Level.
