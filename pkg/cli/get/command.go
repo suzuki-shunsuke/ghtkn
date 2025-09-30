@@ -83,11 +83,7 @@ func (r *runner) Command() *cli.Command {
 func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cyclop
 	logger := r.logger
 	if lvlS := flag.LogLevelValue(c); lvlS != "" {
-		lvl, err := log.ParseLevel(lvlS)
-		if err != nil {
-			return fmt.Errorf("parse the log level: %w", slogerr.With(err, "log_level", lvlS))
-		}
-		r.logLevel.Set(lvl)
+		log.SetLevel(logger, r.logLevel, lvlS)
 	}
 	inputGet := &ghtkn.InputGet{}
 	if m := flag.MinExpirationValue(c); m != "" {

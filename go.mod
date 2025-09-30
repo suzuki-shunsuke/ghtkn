@@ -3,7 +3,6 @@ module github.com/suzuki-shunsuke/ghtkn
 go 1.25.1
 
 require (
-	github.com/google/go-cmp v0.7.0
 	github.com/lmittmann/tint v1.1.2
 	github.com/spf13/afero v1.15.0
 	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.1

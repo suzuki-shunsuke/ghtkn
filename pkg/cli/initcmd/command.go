@@ -15,7 +15,6 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/initcmd"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/log"
-	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/urfave/cli/v3"
 )
 
@@ -53,11 +52,7 @@ func (r *runner) Command() *cli.Command {
 func (r *runner) action(_ context.Context, c *cli.Command) error {
 	logger := r.logger
 	if lvlS := flag.LogLevelValue(c); lvlS != "" {
-		lvl, err := log.ParseLevel(lvlS)
-		if err != nil {
-			return slogerr.With(err, "log_level", lvlS) //nolint:wrapcheck
-		}
-		r.logLevel.Set(lvl)
+		log.SetLevel(logger, r.logLevel, lvlS)
 	}
 
 	configFilePath := c.Args().First()

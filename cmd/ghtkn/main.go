@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -26,8 +25,7 @@ func main() {
 }
 
 func core() int {
-	logLevel := &slog.LevelVar{}
-	logger := log.New(os.Stderr, version, logLevel)
+	logger, logLevel := log.New(os.Stderr, version)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if err := cli.Run(ctx, logger, &stdutil.LDFlags{
