@@ -3,7 +3,12 @@ package get
 import (
 	"bufio"
 	"context"
+	"fmt"
+	"log/slog"
 	"strings"
+
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
 )
 
 type scanResult struct {
@@ -14,6 +19,23 @@ type scanResult struct {
 	Password string
 	Owner    string
 	Err      error
+}
+
+func (r *runner) handleGitCredential(ctx context.Context, logger *slog.Logger, arg string, input *get.Input, inputGet *ghtkn.InputGet) error {
+	logger.Debug("running in Git Credential Helper mode", "arg", arg)
+	input.IsGitCredential = true
+	if arg != "get" {
+		return nil
+	}
+	result, err := r.readStdinForGitCredentialHelper(ctx)
+	if err != nil {
+		return fmt.Errorf("read stdin: %w", err)
+	}
+	if result.Owner == "" {
+		logger.Warn("failed to get the repository owner from stdin for Git Credential Helper")
+	}
+	inputGet.AppOwner = result.Owner
+	return nil
 }
 
 func (r *runner) readStdinForGitCredentialHelper(ctx context.Context) (*scanResult, error) { //nolint:cyclop
@@ -31,6 +53,9 @@ func (r *runner) readStdinForGitCredentialHelper(ctx context.Context) (*scanResu
 			if !ok {
 				continue // ignore invalid stdin
 			}
+			if key != "password" {
+				r.logger.Debug("read a parameter from stdin for Git Credential Helper", key, value)
+			}
 			switch key {
 			case "protocol":
 				result.Protocol = value
@@ -44,8 +69,13 @@ func (r *runner) readStdinForGitCredentialHelper(ctx context.Context) (*scanResu
 				// To guarantee the path is passed, you can configure Git like below:
 				//
 				//   $ git config credential.useHttpPath true
+				a, _, ok := strings.Cut(value, "/")
+				if !ok {
+					r.logger.Warn("the path from stdin for Git Credential Helper is unexpected", "path", value)
+					continue
+				}
 				result.Path = value
-				result.Owner = strings.Split(value, "/")[0]
+				result.Owner = a
 			case "password":
 				result.Password = value
 			default:

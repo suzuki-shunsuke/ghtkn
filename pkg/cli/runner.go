@@ -28,7 +28,7 @@ import (
 //   - args: command line arguments to parse and execute
 //
 // Returns an error if command parsing or execution fails.
-func Run(ctx context.Context, logger *slog.Logger, ldFlags *stdutil.LDFlags, args ...string) error {
+func Run(ctx context.Context, logger *slog.Logger, ldFlags *stdutil.LDFlags, logLevel *slog.LevelVar, args ...string) error {
 	return urfave.Command(ldFlags, &cli.Command{ //nolint:wrapcheck
 		Name:  "ghtkn",
 		Usage: "Create GitHub App User Access Tokens for secure local development. https://github.com/suzuki-shunsuke/ghtkn",
@@ -37,9 +37,9 @@ func Run(ctx context.Context, logger *slog.Logger, ldFlags *stdutil.LDFlags, arg
 			flag.Config(),
 		},
 		Commands: []*cli.Command{
-			initcmd.New(logger, ldFlags.Version),
-			get.New(logger, ldFlags.Version, true),
-			get.New(logger, ldFlags.Version, false),
+			initcmd.New(logger, ldFlags.Version, logLevel),
+			get.New(logger, ldFlags.Version, logLevel, true),
+			get.New(logger, ldFlags.Version, logLevel, false),
 		},
 	}).Run(ctx, args)
 }

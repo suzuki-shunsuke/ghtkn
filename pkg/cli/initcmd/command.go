@@ -15,23 +15,24 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/initcmd"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/log"
-	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/urfave/cli/v3"
 )
 
 // New creates a new init command instance with the provided logger.
 // It returns a CLI command that can be registered with the main CLI application.
-func New(logger *slog.Logger, version string) *cli.Command {
+func New(logger *slog.Logger, version string, logLevel *slog.LevelVar) *cli.Command {
 	r := &runner{
-		logger:  logger,
-		version: version,
+		logger:   logger,
+		version:  version,
+		logLevel: logLevel,
 	}
 	return r.Command()
 }
 
 type runner struct {
-	logger  *slog.Logger
-	version string
+	logger   *slog.Logger
+	version  string
+	logLevel *slog.LevelVar
 }
 
 // Command returns the CLI command definition for the init subcommand.
@@ -51,11 +52,9 @@ func (r *runner) Command() *cli.Command {
 func (r *runner) action(_ context.Context, c *cli.Command) error {
 	logger := r.logger
 	if lvlS := flag.LogLevelValue(c); lvlS != "" {
-		lvl, err := log.ParseLevel(lvlS)
-		if err != nil {
-			return slogerr.With(err, "log_level", lvlS) //nolint:wrapcheck
+		if err := log.SetLevel(r.logLevel, lvlS); err != nil {
+			return fmt.Errorf("set log level: %w", err)
 		}
-		logger = log.New(r.version, lvl)
 	}
 
 	configFilePath := c.Args().First()
