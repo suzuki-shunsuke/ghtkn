@@ -35,8 +35,8 @@ github.com/suzuki-shunsuke/slog-error v0.2.0 h1:XghEeRu6nchSxvzbqT5PpZgk5Dd6ZJSx
 github.com/suzuki-shunsuke/slog-error v0.2.0/go.mod h1:w45QyO2G0uiEuo9hhrcLqqRl3hmYon9jGgq9CrCxxOY=
 github.com/suzuki-shunsuke/urfave-cli-v3-util v0.1.0 h1:wF2BTklnW4k5xC3LqGbOBdhJ331hRhpObzElteZl7NE=
 github.com/suzuki-shunsuke/urfave-cli-v3-util v0.1.0/go.mod h1:MMs7fMTx4wnMFLeWEwOKV3Gr80n610q1otc6jLPpYVk=
-github.com/urfave/cli/v3 v3.5.0 h1:qCuFMmdayTF3zmjG8TSsoBzrDqszNrklYg2x3g4MSgw=
-github.com/urfave/cli/v3 v3.5.0/go.mod h1:ysVLtOEmg2tOy6PknnYVhDoouyC/6N42TMeoMzskhso=
+github.com/urfave/cli/v3 v3.6.0 h1:oIdArVjkdIXHWg3iqxgmqwQGC8NM0JtdgwQAj2sRwFo=
+github.com/urfave/cli/v3 v3.6.0/go.mod h1:ysVLtOEmg2tOy6PknnYVhDoouyC/6N42TMeoMzskhso=
 github.com/zalando/go-keyring v0.2.6 h1:r7Yc3+H+Ux0+M72zacZoItR3UDxeWfKTcabvkI8ua9s=
 github.com/zalando/go-keyring v0.2.6/go.mod h1:2TCrxYrbUNYfNS/Kgy/LSrkSQzZ5UPVH85RwfczwvcI=
 golang.org/x/oauth2 v0.31.0 h1:8Fq0yVZLh4j4YA47vHKFTa9Ew5XIrCP8LC6UeNZnLxo=
