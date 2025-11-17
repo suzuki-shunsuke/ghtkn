@@ -157,8 +157,15 @@ git config --global credential.helper '!ghtkn git-credential'
 
 ```ini
 [credential]
+	helper =
 	helper = !ghtkn git-credential
 ```
+
+> [!IMPORTANT]
+> `helper =` is necessary to disable other helpers.
+> https://git-scm.com/docs/gitcredentials#_configuration_options
+> > If credential.helper is configured to the empty string, this resets the helper list to empty
+> > (so you may override a helper set by a lower-priority config file by configuring the empty-string helper, followed by whatever set of helpers you would like).
 
 ### Switching GitHub Apps by repository owner
 
@@ -223,16 +230,18 @@ file:/Library/Developer/CommandLineTools/usr/share/git-core/gitconfig   osxkeych
 file:/Users/shunsukesuzuki/.gitconfig   !ghtkn git-credential
 ```
 
-To solve the problem, please comment out the system setting.
-
-```sh
-sudo vi /Library/Developer/CommandLineTools/usr/share/git-core/gitconfig
-```
+To solve the problem, please set credential.helper to the empty string.
 
 ```ini
-# [credential]
-# 	helper = osxkeychain
+[credential]
+	helper =
+	helper = !ghtkn git-credential
 ```
+
+https://git-scm.com/docs/gitcredentials#_configuration_options
+
+> If credential.helper is configured to the empty string, this resets the helper list to empty
+> (so you may override a helper set by a lower-priority config file by configuring the empty-string helper, followed by whatever set of helpers you would like).
 
 ## Using Multiple Apps
 
