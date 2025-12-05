@@ -20,13 +20,7 @@ import (
 // Run creates and executes the main ghtkn CLI application.
 // It configures the command structure with global flags and subcommands,
 // then runs the CLI with the provided arguments.
-//
-// Parameters:
-//   - ctx: context for cancellation and timeout control
-//   - logE: logrus entry for structured logging
-//   - ldFlags: linker flags containing build information
-//   - args: command line arguments to parse and execute
-//
+// args are command line arguments to parse and execute
 // Returns an error if command parsing or execution fails.
 func Run(ctx context.Context, logger *slog.Logger, ldFlags *stdutil.LDFlags, logLevel *slog.LevelVar, args ...string) error {
 	return urfave.Command(ldFlags, &cli.Command{ //nolint:wrapcheck
