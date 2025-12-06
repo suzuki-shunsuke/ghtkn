@@ -11,7 +11,7 @@ USAGE:
    ghtkn [global options] [command [command options]]
 
 VERSION:
-   0.2.2
+   0.2.3
 
 COMMANDS:
    init            Create ghtkn.yaml if it doesn't exist
@@ -90,7 +90,7 @@ USAGE:
    ghtkn version
 
 OPTIONS:
-   --json, -j  Output version in JSON format (default: false)
+   --json, -j  Output version in JSON format
    --help, -h  show help
 ```
 
