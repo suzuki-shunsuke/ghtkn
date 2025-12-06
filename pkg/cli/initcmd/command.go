@@ -8,40 +8,29 @@ package initcmd
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/initcmd"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/log"
+	"github.com/suzuki-shunsuke/slog-util/slogutil"
+	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
 )
 
 // New creates a new init command instance with the provided logger.
 // It returns a CLI command that can be registered with the main CLI application.
-func New(logger *slog.Logger, version string, logLevel *slog.LevelVar) *cli.Command {
-	r := &runner{
-		logger:   logger,
-		version:  version,
-		logLevel: logLevel,
-	}
-	return r.Command()
-}
-
-type runner struct {
-	logger   *slog.Logger
-	version  string
-	logLevel *slog.LevelVar
+func New(logger *slogutil.Logger) *cli.Command {
+	return Command(logger)
 }
 
 // Command returns the CLI command definition for the init subcommand.
 // It defines the command name, usage, description, and action handler.
-func (r *runner) Command() *cli.Command {
+func Command(logger *slogutil.Logger) *cli.Command {
 	return &cli.Command{
 		Name:   "init",
 		Usage:  "Create ghtkn.yaml if it doesn't exist",
-		Action: r.action,
+		Action: urfave.Action(action, logger),
 		Flags: []cli.Flag{
 			flag.LogLevel(),
 			flag.Config(),
@@ -49,10 +38,9 @@ func (r *runner) Command() *cli.Command {
 	}
 }
 
-func (r *runner) action(_ context.Context, c *cli.Command) error {
-	logger := r.logger
+func action(_ context.Context, c *cli.Command, logger *slogutil.Logger) error {
 	if lvlS := flag.LogLevelValue(c); lvlS != "" {
-		if err := log.SetLevel(r.logLevel, lvlS); err != nil {
+		if err := logger.SetLevel(lvlS); err != nil {
 			return fmt.Errorf("set log level: %w", err)
 		}
 	}
@@ -70,5 +58,5 @@ func (r *runner) action(_ context.Context, c *cli.Command) error {
 	}
 	fs := afero.NewOsFs()
 	ctrl := initcmd.New(fs)
-	return ctrl.Init(logger, configFilePath) //nolint:wrapcheck
+	return ctrl.Init(logger.Logger, configFilePath) //nolint:wrapcheck
 }

@@ -27,7 +27,7 @@ func (r *runner) handleGitCredential(ctx context.Context, logger *slog.Logger, a
 	if arg != "get" {
 		return nil
 	}
-	result, err := r.readStdinForGitCredentialHelper(ctx)
+	result, err := r.readStdinForGitCredentialHelper(ctx, logger)
 	if err != nil {
 		return fmt.Errorf("read stdin: %w", err)
 	}
@@ -38,7 +38,7 @@ func (r *runner) handleGitCredential(ctx context.Context, logger *slog.Logger, a
 	return nil
 }
 
-func (r *runner) readStdinForGitCredentialHelper(ctx context.Context) (*scanResult, error) { //nolint:cyclop
+func (r *runner) readStdinForGitCredentialHelper(ctx context.Context, logger *slog.Logger) (*scanResult, error) { //nolint:cyclop
 	inputCh := make(chan *scanResult, 1)
 
 	go func() {
@@ -54,7 +54,7 @@ func (r *runner) readStdinForGitCredentialHelper(ctx context.Context) (*scanResu
 				continue // ignore invalid stdin
 			}
 			if key != "password" {
-				r.logger.Debug("read a parameter from stdin for Git Credential Helper", key, value)
+				logger.Debug("read a parameter from stdin for Git Credential Helper", key, value)
 			}
 			switch key {
 			case "protocol":
@@ -71,7 +71,7 @@ func (r *runner) readStdinForGitCredentialHelper(ctx context.Context) (*scanResu
 				//   $ git config credential.useHttpPath true
 				a, _, ok := strings.Cut(value, "/")
 				if !ok {
-					r.logger.Warn("the path from stdin for Git Credential Helper is unexpected", "path", value)
+					logger.Warn("the path from stdin for Git Credential Helper is unexpected", "path", value)
 					continue
 				}
 				result.Path = value
