@@ -9,15 +9,14 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
-	"os"
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/log"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
+	"github.com/suzuki-shunsuke/slog-util/slogutil"
+	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
 )
 
@@ -25,36 +24,30 @@ import (
 // When isGitCredential is true, it creates a Git credential helper command.
 // When false, it creates a standard get command for general token retrieval.
 // It returns a CLI command that can be registered with the main CLI application.
-func New(logger *slog.Logger, version string, logLevel *slog.LevelVar, isGitCredential bool) *cli.Command {
+func New(logger *slogutil.Logger, env *urfave.Env, isGitCredential bool) *cli.Command {
 	r := &runner{
-		logger:          logger,
-		version:         version,
 		isGitCredential: isGitCredential,
-		stdin:           os.Stdin,
-		logLevel:        logLevel,
+		stdin:           env.Stdin,
 	}
-	return r.Command()
+	return r.Command(logger)
 }
 
 // runner encapsulates the state and behavior for both the get and git-credential commands.
 type runner struct {
-	logger          *slog.Logger
-	version         string
 	isGitCredential bool
 	stdin           io.Reader
-	logLevel        *slog.LevelVar
 }
 
 // Command returns the CLI command definition for either the get or git-credential subcommand.
 // For git-credential, it creates a command compatible with Git's credential helper protocol.
 // For get, it creates a standard command with output format options.
 // It defines the command name, usage, action handler, and available flags.
-func (r *runner) Command() *cli.Command {
+func (r *runner) Command(logger *slogutil.Logger) *cli.Command {
 	if r.isGitCredential {
 		return &cli.Command{
 			Name:   "git-credential",
 			Usage:  "Git Credential Helper",
-			Action: r.action,
+			Action: urfave.Action(r.action, logger),
 			Flags: []cli.Flag{
 				flag.LogLevel(),
 				flag.Config(),
@@ -65,7 +58,7 @@ func (r *runner) Command() *cli.Command {
 	return &cli.Command{
 		Name:   "get",
 		Usage:  "Output a GitHub App User Access Token to stdout",
-		Action: r.action,
+		Action: urfave.Action(r.action, logger),
 		Flags: []cli.Flag{
 			flag.LogLevel(),
 			flag.Config(),
@@ -80,10 +73,9 @@ func (r *runner) Command() *cli.Command {
 // For get command, it supports different output formats (plain text or JSON).
 // It configures the controller with flags and arguments, then executes the token retrieval.
 // Returns an error if configuration is invalid or token retrieval fails.
-func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cyclop
-	logger := r.logger
+func (r *runner) action(ctx context.Context, c *cli.Command, logger *slogutil.Logger) error { //nolint:cyclop
 	if lvlS := flag.LogLevelValue(c); lvlS != "" {
-		if err := log.SetLevel(r.logLevel, lvlS); err != nil {
+		if err := logger.SetLevel(lvlS); err != nil {
 			return fmt.Errorf("set log level: %w", err)
 		}
 	}
@@ -99,7 +91,7 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 
 	input := get.NewInput()
 	if r.isGitCredential {
-		if err := r.handleGitCredential(ctx, logger, c.Args().First(), input, inputGet); err != nil {
+		if err := r.handleGitCredential(ctx, logger.Logger, c.Args().First(), input, inputGet); err != nil {
 			return err
 		}
 	} else {
@@ -118,5 +110,5 @@ func (r *runner) action(ctx context.Context, c *cli.Command) error { //nolint:cy
 	if err := input.Validate(); err != nil {
 		return err //nolint:wrapcheck
 	}
-	return get.New(input).Run(ctx, logger, inputGet) //nolint:wrapcheck
+	return get.New(input).Run(ctx, logger.Logger, inputGet) //nolint:wrapcheck
 }
