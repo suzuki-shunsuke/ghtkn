@@ -11,7 +11,7 @@ USAGE:
    ghtkn [global options] [command [command options]]
 
 VERSION:
-   0.2.3
+   0.2.4
 
 COMMANDS:
    init            Create ghtkn.yaml if it doesn't exist
@@ -36,7 +36,7 @@ NAME:
    ghtkn init - Create ghtkn.yaml if it doesn't exist
 
 USAGE:
-   ghtkn init
+   ghtkn init [arguments...]
 
 OPTIONS:
    --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
@@ -52,7 +52,7 @@ NAME:
    ghtkn git-credential - Git Credential Helper
 
 USAGE:
-   ghtkn git-credential
+   ghtkn git-credential [arguments...]
 
 OPTIONS:
    --log-level string                  Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
@@ -69,7 +69,7 @@ NAME:
    ghtkn get - Output a GitHub App User Access Token to stdout
 
 USAGE:
-   ghtkn get
+   ghtkn get [arguments...]
 
 OPTIONS:
    --log-level string                  Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
