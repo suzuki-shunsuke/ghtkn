@@ -80,7 +80,7 @@ func TestController_output(t *testing.T) {
 				output := buf.String()
 				if tt.outputFormat == "json" {
 					// Verify it's valid JSON and contains expected fields
-					var result map[string]interface{}
+					var result map[string]any
 					if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
 						t.Errorf("output() produced invalid JSON: %v", err)
 					}
