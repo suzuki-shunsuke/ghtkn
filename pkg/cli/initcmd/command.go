@@ -14,40 +14,49 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/initcmd"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
 )
 
-// New creates a new init command instance with the provided logger.
-// It returns a CLI command that can be registered with the main CLI application.
-func New(logger *slogutil.Logger) *cli.Command {
-	return Command(logger)
+// Args holds the flag and argument values for the init command.
+type Args struct {
+	*flag.GlobalFlags
+
+	ConfigFilePath string // positional argument
 }
 
-// Command returns the CLI command definition for the init subcommand.
-// It defines the command name, usage, description, and action handler.
-func Command(logger *slogutil.Logger) *cli.Command {
+// New creates a new init command instance with the provided logger.
+// It returns a CLI command that can be registered with the main CLI application.
+func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
+	args := &Args{
+		GlobalFlags: gFlags,
+	}
 	return &cli.Command{
-		Name:   "init",
-		Usage:  "Create ghtkn.yaml if it doesn't exist",
-		Action: urfave.Action(action, logger),
+		Name:  "init",
+		Usage: "Create ghtkn.yaml if it doesn't exist",
+		Action: func(ctx context.Context, _ *cli.Command) error {
+			return action(ctx, logger, args)
+		},
 		Flags: []cli.Flag{
-			flag.LogLevel(),
-			flag.Config(),
+			flag.LogLevel(&args.LogLevel),
+			flag.Config(&args.Config),
+		},
+		Arguments: []cli.Argument{
+			&cli.StringArg{
+				Name:        "config-file-path",
+				Destination: &args.ConfigFilePath,
+			},
 		},
 	}
 }
 
-func action(_ context.Context, c *cli.Command, logger *slogutil.Logger) error {
-	if lvlS := flag.LogLevelValue(c); lvlS != "" {
-		if err := logger.SetLevel(lvlS); err != nil {
-			return fmt.Errorf("set log level: %w", err)
-		}
+func action(_ context.Context, logger *slogutil.Logger, args *Args) error {
+	if err := logger.SetLevel(args.LogLevel); err != nil {
+		return fmt.Errorf("set log level: %w", err)
 	}
 
-	configFilePath := c.Args().First()
+	configFilePath := args.ConfigFilePath
 	if configFilePath == "" {
-		configFilePath = flag.ConfigValue(c)
+		configFilePath = args.Config
 	}
 	if configFilePath == "" {
 		p, err := ghtkn.GetConfigPath()

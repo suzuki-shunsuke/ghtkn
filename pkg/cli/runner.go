@@ -22,17 +22,18 @@ import (
 // args are command line arguments to parse and execute
 // Returns an error if command parsing or execution fails.
 func Run(ctx context.Context, logger *slogutil.Logger, env *urfave.Env) error {
+	gFlags := &flag.GlobalFlags{}
 	return urfave.Command(env, &cli.Command{ //nolint:wrapcheck
 		Name:  "ghtkn",
 		Usage: "Create GitHub App User Access Tokens for secure local development. https://github.com/suzuki-shunsuke/ghtkn",
 		Flags: []cli.Flag{
-			flag.LogLevel(),
-			flag.Config(),
+			flag.LogLevel(&gFlags.LogLevel),
+			flag.Config(&gFlags.Config),
 		},
 		Commands: []*cli.Command{
-			initcmd.New(logger),
-			get.New(logger, env, true),
-			get.New(logger, env, false),
+			initcmd.New(logger, gFlags),
+			get.New(logger, env, true, gFlags),
+			get.New(logger, env, false, gFlags),
 		},
 	}).Run(ctx, env.Args)
 }
