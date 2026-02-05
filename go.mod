@@ -3,7 +3,7 @@ module github.com/suzuki-shunsuke/ghtkn
 go 1.25.6
 
 require (
-	github.com/lmittmann/tint v1.1.2
+	github.com/lmittmann/tint v1.1.3
 	github.com/spf13/afero v1.15.0
 	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.2
 	github.com/suzuki-shunsuke/slog-error v0.2.2
