@@ -8,7 +8,7 @@ require (
 	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.2
 	github.com/suzuki-shunsuke/slog-error v0.2.2
 	github.com/suzuki-shunsuke/slog-util v0.3.1
-	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.0
+	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.1
 	github.com/urfave/cli/v3 v3.6.2
 )
 
@@ -23,7 +23,7 @@ require (
 	github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0 // indirect
 	github.com/suzuki-shunsuke/go-exec v0.0.1 // indirect
 	github.com/zalando/go-keyring v0.2.6 // indirect
-	golang.org/x/oauth2 v0.34.0 // indirect
+	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/sys v0.39.0 // indirect
 	golang.org/x/term v0.37.0 // indirect
 	golang.org/x/text v0.28.0 // indirect

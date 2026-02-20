@@ -41,12 +41,16 @@ github.com/suzuki-shunsuke/slog-util v0.3.1 h1:tp4xgj4y/T2YcZkHtr7N2E49f5CiHl9o4
 github.com/suzuki-shunsuke/slog-util v0.3.1/go.mod h1:PgZMd+2rC8pA9jBbXDfkI8mTuWYAiaVkKxjrbLtfN5I=
 github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.0 h1:ORT/qQxsKuWwuy2N/z2f2hmbKWmlS346/j4jGhxsxLo=
 github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.0/go.mod h1:BYtzUgA4oeUVUFoJIONWOquvIUy0cl7DpAeCya3mVJU=
+github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.1 h1:BXePvOmlrSBvwkBiwVl3edUSwgOuRxJx2sQ6SXYDrKo=
+github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.1/go.mod h1:nf+rnBRrBEYLEeVbUbc0jGXnBRkYYS47/woMQZ+tGRs=
 github.com/urfave/cli/v3 v3.6.2 h1:lQuqiPrZ1cIz8hz+HcrG0TNZFxU70dPZ3Yl+pSrH9A8=
 github.com/urfave/cli/v3 v3.6.2/go.mod h1:ysVLtOEmg2tOy6PknnYVhDoouyC/6N42TMeoMzskhso=
 github.com/zalando/go-keyring v0.2.6 h1:r7Yc3+H+Ux0+M72zacZoItR3UDxeWfKTcabvkI8ua9s=
 github.com/zalando/go-keyring v0.2.6/go.mod h1:2TCrxYrbUNYfNS/Kgy/LSrkSQzZ5UPVH85RwfczwvcI=
 golang.org/x/oauth2 v0.34.0 h1:hqK/t4AKgbqWkdkcAeI8XLmbK+4m4G5YeQRrmiotGlw=
 golang.org/x/oauth2 v0.34.0/go.mod h1:lzm5WQJQwKZ3nwavOZ3IS5Aulzxi68dUSgRHujetwEA=
+golang.org/x/oauth2 v0.35.0 h1:Mv2mzuHuZuY2+bkyWXIHMfhNdJAdwW3FuWeCPYN5GVQ=
+golang.org/x/oauth2 v0.35.0/go.mod h1:lzm5WQJQwKZ3nwavOZ3IS5Aulzxi68dUSgRHujetwEA=
 golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.39.0 h1:CvCKL8MeisomCi6qNZ+wbb0DN9E5AATixKsvNtMoMFk=
 golang.org/x/sys v0.39.0/go.mod h1:OgkHotnGiDImocRcuBABYBEXf8A9a87e/uXjp9XT3ks=
