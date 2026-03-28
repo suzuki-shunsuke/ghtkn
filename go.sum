@@ -41,8 +41,6 @@ github.com/suzuki-shunsuke/slog-util v0.3.2 h1:P4sc/swT8rwmmKDfMrh9GR+AzYJhJdW3B
 github.com/suzuki-shunsuke/slog-util v0.3.2/go.mod h1:fHyN2kPkinXSgo6GMR0QBj0gd/CpSer0j8bc5C4Pqks=
 github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.2 h1:LURZhM7yd6DqKYeX2kijX1LhiYW71vUKHh2L88cMmyQ=
 github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.2/go.mod h1:nf+rnBRrBEYLEeVbUbc0jGXnBRkYYS47/woMQZ+tGRs=
-github.com/urfave/cli/v3 v3.7.0 h1:AGSnbUyjtLiM+WJUb4dzXKldl/gL+F8OwmRDtVr6g2U=
-github.com/urfave/cli/v3 v3.7.0/go.mod h1:ysVLtOEmg2tOy6PknnYVhDoouyC/6N42TMeoMzskhso=
 github.com/urfave/cli/v3 v3.8.0 h1:XqKPrm0q4P0q5JpoclYoCAv0/MIvH/jZ2umzuf8pNTI=
 github.com/urfave/cli/v3 v3.8.0/go.mod h1:ysVLtOEmg2tOy6PknnYVhDoouyC/6N42TMeoMzskhso=
 github.com/zalando/go-keyring v0.2.6 h1:r7Yc3+H+Ux0+M72zacZoItR3UDxeWfKTcabvkI8ua9s=
