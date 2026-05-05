@@ -39,7 +39,7 @@ func TestController_output(t *testing.T) {
 				AccessToken:    "test-token-json",
 				ExpirationDate: time.Date(2024, 12, 31, 23, 59, 59, 0, time.UTC),
 			},
-			outputFormat:    "json",
+			outputFormat:    FormatJSON,
 			isGitCredential: false,
 			wantOutput:      "",
 			wantErr:         false,
@@ -78,7 +78,7 @@ func TestController_output(t *testing.T) {
 
 			if !tt.wantErr {
 				output := buf.String()
-				if tt.outputFormat == "json" {
+				if tt.outputFormat == FormatJSON {
 					// Verify it's valid JSON and contains expected fields
 					var result map[string]any
 					if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
