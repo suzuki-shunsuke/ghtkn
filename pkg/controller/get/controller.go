@@ -49,9 +49,11 @@ func NewInput() *Input {
 	}
 }
 
+const formatJSON = "json"
+
 // IsJSON returns true if the output format is set to JSON.
 func (i *Input) IsJSON() bool {
-	return i.OutputFormat == "json"
+	return i.OutputFormat == formatJSON
 }
 
 // Validate checks if the Input configuration is valid.
