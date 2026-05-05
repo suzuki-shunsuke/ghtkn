@@ -70,7 +70,7 @@ func TestController_Run(t *testing.T) {
 			name: "JSON output format",
 			setupInput: func() *get.Input {
 				return &get.Input{
-					OutputFormat: "json",
+					OutputFormat: get.FormatJSON,
 					Stdout:       &bytes.Buffer{},
 					Client: &mockClient{
 						token: &ghtkn.AccessToken{
@@ -102,7 +102,7 @@ func TestController_Run(t *testing.T) {
 				return
 			}
 
-			if !tt.wantErr && input.OutputFormat != "json" {
+			if !tt.wantErr && input.OutputFormat != get.FormatJSON {
 				output := input.Stdout.(*bytes.Buffer).String()
 				if output != tt.wantOutput {
 					t.Errorf("Run() output = %v, want %v", output, tt.wantOutput)

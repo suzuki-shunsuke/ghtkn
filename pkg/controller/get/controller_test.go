@@ -40,7 +40,7 @@ func TestInput_IsJSON(t *testing.T) {
 	}{
 		{
 			name:         "json format",
-			outputFormat: "json",
+			outputFormat: get.FormatJSON,
 			want:         true,
 		},
 		{
@@ -81,7 +81,7 @@ func TestInput_Validate(t *testing.T) {
 	}{
 		{
 			name:         "valid json format",
-			outputFormat: "json",
+			outputFormat: get.FormatJSON,
 			wantErr:      false,
 		},
 		{
