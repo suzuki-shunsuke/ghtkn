@@ -351,7 +351,7 @@ ghtkn gets and outputs an access token in the following way:
 3. [Determine the GitHub App](#using-multiple-apps)
 4. Get the client id from the configuration file
 5. Get the access token by client id from the keyring
-6. If the access token isn't found in the keyring or the access token expires, [creating a new access token through Device Flow. A user need to input the device code and approve the request](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app#using-the-device-flow-to-generate-a-user-access-token)
+6. If the access token isn't found in the keyring or the access token expires, [creating a new access token through Device Flow. A user need to input the verification code and approve the request](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app#using-the-device-flow-to-generate-a-user-access-token)
 7. Get the authenticated user login by GitHub API for Git Credential Helper
 8. Store the access token, expiration date, and authenticated user login in the keyring
 9. Output the access token
@@ -565,9 +565,9 @@ https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-githu
   
 ## :warning: Troubleshooting
 
-### the device flow asks the device code, but the device isn't shown anywhere
+### the device flow asks the verification code, but the code isn't shown anywhere
 
-When ghtkn is run in the background process, the device code is not displayed in the terminal.
+When ghtkn is run in the background process, the verification code is not displayed in the terminal.
 In that case, you need to:
 
 1. Cancel the process `A`
