@@ -21,6 +21,7 @@ func LogLevel(dest *string) *cli.StringFlag {
 		Usage:       "Log level (debug, info, warn, error)",
 		Sources:     cli.EnvVars("GHTKN_LOG_LEVEL"),
 		Destination: dest,
+		Local:       true,
 	}
 }
 
@@ -34,6 +35,7 @@ func Config(dest *string) *cli.StringFlag {
 		Usage:       "configuration file path",
 		Sources:     cli.EnvVars("GHTKN_CONFIG"),
 		Destination: dest,
+		Local:       true,
 	}
 }
 
