@@ -8,6 +8,7 @@ package cli
 import (
 	"context"
 
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/get"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/initcmd"
@@ -34,6 +35,7 @@ func Run(ctx context.Context, logger *slogutil.Logger, env *urfave.Env) error {
 			initcmd.New(logger, gFlags),
 			get.New(logger, env, true, gFlags),
 			get.New(logger, env, false, gFlags),
+			agent.New(logger, gFlags),
 		},
 	}).Run(ctx, env.Args)
 }
