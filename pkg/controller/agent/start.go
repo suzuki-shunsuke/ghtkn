@@ -5,17 +5,16 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/signal"
-	"syscall"
 )
 
 // Start runs the agent server in the foreground.
-// It resolves and opens the Unix domain socket, serves clients until the process
-// receives SIGINT or SIGTERM (or ctx is canceled), then removes the socket and exits.
+// It resolves and opens the Unix domain socket, serves clients until ctx is
+// canceled, then removes the socket and exits.
+//
+// ctx is canceled when the process receives SIGINT or SIGTERM; the signal
+// handling is set up by urfave.Main (see cmd/ghtkn/main.go), so this function
+// does not register its own signal handler.
 func (c *Controller) Start(ctx context.Context, logger *slog.Logger) error {
-	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
 	path, err := socketPath()
 	if err != nil {
 		return err
