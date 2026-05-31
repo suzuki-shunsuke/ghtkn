@@ -36,6 +36,16 @@ var handleTestCases = []handleTestCase{ //nolint:gochecknoglobals // test fixtur
 		want:     []*Response{{Error: errMsgNotFound}},
 	},
 	{
+		name:     "get invalid client id",
+		requests: []string{`{"command":"GET","client_id":"../escape"}`},
+		want:     []*Response{{Error: errMsgInvalidClientID}},
+	},
+	{
+		name:     "set invalid client id",
+		requests: []string{`{"command":"SET","client_id":"a/b","token":{}}`},
+		want:     []*Response{{Error: errMsgInvalidClientID}},
+	},
+	{
 		name:     "unknown command",
 		requests: []string{`{"command":"NOPE"}`},
 		want:     []*Response{{Error: errMsgUnknownCommand}},
@@ -76,6 +86,23 @@ func TestController_handle(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestController_handle_disk drives GET/SET against a disk-backed encrypted store
+// and verifies the token round-trips through encryption and disk persistence.
+func TestController_handle_disk(t *testing.T) {
+	t.Parallel()
+	c := New()
+	c.store = newDiskStore(testDataKey(t), t.TempDir())
+
+	set, _ := c.handle(strings.NewReader(`{"command":"SET","client_id":"Iv1.abc","token":{"access_token":"abc"}}` + "\n"))
+	if diff := cmp.Diff(&Response{OK: true}, set); diff != "" {
+		t.Fatalf("SET (-want +got):\n%s", diff)
+	}
+	get, _ := c.handle(strings.NewReader(`{"command":"GET","client_id":"Iv1.abc"}` + "\n"))
+	if diff := cmp.Diff(&Response{OK: true, Token: []byte(`{"access_token":"abc"}`)}, get); diff != "" {
+		t.Fatalf("GET (-want +got):\n%s", diff)
 	}
 }
 

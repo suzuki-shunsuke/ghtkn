@@ -12,11 +12,14 @@ import (
 
 // Error messages returned to clients in Response.Error.
 const (
-	errMsgEmptyRequest   = "empty request"
-	errMsgInvalidRequest = "invalid request"
-	errMsgReadRequest    = "read the request"
-	errMsgUnknownCommand = "unknown command"
-	errMsgNotFound       = "not found"
+	errMsgEmptyRequest    = "empty request"
+	errMsgInvalidRequest  = "invalid request"
+	errMsgReadRequest     = "read the request"
+	errMsgUnknownCommand  = "unknown command"
+	errMsgNotFound        = "not found"
+	errMsgInvalidClientID = "invalid client id"
+	errMsgGet             = "get the token"
+	errMsgSet             = "set the token"
 )
 
 // serve accepts connections until the listener is closed and handles each one.
@@ -79,13 +82,23 @@ func (c *Controller) handle(r io.Reader) (*Response, bool) {
 func (c *Controller) dispatch(req *Request) (*Response, bool) {
 	switch req.Command {
 	case CommandGet:
-		token, ok := c.store.Get(req.ClientID)
-		if !ok {
+		token, ok, err := c.store.Get(req.ClientID)
+		switch {
+		case errors.Is(err, errInvalidClientID):
+			return &Response{Error: errMsgInvalidClientID}, false
+		case err != nil:
+			return &Response{Error: errMsgGet}, false
+		case !ok:
 			return &Response{Error: errMsgNotFound}, false
 		}
 		return &Response{OK: true, Token: token}, false
 	case CommandSet:
-		c.store.Set(req.ClientID, req.Token)
+		if err := c.store.Set(req.ClientID, req.Token); err != nil {
+			if errors.Is(err, errInvalidClientID) {
+				return &Response{Error: errMsgInvalidClientID}, false
+			}
+			return &Response{Error: errMsgSet}, false
+		}
 		return &Response{OK: true}, false
 	case CommandStatus:
 		return &Response{OK: true, Count: c.store.Len()}, false
