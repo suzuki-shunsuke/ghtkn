@@ -6,6 +6,7 @@ package get
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -45,7 +46,7 @@ type Input struct {
 func NewInput() (*Input, error) {
 	client, err := ghtkn.New()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create a ghtkn client: %w", err)
 	}
 	return &Input{
 		Stdout: os.Stdout,

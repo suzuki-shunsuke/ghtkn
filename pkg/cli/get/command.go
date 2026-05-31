@@ -118,7 +118,7 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args
 
 	input, err := get.NewInput()
 	if err != nil {
-		return err
+		return fmt.Errorf("create the controller input: %w", err)
 	}
 	if r.isGitCredential {
 		if err := r.handleGitCredential(ctx, logger.Logger, args.SubCommand, input, inputGet); err != nil {
@@ -130,15 +130,25 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args
 			inputGet.AppName = args.AppName
 		}
 	}
-	if inputGet.ConfigFilePath == "" {
-		p, err := ghtkn.GetConfigPath()
-		if err != nil {
-			return fmt.Errorf("get the config path: %w", err)
-		}
-		inputGet.ConfigFilePath = p
+	if err := resolveConfigFilePath(inputGet); err != nil {
+		return err
 	}
 	if err := input.Validate(); err != nil {
 		return err //nolint:wrapcheck
 	}
 	return get.New(input).Run(ctx, logger.Logger, inputGet) //nolint:wrapcheck
+}
+
+// resolveConfigFilePath fills in inputGet.ConfigFilePath with the default
+// configuration path when it has not been set by a flag.
+func resolveConfigFilePath(inputGet *ghtkn.InputGet) error {
+	if inputGet.ConfigFilePath != "" {
+		return nil
+	}
+	p, err := ghtkn.GetConfigPath()
+	if err != nil {
+		return fmt.Errorf("get the config path: %w", err)
+	}
+	inputGet.ConfigFilePath = p
+	return nil
 }
