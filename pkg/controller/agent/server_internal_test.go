@@ -70,11 +70,28 @@ func TestController_handle(t *testing.T) {
 			t.Parallel()
 			c := New()
 			for i, req := range d.requests {
-				got := c.handle(strings.NewReader(req + "\n"))
+				got, _ := c.handle(strings.NewReader(req + "\n"))
 				if diff := cmp.Diff(d.want[i], got); diff != "" {
 					t.Fatalf("request %d (-want +got):\n%s", i, diff)
 				}
 			}
 		})
+	}
+}
+
+func TestController_handle_stop(t *testing.T) {
+	t.Parallel()
+	c := New()
+	got, shutdown := c.handle(strings.NewReader(`{"command":"STOP"}` + "\n"))
+	if diff := cmp.Diff(&Response{OK: true}, got); diff != "" {
+		t.Fatalf("response (-want +got):\n%s", diff)
+	}
+	if !shutdown {
+		t.Fatal("STOP must request shutdown")
+	}
+
+	// Non-stop commands must not request shutdown.
+	if _, shutdown := c.handle(strings.NewReader(`{"command":"STATUS"}` + "\n")); shutdown {
+		t.Fatal("STATUS must not request shutdown")
 	}
 }

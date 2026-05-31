@@ -31,6 +31,7 @@ func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
 		Usage: "Manage the ghtkn agent that caches access tokens and serves them over a Unix socket",
 		Commands: []*cli.Command{
 			r.startCommand(),
+			r.stopCommand(),
 		},
 	}
 }
@@ -64,4 +65,27 @@ func (r *runner) start(ctx context.Context, _ *cli.Command) error {
 		return fmt.Errorf("set log level: %w", err)
 	}
 	return agent.New().Start(ctx, r.logger.Logger) //nolint:wrapcheck
+}
+
+// stopCommand returns the CLI command definition for the 'agent stop' subcommand.
+func (r *runner) stopCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "stop",
+		Usage: "Stop the running ghtkn agent",
+		Description: `Stop the running ghtkn agent.
+
+It connects to the agent's Unix domain socket and asks it to shut down.
+
+$ ghtkn agent stop`,
+		Action: r.stop,
+	}
+}
+
+// stop executes the 'agent stop' command logic.
+// It configures the log level and asks the running agent to shut down.
+func (r *runner) stop(ctx context.Context, _ *cli.Command) error {
+	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
+		return fmt.Errorf("set log level: %w", err)
+	}
+	return agent.New().Stop(ctx, r.logger.Logger) //nolint:wrapcheck
 }

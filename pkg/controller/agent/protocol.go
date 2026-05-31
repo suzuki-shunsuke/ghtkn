@@ -7,12 +7,13 @@ const (
 	CommandGet    = "GET"
 	CommandSet    = "SET"
 	CommandStatus = "STATUS"
+	CommandStop   = "STOP"
 )
 
 // Request is a single request sent by a client to the agent.
 // The wire format is one JSON object per line (newline-delimited JSON).
 type Request struct {
-	// Command is one of CommandGet, CommandSet, or CommandStatus.
+	// Command is one of CommandGet, CommandSet, CommandStatus, or CommandStop.
 	Command string `json:"command"`
 	// ClientID identifies the GitHub App (used by GET and SET).
 	ClientID string `json:"client_id,omitempty"`

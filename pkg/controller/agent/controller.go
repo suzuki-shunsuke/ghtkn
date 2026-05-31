@@ -7,9 +7,14 @@
 // protocol defined in this package is the contract between the agent and its clients.
 package agent
 
+import "context"
+
 // Controller runs the ghtkn agent server.
 type Controller struct {
 	store *store
+	// shutdown cancels the serve loop. It is set while the server is running
+	// (see Start) and invoked when a STOP command is received.
+	shutdown context.CancelFunc
 }
 
 // New creates a new agent Controller with an empty in-memory token store.

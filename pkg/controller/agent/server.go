@@ -36,9 +36,11 @@ func (c *Controller) serve(listener net.Listener, logger *slog.Logger) error {
 
 // handleConn reads a single request from conn, processes it, writes the response,
 // and closes the connection. Each connection serves exactly one request.
+// When the request asks the agent to stop, the shutdown is triggered only after
+// the response has been written so the client always receives the acknowledgment.
 func (c *Controller) handleConn(conn net.Conn, logger *slog.Logger) {
 	defer conn.Close()
-	resp := c.handle(conn)
+	resp, shutdown := c.handle(conn)
 	b, err := json.Marshal(resp)
 	if err != nil {
 		logger.Error("marshal the agent response", "error", err)
@@ -47,42 +49,49 @@ func (c *Controller) handleConn(conn net.Conn, logger *slog.Logger) {
 	if _, err := conn.Write(append(b, '\n')); err != nil {
 		logger.Error("write the agent response", "error", err)
 	}
+	if shutdown && c.shutdown != nil {
+		c.shutdown()
+	}
 }
 
-// handle reads and processes one request, returning the response to send.
-func (c *Controller) handle(r io.Reader) *Response {
+// handle reads and processes one request, returning the response to send and
+// whether the agent should shut down afterwards.
+func (c *Controller) handle(r io.Reader) (*Response, bool) {
 	line, err := bufio.NewReader(r).ReadBytes('\n')
 	// ReadBytes returns io.EOF together with the data when there is no trailing
 	// newline, so a non-empty line is still valid in that case.
 	if err != nil && !errors.Is(err, io.EOF) {
-		return &Response{Error: errMsgReadRequest}
+		return &Response{Error: errMsgReadRequest}, false
 	}
 	line = bytes.TrimSpace(line)
 	if len(line) == 0 {
-		return &Response{Error: errMsgEmptyRequest}
+		return &Response{Error: errMsgEmptyRequest}, false
 	}
 	req := &Request{}
 	if err := json.Unmarshal(line, req); err != nil {
-		return &Response{Error: errMsgInvalidRequest}
+		return &Response{Error: errMsgInvalidRequest}, false
 	}
 	return c.dispatch(req)
 }
 
 // dispatch routes a request to the matching handler.
-func (c *Controller) dispatch(req *Request) *Response {
+// The second return value reports whether the agent should shut down.
+func (c *Controller) dispatch(req *Request) (*Response, bool) {
 	switch req.Command {
 	case CommandGet:
 		token, ok := c.store.Get(req.ClientID)
 		if !ok {
-			return &Response{Error: errMsgNotFound}
+			return &Response{Error: errMsgNotFound}, false
 		}
-		return &Response{OK: true, Token: token}
+		return &Response{OK: true, Token: token}, false
 	case CommandSet:
 		c.store.Set(req.ClientID, req.Token)
-		return &Response{OK: true}
+		return &Response{OK: true}, false
 	case CommandStatus:
-		return &Response{OK: true, Count: c.store.Len()}
+		return &Response{OK: true, Count: c.store.Len()}, false
+	case CommandStop:
+		return &Response{OK: true}, true
 	default:
-		return &Response{Error: errMsgUnknownCommand}
+		return &Response{Error: errMsgUnknownCommand}, false
 	}
 }
