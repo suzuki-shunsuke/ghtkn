@@ -1,14 +1,10 @@
 package agent
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
-	"net"
 )
 
 // Stop connects to a running agent over its Unix domain socket and asks it to
@@ -20,28 +16,12 @@ func (c *Controller) Stop(ctx context.Context, logger *slog.Logger) error {
 		return err
 	}
 
-	dialer := &net.Dialer{Timeout: dialTimeout}
-	conn, err := dialer.DialContext(ctx, "unix", path)
+	resp, err := request(ctx, path, &Request{Command: CommandStop})
 	if err != nil {
-		return fmt.Errorf("connect to the ghtkn agent (is it running?): %w", err)
-	}
-	defer conn.Close()
-
-	req, err := json.Marshal(&Request{Command: CommandStop})
-	if err != nil {
-		return fmt.Errorf("marshal the stop request: %w", err)
-	}
-	if _, err := conn.Write(append(req, '\n')); err != nil {
+		if isNotRunning(err) {
+			return errors.New("the ghtkn agent is not running")
+		}
 		return fmt.Errorf("send the stop request: %w", err)
-	}
-
-	line, err := bufio.NewReader(conn).ReadBytes('\n')
-	if err != nil && !errors.Is(err, io.EOF) {
-		return fmt.Errorf("read the stop response: %w", err)
-	}
-	resp := &Response{}
-	if err := json.Unmarshal(line, resp); err != nil {
-		return fmt.Errorf("parse the stop response: %w", err)
 	}
 	if !resp.OK {
 		return fmt.Errorf("the agent failed to stop: %s", resp.Error)

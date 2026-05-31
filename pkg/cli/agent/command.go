@@ -3,9 +3,8 @@
 // serves them to clients over a Unix domain socket. It is intended for environments
 // where the OS keyring is unavailable (containers, VMs, minimal Linux, etc.).
 //
-// This package currently provides the 'start' subcommand, which launches the agent
-// in the foreground. Token caching is kept in memory only; on-disk encryption is
-// planned for a later change.
+// This package provides the 'start', 'stop', and 'status' subcommands. Token
+// caching is kept in memory only; on-disk encryption is planned for a later change.
 package agent
 
 import (
@@ -32,6 +31,7 @@ func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
 		Commands: []*cli.Command{
 			r.startCommand(),
 			r.stopCommand(),
+			r.statusCommand(),
 		},
 	}
 }
@@ -88,4 +88,28 @@ func (r *runner) stop(ctx context.Context, _ *cli.Command) error {
 		return fmt.Errorf("set log level: %w", err)
 	}
 	return agent.New().Stop(ctx, r.logger.Logger) //nolint:wrapcheck
+}
+
+// statusCommand returns the CLI command definition for the 'agent status' subcommand.
+func (r *runner) statusCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "status",
+		Usage: "Show whether the ghtkn agent is running",
+		Description: `Show whether the ghtkn agent is running.
+
+It connects to the agent's Unix domain socket and reports the number of cached
+access tokens. It exits 0 whether or not the agent is running.
+
+$ ghtkn agent status`,
+		Action: r.status,
+	}
+}
+
+// status executes the 'agent status' command logic.
+// It configures the log level and reports whether the agent is running.
+func (r *runner) status(ctx context.Context, _ *cli.Command) error {
+	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
+		return fmt.Errorf("set log level: %w", err)
+	}
+	return agent.New().Status(ctx, r.logger.Logger) //nolint:wrapcheck
 }
