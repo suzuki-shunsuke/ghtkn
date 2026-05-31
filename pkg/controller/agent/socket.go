@@ -7,7 +7,8 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"time"
+
+	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 )
 
 // errAgentRunning is returned when another agent is already listening on the socket.
@@ -18,26 +19,6 @@ const (
 	socketDirPerm  os.FileMode = 0o700 // accessible only by the current user
 	socketFilePerm os.FileMode = 0o600 // accessible only by the current user
 )
-
-// dialTimeout bounds how long the stale-socket probe waits for a response.
-const dialTimeout = time.Second
-
-// socketPath resolves the path of the agent's Unix domain socket.
-// It prefers $XDG_RUNTIME_DIR/ghtkn/socket. When XDG_RUNTIME_DIR is unset it falls
-// back to $XDG_CACHE_HOME/ghtkn/agent.sock, and then to ~/.cache/ghtkn/agent.sock.
-func socketPath() (string, error) {
-	if dir := os.Getenv("XDG_RUNTIME_DIR"); dir != "" {
-		return filepath.Join(dir, "ghtkn", "socket"), nil
-	}
-	if dir := os.Getenv("XDG_CACHE_HOME"); dir != "" {
-		return filepath.Join(dir, "ghtkn", "agent.sock"), nil
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("get the user home directory: %w", err)
-	}
-	return filepath.Join(home, ".cache", "ghtkn", "agent.sock"), nil
-}
 
 // listen creates the Unix domain socket listener at path.
 // It creates the parent directory, removes a stale socket left by a crashed agent,
@@ -56,7 +37,7 @@ func listen(ctx context.Context, path string) (net.Listener, error) {
 		return nil, fmt.Errorf("listen on the socket: %w", err)
 	}
 	if err := os.Chmod(path, socketFilePerm); err != nil {
-		listener.Close()
+		_ = listener.Close()
 		return nil, fmt.Errorf("restrict the socket permissions: %w", err)
 	}
 	return listener, nil
@@ -72,7 +53,7 @@ func cleanupStaleSocket(ctx context.Context, path string) error {
 		}
 		return fmt.Errorf("stat the socket: %w", err)
 	}
-	dialer := &net.Dialer{Timeout: dialTimeout}
+	dialer := &net.Dialer{Timeout: agentapi.DialTimeout}
 	conn, err := dialer.DialContext(ctx, "unix", path)
 	if err == nil {
 		conn.Close()

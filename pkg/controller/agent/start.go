@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
+
+	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 )
 
 // Start runs the agent server in the foreground.
@@ -26,9 +28,9 @@ func (c *Controller) Start(ctx context.Context, logger *slog.Logger) error {
 	defer cancel()
 	c.shutdown = cancel
 
-	path, err := socketPath()
+	path, err := agentapi.SocketPath(os.Getenv, runtime.GOOS)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	listener, err := listen(ctx, path)

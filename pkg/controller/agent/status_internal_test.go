@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"path/filepath"
 	"testing"
+
+	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 )
 
 func TestQueryStatus_notRunning(t *testing.T) {
@@ -43,7 +45,7 @@ func TestQueryStatus_running(t *testing.T) {
 		t.Fatalf("count = %d, want 0", count)
 	}
 
-	if _, err := request(t.Context(), path, &Request{Command: CommandSet, ClientID: "X", Token: []byte(`{"access_token":"abc"}`)}); err != nil {
+	if _, err := agentapi.Send(t.Context(), path, &agentapi.Request{Command: agentapi.CommandSet, ClientID: "X", Token: []byte(`{"access_token":"abc"}`)}); err != nil {
 		t.Fatal(err)
 	}
 

@@ -5,19 +5,20 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 )
 
 type handleTestCase struct {
 	name     string
 	requests []string
-	want     []*Response
+	want     []*agentapi.Response
 }
 
 var handleTestCases = []handleTestCase{ //nolint:gochecknoglobals // test fixture
 	{
 		name:     "status empty",
 		requests: []string{`{"command":"STATUS"}`},
-		want:     []*Response{{OK: true}},
+		want:     []*agentapi.Response{{OK: true}},
 	},
 	{
 		name: "set then get",
@@ -25,7 +26,7 @@ var handleTestCases = []handleTestCase{ //nolint:gochecknoglobals // test fixtur
 			`{"command":"SET","client_id":"X","token":{"access_token":"abc"}}`,
 			`{"command":"GET","client_id":"X"}`,
 		},
-		want: []*Response{
+		want: []*agentapi.Response{
 			{OK: true},
 			{OK: true, Token: []byte(`{"access_token":"abc"}`)},
 		},
@@ -33,32 +34,32 @@ var handleTestCases = []handleTestCase{ //nolint:gochecknoglobals // test fixtur
 	{
 		name:     "get missing",
 		requests: []string{`{"command":"GET","client_id":"missing"}`},
-		want:     []*Response{{Error: errMsgNotFound}},
+		want:     []*agentapi.Response{{Error: agentapi.RespNotFound}},
 	},
 	{
 		name:     "get invalid client id",
 		requests: []string{`{"command":"GET","client_id":"../escape"}`},
-		want:     []*Response{{Error: errMsgInvalidClientID}},
+		want:     []*agentapi.Response{{Error: errMsgInvalidClientID}},
 	},
 	{
 		name:     "set invalid client id",
 		requests: []string{`{"command":"SET","client_id":"a/b","token":{}}`},
-		want:     []*Response{{Error: errMsgInvalidClientID}},
+		want:     []*agentapi.Response{{Error: errMsgInvalidClientID}},
 	},
 	{
 		name:     "unknown command",
 		requests: []string{`{"command":"NOPE"}`},
-		want:     []*Response{{Error: errMsgUnknownCommand}},
+		want:     []*agentapi.Response{{Error: errMsgUnknownCommand}},
 	},
 	{
 		name:     "invalid json",
 		requests: []string{`{not json`},
-		want:     []*Response{{Error: errMsgInvalidRequest}},
+		want:     []*agentapi.Response{{Error: errMsgInvalidRequest}},
 	},
 	{
 		name:     "empty request",
 		requests: []string{""},
-		want:     []*Response{{Error: errMsgEmptyRequest}},
+		want:     []*agentapi.Response{{Error: errMsgEmptyRequest}},
 	},
 	{
 		name: "set then status counts",
@@ -66,7 +67,7 @@ var handleTestCases = []handleTestCase{ //nolint:gochecknoglobals // test fixtur
 			`{"command":"SET","client_id":"X","token":{"access_token":"abc"}}`,
 			`{"command":"STATUS"}`,
 		},
-		want: []*Response{
+		want: []*agentapi.Response{
 			{OK: true},
 			{OK: true, Count: 1},
 		},
@@ -97,11 +98,11 @@ func TestController_handle_disk(t *testing.T) {
 	c.store = newDiskStore(testDataKey(t), t.TempDir())
 
 	set, _ := c.handle(strings.NewReader(`{"command":"SET","client_id":"Iv1.abc","token":{"access_token":"abc"}}` + "\n"))
-	if diff := cmp.Diff(&Response{OK: true}, set); diff != "" {
+	if diff := cmp.Diff(&agentapi.Response{OK: true}, set); diff != "" {
 		t.Fatalf("SET (-want +got):\n%s", diff)
 	}
 	get, _ := c.handle(strings.NewReader(`{"command":"GET","client_id":"Iv1.abc"}` + "\n"))
-	if diff := cmp.Diff(&Response{OK: true, Token: []byte(`{"access_token":"abc"}`)}, get); diff != "" {
+	if diff := cmp.Diff(&agentapi.Response{OK: true, Token: []byte(`{"access_token":"abc"}`)}, get); diff != "" {
 		t.Fatalf("GET (-want +got):\n%s", diff)
 	}
 }
@@ -110,7 +111,7 @@ func TestController_handle_stop(t *testing.T) {
 	t.Parallel()
 	c := New()
 	got, shutdown := c.handle(strings.NewReader(`{"command":"STOP"}` + "\n"))
-	if diff := cmp.Diff(&Response{OK: true}, got); diff != "" {
+	if diff := cmp.Diff(&agentapi.Response{OK: true}, got); diff != "" {
 		t.Fatalf("response (-want +got):\n%s", diff)
 	}
 	if !shutdown {

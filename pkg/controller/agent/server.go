@@ -8,15 +8,16 @@ import (
 	"io"
 	"log/slog"
 	"net"
+
+	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 )
 
-// Error messages returned to clients in Response.Error.
+// Error messages returned to clients in the response.
 const (
 	errMsgEmptyRequest    = "empty request"
 	errMsgInvalidRequest  = "invalid request"
 	errMsgReadRequest     = "read the request"
 	errMsgUnknownCommand  = "unknown command"
-	errMsgNotFound        = "not found"
 	errMsgInvalidClientID = "invalid client id"
 	errMsgGet             = "get the token"
 	errMsgSet             = "set the token"
@@ -59,62 +60,62 @@ func (c *Controller) handleConn(conn net.Conn, logger *slog.Logger) {
 
 // handle reads and processes one request, returning the response to send and
 // whether the agent should shut down afterwards.
-func (c *Controller) handle(r io.Reader) (*Response, bool) {
+func (c *Controller) handle(r io.Reader) (*agentapi.Response, bool) {
 	line, err := bufio.NewReader(r).ReadBytes('\n')
 	// ReadBytes returns io.EOF together with the data when there is no trailing
 	// newline, so a non-empty line is still valid in that case.
 	if err != nil && !errors.Is(err, io.EOF) {
-		return &Response{Error: errMsgReadRequest}, false
+		return &agentapi.Response{Error: errMsgReadRequest}, false
 	}
 	line = bytes.TrimSpace(line)
 	if len(line) == 0 {
-		return &Response{Error: errMsgEmptyRequest}, false
+		return &agentapi.Response{Error: errMsgEmptyRequest}, false
 	}
-	req := &Request{}
+	req := &agentapi.Request{}
 	if err := json.Unmarshal(line, req); err != nil {
-		return &Response{Error: errMsgInvalidRequest}, false
+		return &agentapi.Response{Error: errMsgInvalidRequest}, false
 	}
 	return c.dispatch(req)
 }
 
 // dispatch routes a request to the matching handler.
 // The second return value reports whether the agent should shut down.
-func (c *Controller) dispatch(req *Request) (*Response, bool) {
+func (c *Controller) dispatch(req *agentapi.Request) (*agentapi.Response, bool) {
 	switch req.Command {
-	case CommandGet:
+	case agentapi.CommandGet:
 		return c.handleGet(req), false
-	case CommandSet:
+	case agentapi.CommandSet:
 		return c.handleSet(req), false
-	case CommandStatus:
-		return &Response{OK: true, Count: c.store.Len()}, false
-	case CommandStop:
-		return &Response{OK: true}, true
+	case agentapi.CommandStatus:
+		return &agentapi.Response{OK: true, Count: c.store.Len()}, false
+	case agentapi.CommandStop:
+		return &agentapi.Response{OK: true}, true
 	default:
-		return &Response{Error: errMsgUnknownCommand}, false
+		return &agentapi.Response{Error: errMsgUnknownCommand}, false
 	}
 }
 
 // handleGet returns the cached token for the request's client ID.
-func (c *Controller) handleGet(req *Request) *Response {
+func (c *Controller) handleGet(req *agentapi.Request) *agentapi.Response {
 	token, ok, err := c.store.Get(req.ClientID)
 	switch {
 	case errors.Is(err, errInvalidClientID):
-		return &Response{Error: errMsgInvalidClientID}
+		return &agentapi.Response{Error: errMsgInvalidClientID}
 	case err != nil:
-		return &Response{Error: errMsgGet}
+		return &agentapi.Response{Error: errMsgGet}
 	case !ok:
-		return &Response{Error: errMsgNotFound}
+		return &agentapi.Response{Error: agentapi.RespNotFound}
 	}
-	return &Response{OK: true, Token: token}
+	return &agentapi.Response{OK: true, Token: token}
 }
 
 // handleSet stores the request's token under its client ID.
-func (c *Controller) handleSet(req *Request) *Response {
+func (c *Controller) handleSet(req *agentapi.Request) *agentapi.Response {
 	if err := c.store.Set(req.ClientID, req.Token); err != nil {
 		if errors.Is(err, errInvalidClientID) {
-			return &Response{Error: errMsgInvalidClientID}
+			return &agentapi.Response{Error: errMsgInvalidClientID}
 		}
-		return &Response{Error: errMsgSet}
+		return &agentapi.Response{Error: errMsgSet}
 	}
-	return &Response{OK: true}
+	return &agentapi.Response{OK: true}
 }

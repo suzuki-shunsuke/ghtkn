@@ -7,46 +7,6 @@ import (
 	"testing"
 )
 
-func TestSocketPath(t *testing.T) {
-	data := []struct {
-		name string
-		env  map[string]string
-		want string
-	}{
-		{
-			name: "xdg runtime dir",
-			env:  map[string]string{"XDG_RUNTIME_DIR": "/run/user/1000"},
-			want: "/run/user/1000/ghtkn/socket",
-		},
-		{
-			name: "xdg cache home fallback",
-			env:  map[string]string{"XDG_CACHE_HOME": "/home/me/.cache"},
-			want: "/home/me/.cache/ghtkn/agent.sock",
-		},
-		{
-			name: "home fallback",
-			env:  map[string]string{"HOME": "/home/me"},
-			want: "/home/me/.cache/ghtkn/agent.sock",
-		},
-	}
-	for _, d := range data {
-		t.Run(d.name, func(t *testing.T) {
-			t.Setenv("XDG_RUNTIME_DIR", "")
-			t.Setenv("XDG_CACHE_HOME", "")
-			for k, v := range d.env {
-				t.Setenv(k, v)
-			}
-			got, err := socketPath()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got != filepath.FromSlash(d.want) {
-				t.Fatalf("socketPath() = %q, want %q", got, d.want)
-			}
-		})
-	}
-}
-
 func TestCleanupStaleSocket(t *testing.T) {
 	t.Parallel()
 
