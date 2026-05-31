@@ -42,11 +42,15 @@ type Input struct {
 
 // NewInput creates a new Input instance with default production values.
 // It sets up all necessary dependencies including file system, HTTP client, and keyring access.
-func NewInput() *Input {
+func NewInput() (*Input, error) {
+	client, err := ghtkn.New()
+	if err != nil {
+		return nil, err
+	}
 	return &Input{
 		Stdout: os.Stdout,
-		Client: ghtkn.New(),
-	}
+		Client: client,
+	}, nil
 }
 
 const FormatJSON = "json"

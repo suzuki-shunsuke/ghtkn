@@ -116,7 +116,10 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args
 	}
 	inputGet.ConfigFilePath = args.Config
 
-	input := get.NewInput()
+	input, err := get.NewInput()
+	if err != nil {
+		return err
+	}
 	if r.isGitCredential {
 		if err := r.handleGitCredential(ctx, logger.Logger, args.SubCommand, input, inputGet); err != nil {
 			return err
