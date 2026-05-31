@@ -82,24 +82,9 @@ func (c *Controller) handle(r io.Reader) (*Response, bool) {
 func (c *Controller) dispatch(req *Request) (*Response, bool) {
 	switch req.Command {
 	case CommandGet:
-		token, ok, err := c.store.Get(req.ClientID)
-		switch {
-		case errors.Is(err, errInvalidClientID):
-			return &Response{Error: errMsgInvalidClientID}, false
-		case err != nil:
-			return &Response{Error: errMsgGet}, false
-		case !ok:
-			return &Response{Error: errMsgNotFound}, false
-		}
-		return &Response{OK: true, Token: token}, false
+		return c.handleGet(req), false
 	case CommandSet:
-		if err := c.store.Set(req.ClientID, req.Token); err != nil {
-			if errors.Is(err, errInvalidClientID) {
-				return &Response{Error: errMsgInvalidClientID}, false
-			}
-			return &Response{Error: errMsgSet}, false
-		}
-		return &Response{OK: true}, false
+		return c.handleSet(req), false
 	case CommandStatus:
 		return &Response{OK: true, Count: c.store.Len()}, false
 	case CommandStop:
@@ -107,4 +92,29 @@ func (c *Controller) dispatch(req *Request) (*Response, bool) {
 	default:
 		return &Response{Error: errMsgUnknownCommand}, false
 	}
+}
+
+// handleGet returns the cached token for the request's client ID.
+func (c *Controller) handleGet(req *Request) *Response {
+	token, ok, err := c.store.Get(req.ClientID)
+	switch {
+	case errors.Is(err, errInvalidClientID):
+		return &Response{Error: errMsgInvalidClientID}
+	case err != nil:
+		return &Response{Error: errMsgGet}
+	case !ok:
+		return &Response{Error: errMsgNotFound}
+	}
+	return &Response{OK: true, Token: token}
+}
+
+// handleSet stores the request's token under its client ID.
+func (c *Controller) handleSet(req *Request) *Response {
+	if err := c.store.Set(req.ClientID, req.Token); err != nil {
+		if errors.Is(err, errInvalidClientID) {
+			return &Response{Error: errMsgInvalidClientID}
+		}
+		return &Response{Error: errMsgSet}
+	}
+	return &Response{OK: true}
 }

@@ -96,15 +96,15 @@ func TestStore_lenCountsDiskFiles(t *testing.T) {
 func TestValidClientID(t *testing.T) {
 	t.Parallel()
 	data := map[string]bool{
-		"Iv1.abc":  true,
-		"Iv23xyz":  true,
-		"a_b-c.d":  true,
-		"":         false,
-		".":        false,
-		"..":       false,
-		"a/b":      false,
-		"a\x00b":   false,
-		"a b":      false,
+		"Iv1.abc": true,
+		"Iv23xyz": true,
+		"a_b-c.d": true,
+		"":        false,
+		".":       false,
+		"..":      false,
+		"a/b":     false,
+		"a\x00b":  false,
+		"a b":     false,
 	}
 	for id, want := range data {
 		if got := validClientID(id); got != want {
