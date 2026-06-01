@@ -64,6 +64,12 @@ func TestKeyPath(t *testing.T) {
 		want string
 	}{
 		{
+			name: "explicit key override",
+			env:  map[string]string{"GHTKN_AGENT_KEY": "/custom/key", "XDG_DATA_HOME": "/data"},
+			goos: "linux",
+			want: "/custom/key",
+		},
+		{
 			name: "xdg data home",
 			env:  map[string]string{"XDG_DATA_HOME": "/data"},
 			goos: "linux",
