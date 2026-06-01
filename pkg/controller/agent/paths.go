@@ -27,22 +27,25 @@ func cacheDir(getEnv func(string) string, goos string) (string, error) {
 	return "", errors.New("XDG_CACHE_HOME or HOME is required to use the agent backend")
 }
 
-// configDir resolves the base config directory. On Windows it is %AppData%;
-// otherwise it honors XDG_CONFIG_HOME and falls back to $HOME/.config.
-func configDir(getEnv func(string) string, goos string) (string, error) {
+// dataDir resolves the base data directory. On Windows it is %LocalAppData%;
+// otherwise it honors XDG_DATA_HOME and falls back to $HOME/.local/share.
+// The key file is persistent data (losing it makes the encrypted tokens
+// unrecoverable), not user-editable config, so it lives here rather than under the
+// config dir.
+func dataDir(getEnv func(string) string, goos string) (string, error) {
 	if goos == goosWindows {
-		if d := getEnv("AppData"); d != "" {
+		if d := getEnv("LocalAppData"); d != "" {
 			return d, nil
 		}
-		return "", errors.New("AppData is required to use the agent backend on Windows")
+		return "", errors.New("LocalAppData is required to use the agent backend on Windows")
 	}
-	if d := getEnv("XDG_CONFIG_HOME"); d != "" {
+	if d := getEnv("XDG_DATA_HOME"); d != "" {
 		return d, nil
 	}
 	if home := getEnv("HOME"); home != "" {
-		return filepath.Join(home, ".config"), nil
+		return filepath.Join(home, ".local", "share"), nil
 	}
-	return "", errors.New("XDG_CONFIG_HOME or HOME is required to use the agent backend")
+	return "", errors.New("XDG_DATA_HOME or HOME is required to use the agent backend")
 }
 
 // tokenDir resolves the directory that stores encrypted token files:
@@ -56,9 +59,9 @@ func tokenDir(getEnv func(string) string, goos string) (string, error) {
 }
 
 // keyPath resolves the path of the wrapped data key file:
-// ${config dir}/ghtkn/key.
+// ${data dir}/ghtkn/key.
 func keyPath(getEnv func(string) string, goos string) (string, error) {
-	dir, err := configDir(getEnv, goos)
+	dir, err := dataDir(getEnv, goos)
 	if err != nil {
 		return "", err
 	}

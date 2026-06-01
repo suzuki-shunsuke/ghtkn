@@ -11,13 +11,13 @@ import (
 // the socket at an absent path so Stop is a no-op (no agent running).
 func resetEnv(t *testing.T) (keyFile, tokenDir string) {
 	t.Helper()
-	cfg := t.TempDir()
+	data := t.TempDir()
 	cache := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", cfg)
+	t.Setenv("XDG_DATA_HOME", data)
 	t.Setenv("XDG_CACHE_HOME", cache)
 	t.Setenv("XDG_RUNTIME_DIR", "")
 	t.Setenv("GHTKN_AGENT_SOCKET", filepath.Join(t.TempDir(), "absent.sock"))
-	return filepath.Join(cfg, "ghtkn", "key"), filepath.Join(cache, "ghtkn", "agent")
+	return filepath.Join(data, "ghtkn", "key"), filepath.Join(cache, "ghtkn", "agent")
 }
 
 func TestReset_recreates(t *testing.T) { //nolint:paralleltest // uses t.Setenv

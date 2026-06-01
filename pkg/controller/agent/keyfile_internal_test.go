@@ -64,22 +64,22 @@ func TestKeyPath(t *testing.T) {
 		want string
 	}{
 		{
-			name: "xdg config home",
-			env:  map[string]string{"XDG_CONFIG_HOME": "/cfg"},
+			name: "xdg data home",
+			env:  map[string]string{"XDG_DATA_HOME": "/data"},
 			goos: "linux",
-			want: "/cfg/ghtkn/key",
+			want: "/data/ghtkn/key",
 		},
 		{
 			name: "home fallback",
 			env:  map[string]string{"HOME": "/home/me"},
 			goos: "linux",
-			want: "/home/me/.config/ghtkn/key",
+			want: "/home/me/.local/share/ghtkn/key",
 		},
 		{
-			name: "windows appdata",
-			env:  map[string]string{"AppData": `C:\Users\me\AppData\Roaming`},
+			name: "windows localappdata",
+			env:  map[string]string{"LocalAppData": `C:\Users\me\AppData\Local`},
 			goos: "windows",
-			want: filepath.Join(`C:\Users\me\AppData\Roaming`, "ghtkn", "key"),
+			want: filepath.Join(`C:\Users\me\AppData\Local`, "ghtkn", "key"),
 		},
 	}
 	for _, d := range data {
