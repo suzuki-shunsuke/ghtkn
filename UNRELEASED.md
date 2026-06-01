@@ -3,6 +3,53 @@
 > [!WARNING]
 > These features haven't been released yet.
 
+## Disable Device Flow
+
+`ghtkn` obtains a GitHub App User access token via the OAuth Device Flow, which is interactive: it prints a one-time (user) code and waits for the user.
+A coding agent (or any background / non-interactive process) cannot complete this, so it would block until a device code expires.
+By setting `GHTKN_DISABLE_DEVICE_FLOW` to `true`, `ghtkn` will fail fast with an actionable error instead of blocking.
+
+e.g.
+
+~/.claude/settings.json:
+
+```json
+{
+  "env": {
+    "GHTKN_DISABLE_DEVICE_FLOW": "true"
+  }
+}
+```
+
+```console
+❯ claude
+▗ ▗   ▖ ▖  Claude Code v2.1.158
+           Opus 4.8 (1M context) with high effort · Claude Max
+  ▘▘ ▝▝    ~/repos/src/github.com/csm-actions/securefix-action
+
+   Opus 4.8 is here! Now defaults to high effort · /effort xhigh for your hardest tasks
+
+❯ gh repo view                                                                                                                                
+
+⏺ Bash(gh repo view)
+  ⎿  Error: Exit code 1
+     May 31 14:27:42.175 ERR ghtkn failed program=ghtkn version=v3.0.0-local error="get or create access token: get or create token: create a
+     GitHub App User Access Token: a GitHub App User access token can't be created via Device Flow because it's disabled by 
+     GHTKN_DISABLE_DEVICE_FLOW. The Device Flow is interactive and can't be completed by a background or non-interactive process. If you are a
+     coding agent, do NOT run `ghtkn get` yourself because it would fail the same way; instead, ask the user to run `ghtkn get` in their own 
+     interactive terminal to authenticate"
+
+⏺ gh repo view failed — it couldn't authenticate. The gh CLI here goes through ghtkn, which needs an interactive GitHub App user access token
+  (Device Flow is disabled for non-interactive processes).
+
+  Could you authenticate in your own terminal by typing:
+
+  ! ghtkn get
+
+  Once that succeeds, I'll re-run gh repo view.
+```
+
+
 ## Backend
 
 By default ghtkn stores access tokens in the OS keyring.
