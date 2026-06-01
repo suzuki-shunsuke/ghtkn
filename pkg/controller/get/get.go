@@ -8,16 +8,24 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 )
 
+type InputRun struct {
+	Silent   bool
+	InputGet *ghtkn.InputGet
+}
+
 // Run executes the main logic for retrieving a GitHub App access token.
 // It reads configuration, checks for cached tokens, creates new tokens if needed,
 // retrieves the authenticated user's login for Git Credential Helper if necessary,
 // and outputs the result in the requested format.
-func (c *Controller) Run(ctx context.Context, logger *slog.Logger, input *ghtkn.InputGet) error {
-	token, app, err := c.input.Client.Get(ctx, logger, input)
+func (c *Controller) Run(ctx context.Context, logger *slog.Logger, input *InputRun) error {
+	token, app, err := c.input.Client.Get(ctx, logger, input.InputGet)
 	if err != nil {
 		return fmt.Errorf("get or create access token: %w", err)
 	}
 
+	if input.Silent {
+		return nil
+	}
 	// Output access token
 	if err := c.output(app.Name, token); err != nil {
 		return err

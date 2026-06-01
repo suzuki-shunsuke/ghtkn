@@ -63,3 +63,15 @@ func MinExpiration(dest *string) *cli.StringFlag {
 		Destination: dest,
 	}
 }
+
+// Silent returns a flag that suppresses printing the access token to stdout.
+// The token is still retrieved (and cached); only the output is suppressed.
+// Alias: -s
+func Silent(dest *bool) *cli.BoolFlag {
+	return &cli.BoolFlag{
+		Name:        "silent",
+		Aliases:     []string{"s"},
+		Usage:       "Do not output the access token",
+		Destination: dest,
+	}
+}

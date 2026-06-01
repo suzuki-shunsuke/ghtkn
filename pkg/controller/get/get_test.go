@@ -96,7 +96,7 @@ func TestController_Run(t *testing.T) {
 			ctx := t.Context()
 			logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
 
-			err := controller.Run(ctx, logger, &ghtkn.InputGet{})
+			err := controller.Run(ctx, logger, &get.InputRun{InputGet: &ghtkn.InputGet{}})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Run() error = %v, wantErr %v", err, tt.wantErr)
 				return

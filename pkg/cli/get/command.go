@@ -28,6 +28,7 @@ type Args struct {
 	MinExpiration string
 	AppName       string // positional argument for 'get' command
 	SubCommand    string // positional argument for 'git-credential' command (e.g., "get")
+	Silent        bool
 }
 
 // New creates either a 'get' or 'git-credential' command instance based on the isGitCredential flag.
@@ -87,6 +88,7 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 			flag.Config(&args.Config),
 			flag.Format(&args.Format),
 			flag.MinExpiration(&args.MinExpiration),
+			flag.Silent(&args.Silent),
 		},
 		Arguments: []cli.Argument{
 			&cli.StringArg{
@@ -136,7 +138,10 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args
 	if err := input.Validate(); err != nil {
 		return err //nolint:wrapcheck
 	}
-	return get.New(input).Run(ctx, logger.Logger, inputGet) //nolint:wrapcheck
+	return get.New(input).Run(ctx, logger.Logger, &get.InputRun{ //nolint:wrapcheck
+		Silent:   args.Silent,
+		InputGet: inputGet,
+	})
 }
 
 // resolveConfigFilePath fills in inputGet.ConfigFilePath with the default

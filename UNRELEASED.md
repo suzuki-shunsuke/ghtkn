@@ -3,6 +3,19 @@
 > [!WARNING]
 > These features haven't been released yet.
 
+## Get an access token without outputting it
+
+Add `--silent (-s)` to the `ghtkn get` command to retrieve an access token (running the device flow if needed) without outputting it to stdout.
+
+```sh
+ghtkn get -s
+```
+
+This is similar to `ghtkn get >/dev/null`, but
+
+- `-s` is shorter than `>/dev/null`
+- `-s` works on Windows too
+
 ## Disable Device Flow
 
 `ghtkn` obtains a GitHub App User access token via the OAuth Device Flow, which is interactive: it prints a one-time (user) code and waits for the user.
