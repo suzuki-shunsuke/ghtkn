@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -74,12 +75,22 @@ var handleTestCases = []handleTestCase{ //nolint:gochecknoglobals // test fixtur
 	},
 }
 
+// newUnlockedController returns a controller with an in-place disk store, as if it
+// had already been unlocked. The handle tests call it sequentially, so no locking
+// around c.store is needed.
+func newUnlockedController(t *testing.T) *Controller {
+	t.Helper()
+	c := New()
+	c.store = newDiskStore(testDataKey(t), t.TempDir())
+	return c
+}
+
 func TestController_handle(t *testing.T) {
 	t.Parallel()
 	for _, d := range handleTestCases {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
-			c := New()
+			c := newUnlockedController(t)
 			for i, req := range d.requests {
 				got, _ := c.handle(strings.NewReader(req + "\n"))
 				if diff := cmp.Diff(d.want[i], got); diff != "" {
@@ -90,12 +101,31 @@ func TestController_handle(t *testing.T) {
 	}
 }
 
+// TestController_handle_locked verifies that a locked agent refuses GET/SET and
+// reports locked in STATUS.
+func TestController_handle_locked(t *testing.T) {
+	t.Parallel()
+	c := New() // locked: no store
+
+	get, _ := c.handle(strings.NewReader(`{"command":"GET","client_id":"Iv1.x"}` + "\n"))
+	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, get); diff != "" {
+		t.Fatalf("GET while locked (-want +got):\n%s", diff)
+	}
+	set, _ := c.handle(strings.NewReader(`{"command":"SET","client_id":"Iv1.x","token":{}}` + "\n"))
+	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, set); diff != "" {
+		t.Fatalf("SET while locked (-want +got):\n%s", diff)
+	}
+	status, _ := c.handle(strings.NewReader(`{"command":"STATUS"}` + "\n"))
+	if diff := cmp.Diff(&agentapi.Response{OK: true, Locked: true}, status); diff != "" {
+		t.Fatalf("STATUS while locked (-want +got):\n%s", diff)
+	}
+}
+
 // TestController_handle_disk drives GET/SET against a disk-backed encrypted store
 // and verifies the token round-trips through encryption and disk persistence.
 func TestController_handle_disk(t *testing.T) {
 	t.Parallel()
-	c := New()
-	c.store = newDiskStore(testDataKey(t), t.TempDir())
+	c := newUnlockedController(t)
 
 	set, _ := c.handle(strings.NewReader(`{"command":"SET","client_id":"Iv1.abc","token":{"access_token":"abc"}}` + "\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true}, set); diff != "" {
@@ -107,6 +137,26 @@ func TestController_handle_disk(t *testing.T) {
 	}
 }
 
+// TestController_handle_unlock verifies the UNLOCK command loads the key and unlocks
+// the agent.
+func TestController_handle_unlock(t *testing.T) {
+	t.Parallel()
+	c := New()
+	c.keyFile = filepath.Join(t.TempDir(), "key")
+	c.tokenDir = t.TempDir()
+
+	unlock, _ := c.handle(strings.NewReader(`{"command":"UNLOCK","passphrase":"pw"}` + "\n"))
+	if diff := cmp.Diff(&agentapi.Response{OK: true}, unlock); diff != "" {
+		t.Fatalf("UNLOCK (-want +got):\n%s", diff)
+	}
+	// After unlock, GET works (returns not found rather than locked).
+	get, _ := c.handle(strings.NewReader(`{"command":"GET","client_id":"Iv1.x"}` + "\n"))
+	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, get); diff != "" {
+		t.Fatalf("GET after unlock (-want +got):\n%s", diff)
+	}
+}
+
+// TestController_handle_stop verifies the STOP command requests shutdown.
 func TestController_handle_stop(t *testing.T) {
 	t.Parallel()
 	c := New()

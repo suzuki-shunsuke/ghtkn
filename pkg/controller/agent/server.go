@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"os"
 
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 )
@@ -21,6 +22,7 @@ const (
 	errMsgInvalidClientID = "invalid client id"
 	errMsgGet             = "get the token"
 	errMsgSet             = "set the token"
+	errMsgUnlock          = "unlock the agent"
 )
 
 // serve accepts connections until the listener is closed and handles each one.
@@ -87,7 +89,9 @@ func (c *Controller) dispatch(req *agentapi.Request) (*agentapi.Response, bool) 
 	case agentapi.CommandSet:
 		return c.handleSet(req), false
 	case agentapi.CommandStatus:
-		return &agentapi.Response{OK: true, Count: c.store.Len()}, false
+		return c.handleStatus(), false
+	case agentapi.CommandUnlock:
+		return c.handleUnlock(req), false
 	case agentapi.CommandStop:
 		return &agentapi.Response{OK: true}, true
 	default:
@@ -97,7 +101,11 @@ func (c *Controller) dispatch(req *agentapi.Request) (*agentapi.Response, bool) 
 
 // handleGet returns the cached token for the request's client ID.
 func (c *Controller) handleGet(req *agentapi.Request) *agentapi.Response {
-	token, ok, err := c.store.Get(req.ClientID)
+	st := c.tokenStore()
+	if st == nil {
+		return &agentapi.Response{Error: agentapi.RespLocked}
+	}
+	token, ok, err := st.Get(req.ClientID)
 	switch {
 	case errors.Is(err, errInvalidClientID):
 		return &agentapi.Response{Error: errMsgInvalidClientID}
@@ -111,11 +119,68 @@ func (c *Controller) handleGet(req *agentapi.Request) *agentapi.Response {
 
 // handleSet stores the request's token under its client ID.
 func (c *Controller) handleSet(req *agentapi.Request) *agentapi.Response {
-	if err := c.store.Set(req.ClientID, req.Token); err != nil {
+	st := c.tokenStore()
+	if st == nil {
+		return &agentapi.Response{Error: agentapi.RespLocked}
+	}
+	if err := st.Set(req.ClientID, req.Token); err != nil {
 		if errors.Is(err, errInvalidClientID) {
 			return &agentapi.Response{Error: errMsgInvalidClientID}
 		}
 		return &agentapi.Response{Error: errMsgSet}
 	}
 	return &agentapi.Response{OK: true}
+}
+
+// handleStatus reports whether the agent is locked, how many tokens are cached
+// (when unlocked), and whether an agent key already exists on disk.
+func (c *Controller) handleStatus() *agentapi.Response {
+	st := c.tokenStore()
+	resp := &agentapi.Response{OK: true, Locked: st == nil, Initialized: c.keyExists()}
+	if st != nil {
+		resp.Count = st.Len()
+	}
+	return resp
+}
+
+// handleUnlock loads (or creates) the data key from the request passphrase and
+// switches the agent to an unlocked, disk-backed store. It is idempotent: unlocking
+// an already-unlocked agent succeeds without re-reading the key.
+func (c *Controller) handleUnlock(req *agentapi.Request) *agentapi.Response {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.store != nil {
+		return &agentapi.Response{OK: true}
+	}
+	dataKey, created, err := loadOrCreateDataKey(c.keyFile, []byte(req.Passphrase))
+	if err != nil {
+		if errors.Is(err, errIncorrectPassphrase) {
+			return &agentapi.Response{Error: errIncorrectPassphrase.Error()}
+		}
+		return &agentapi.Response{Error: errMsgUnlock}
+	}
+	c.store = newDiskStore(dataKey, c.tokenDir)
+	if c.logger != nil {
+		if created {
+			c.logger.Info("generated a new agent key", "path", c.keyFile)
+		}
+		c.logger.Info("agent unlocked")
+	}
+	return &agentapi.Response{OK: true}
+}
+
+// tokenStore returns the current token store, or nil when the agent is locked.
+func (c *Controller) tokenStore() *store {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.store
+}
+
+// keyExists reports whether an agent key file already exists on disk.
+func (c *Controller) keyExists() bool {
+	if c.keyFile == "" {
+		return false
+	}
+	_, err := os.Stat(c.keyFile)
+	return err == nil
 }

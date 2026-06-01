@@ -10,53 +10,67 @@ import (
 
 func TestQueryStatus_notRunning(t *testing.T) {
 	t.Parallel()
-	running, count, err := queryStatus(t.Context(), filepath.Join(t.TempDir(), "absent.sock"))
+	resp, running, err := queryStatus(t.Context(), filepath.Join(t.TempDir(), "absent.sock"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if running {
 		t.Fatal("queryStatus must report not running when the socket is absent")
 	}
-	if count != 0 {
-		t.Fatalf("count = %d, want 0", count)
+	if resp != nil {
+		t.Fatalf("resp = %+v, want nil", resp)
 	}
 }
 
-func TestQueryStatus_running(t *testing.T) {
+func TestQueryStatus_locked(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "agent.sock")
-	c := New()
+	c := New() // starts locked: no store
 	listener, err := listen(t.Context(), path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { listener.Close() })
-	logger := slog.New(slog.DiscardHandler)
-	go c.serve(listener, logger) //nolint:errcheck // serve returns nil once the listener is closed
+	go c.serve(listener, slog.New(slog.DiscardHandler))
 
-	running, count, err := queryStatus(t.Context(), path)
+	resp, running, err := queryStatus(t.Context(), path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !running {
 		t.Fatal("queryStatus must report running")
 	}
-	if count != 0 {
-		t.Fatalf("count = %d, want 0", count)
+	if !resp.Locked {
+		t.Fatal("a freshly started agent must report locked")
 	}
+}
 
-	if _, err := agentapi.Send(t.Context(), path, &agentapi.Request{Command: agentapi.CommandSet, ClientID: "X", Token: []byte(`{"access_token":"abc"}`)}); err != nil {
-		t.Fatal(err)
-	}
-
-	running, count, err = queryStatus(t.Context(), path)
+func TestQueryStatus_unlocked(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "agent.sock")
+	c := New()
+	// Unlock by installing a disk store before serving so the serve goroutine never
+	// observes a concurrent write to c.store.
+	c.store = newDiskStore(testDataKey(t), t.TempDir())
+	listener, err := listen(t.Context(), path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !running {
-		t.Fatal("queryStatus must report running after SET")
+	t.Cleanup(func() { listener.Close() })
+	go c.serve(listener, slog.New(slog.DiscardHandler))
+
+	if _, err := agentapi.Send(t.Context(), path, &agentapi.Request{Command: agentapi.CommandSet, ClientID: "Iv1.x", Token: []byte(`{"access_token":"abc"}`)}); err != nil {
+		t.Fatal(err)
 	}
-	if count != 1 {
-		t.Fatalf("count = %d, want 1", count)
+
+	resp, running, err := queryStatus(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !running || resp.Locked {
+		t.Fatalf("agent must be running and unlocked, got running=%v resp=%+v", running, resp)
+	}
+	if resp.Count != 1 {
+		t.Fatalf("count = %d, want 1", resp.Count)
 	}
 }

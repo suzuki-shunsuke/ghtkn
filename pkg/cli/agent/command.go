@@ -32,6 +32,7 @@ func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
 			r.startCommand(),
 			r.stopCommand(),
 			r.statusCommand(),
+			r.unlockCommand(),
 		},
 	}
 }
@@ -47,10 +48,12 @@ type runner struct {
 func (r *runner) startCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "start",
-		Usage: "Start the ghtkn agent in the foreground",
+		Usage: "Start the ghtkn agent in the foreground (locked)",
 		Description: `Start the ghtkn agent in the foreground.
 
-The agent listens on a Unix domain socket and serves cached access tokens to clients.
+The agent starts locked and listens on a Unix domain socket without asking for a
+passphrase, so it can run as a background service (e.g. systemd). Use
+'ghtkn agent unlock' to enter the passphrase and make cached tokens available.
 It keeps running until it receives SIGINT or SIGTERM, then removes the socket and exits.
 
 $ ghtkn agent start`,
@@ -112,4 +115,29 @@ func (r *runner) status(ctx context.Context, _ *cli.Command) error {
 		return fmt.Errorf("set log level: %w", err)
 	}
 	return agent.New().Status(ctx, r.logger.Logger) //nolint:wrapcheck
+}
+
+// unlockCommand returns the CLI command definition for the 'agent unlock' subcommand.
+func (r *runner) unlockCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "unlock",
+		Usage: "Unlock the running ghtkn agent by entering the passphrase",
+		Description: `Unlock the running ghtkn agent.
+
+The agent starts locked. This command prompts for the passphrase on the terminal
+and sends it to the agent over the socket so it can decrypt cached tokens. On first
+use it asks for a new passphrase twice to confirm it.
+
+$ ghtkn agent unlock`,
+		Action: r.unlock,
+	}
+}
+
+// unlock executes the 'agent unlock' command logic.
+// It configures the log level and unlocks the running agent.
+func (r *runner) unlock(ctx context.Context, _ *cli.Command) error {
+	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
+		return fmt.Errorf("set log level: %w", err)
+	}
+	return agent.New().Unlock(ctx, r.logger.Logger) //nolint:wrapcheck
 }
