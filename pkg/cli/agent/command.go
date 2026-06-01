@@ -3,8 +3,10 @@
 // serves them to clients over a Unix domain socket. It is intended for environments
 // where the OS keyring is unavailable (containers, VMs, minimal Linux, etc.).
 //
-// This package provides the 'start', 'stop', and 'status' subcommands. Token
-// caching is kept in memory only; on-disk encryption is planned for a later change.
+// This package provides the 'start', 'stop', 'status', 'unlock', and 'reset'
+// subcommands. The agent starts locked and is unlocked with a passphrase via
+// 'unlock'; tokens are encrypted at rest. The agent server lives in
+// pkg/controller/agent.
 package agent
 
 import (
@@ -33,6 +35,7 @@ func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
 			r.stopCommand(),
 			r.statusCommand(),
 			r.unlockCommand(),
+			r.resetCommand(),
 		},
 	}
 }
@@ -140,4 +143,30 @@ func (r *runner) unlock(ctx context.Context, _ *cli.Command) error {
 		return fmt.Errorf("set log level: %w", err)
 	}
 	return agent.New().Unlock(ctx, r.logger.Logger) //nolint:wrapcheck
+}
+
+// resetCommand returns the CLI command definition for the 'agent reset' subcommand.
+func (r *runner) resetCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "reset",
+		Usage: "Reset the agent after a forgotten passphrase (deletes the key and cached tokens)",
+		Description: `Reset the ghtkn agent when you have forgotten the passphrase.
+
+It stops the agent if it is running, deletes the key file and all encrypted access
+token files, and creates a new key from a freshly entered passphrase. The old
+passphrase is not needed and the cached tokens are discarded (they are reminted from
+GitHub on the next 'ghtkn get'). It asks for confirmation first.
+
+$ ghtkn agent reset`,
+		Action: r.reset,
+	}
+}
+
+// reset executes the 'agent reset' command logic.
+// It configures the log level and reinitializes the agent's key.
+func (r *runner) reset(ctx context.Context, _ *cli.Command) error {
+	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
+		return fmt.Errorf("set log level: %w", err)
+	}
+	return agent.New().Reset(ctx, r.logger.Logger) //nolint:wrapcheck
 }
