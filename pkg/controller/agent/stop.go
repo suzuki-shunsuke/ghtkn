@@ -11,8 +11,10 @@ import (
 )
 
 // Stop connects to a running agent over its Unix domain socket and asks it to
-// shut down by sending a STOP command. It returns an error when no agent is
-// listening or the agent reports a failure.
+// shut down by sending a STOP command. Stopping an agent that is not running is a
+// normal result (like 'systemctl stop'), so it returns nil in that case. It returns
+// an error only when the agent is reachable but reports a failure, or on an
+// unexpected protocol error.
 func (c *Controller) Stop(ctx context.Context, logger *slog.Logger) error {
 	path, err := agentapi.SocketPath(os.Getenv, runtime.GOOS)
 	if err != nil {
@@ -21,7 +23,11 @@ func (c *Controller) Stop(ctx context.Context, logger *slog.Logger) error {
 
 	resp, err := agentapi.Send(ctx, path, &agentapi.Request{Command: agentapi.CommandStop})
 	if err != nil {
-		return err //nolint:wrapcheck // Send returns a descriptive error (e.g. ErrAgentNotRunning)
+		if agentapi.IsNotRunning(err) {
+			logger.Info("ghtkn agent is not running")
+			return nil
+		}
+		return err //nolint:wrapcheck
 	}
 	if !resp.OK {
 		return fmt.Errorf("the agent failed to stop: %s", resp.Error)
