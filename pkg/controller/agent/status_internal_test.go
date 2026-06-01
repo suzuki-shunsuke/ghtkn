@@ -31,7 +31,7 @@ func TestQueryStatus_locked(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { listener.Close() })
-	go c.serve(listener, slog.New(slog.DiscardHandler))
+	go c.serve(listener, slog.New(slog.DiscardHandler)) //nolint:errcheck // serve returns nil once the listener is closed
 
 	resp, running, err := queryStatus(t.Context(), path)
 	if err != nil {
@@ -57,7 +57,7 @@ func TestQueryStatus_unlocked(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { listener.Close() })
-	go c.serve(listener, slog.New(slog.DiscardHandler))
+	go c.serve(listener, slog.New(slog.DiscardHandler)) //nolint:errcheck // serve returns nil once the listener is closed
 
 	if _, err := agentapi.Send(t.Context(), path, &agentapi.Request{Command: agentapi.CommandSet, ClientID: "Iv1.x", Token: []byte(`{"access_token":"abc"}`)}); err != nil {
 		t.Fatal(err)
