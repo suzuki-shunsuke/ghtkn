@@ -198,3 +198,90 @@ On Windows:
 
 1. `$GHTKN_AGENT_KEY`
 1. `$LocalAppData\ghtkn\key`
+
+### Example
+
+In this example, we use ghtkn in a Docker container.
+
+First, build a Docker image and run it.
+
+Dockerfile:
+
+```dockerfile
+FROM mirror.gcr.io/ubuntu:24.04@sha256:1e622c5f073b4f6bfad6632f2616c7f59ef256e96fe78bf6a595d1dc4376ac02
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update
+RUN apt-get install -y sudo vim ca-certificates curl
+RUN echo 'foo ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+RUN useradd -u 900 -m -r foo
+USER foo
+ENV PATH=/home/foo/.local/share/aquaproj-aqua/bin:$PATH
+RUN mkdir /home/foo/workspace
+WORKDIR /home/foo/workspace
+RUN curl -sSfL -O https://raw.githubusercontent.com/aquaproj/aqua-installer/v4.0.4/aqua-installer
+RUN echo "acd21cbb06609dd9a701b0032ba4c21fa37b0e3b5cc4c9d721cc02f25ea33a28  aqua-installer" | sha256sum -c -
+RUN chmod +x aqua-installer
+RUN ./aqua-installer
+```
+
+```sh
+docker build -t ghtkn .
+docker run --name ghtkn --rm -ti ghtkn bash
+```
+
+In the container, install ghtkn using [aqua](https://aquaproj.github.io/).
+
+```sh
+aqua init
+aqua g -i suzuki-shunsuke/ghtkn
+vim aqua.yaml
+```
+
+aqua.yaml:
+
+```yaml
+- name: suzuki-shunsuke/ghtkn@v0.2.5-0
+```
+
+```sh
+aqua i
+ghtkn init
+```
+
+Copy ghtkn.yaml from the host to the container.
+
+```sh
+docker cp ~/.config/ghtkn/ghtkn.yaml ghtkn:/home/foo/.config/ghtkn/ghtkn.yaml
+```
+
+Before using `text` and `agent` backends, let's confirm that ghtkn doesn't work by default, because the OS keyring isn't available.
+
+```console
+foo@6b90309bf6a4:~/workspace$ ghtkn get
+Jun  2 00:02:36.945 ERR ghtkn failed program=ghtkn version=0.2.5-0 error="get or create access token: get or create token: get a token from the backend: get a secret from the keyring: exec: \"dbus-launch\": executable file not found in $PATH"
+```
+
+Let's set `GHTKN_BACKEND` to `text` and try again.
+You need to open the browser manually because ghtkn running in a container can't open a browser on the host.
+
+```sh
+export GHTKN_BACKEND=text
+ghtkn get
+```
+
+Awesome! ghtkn is now working with the text backend.
+
+Next, let's use the `agent` backend.
+
+```sh
+ghtkn agent start &
+ghtkn agent status
+ghtkn agent unlock
+```
+
+```sh
+export GHTKN_BACKEND=agent
+ghtkn get
+```
+
+Great! ghtkn is now working with the agent backend too.
