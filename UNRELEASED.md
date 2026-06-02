@@ -20,7 +20,7 @@ This is similar to `ghtkn get >/dev/null`, but
 
 `ghtkn` obtains a GitHub App User access token via the OAuth Device Flow, which is interactive: it prints a one-time (user) code and waits for the user.
 A coding agent (or any background / non-interactive process) cannot complete this, so it would block until a device code expires.
-By setting `GHTKN_DISABLE_DEVICE_FLOW` to `true`, `ghtkn` will fail fast with an actionable error instead of blocking.
+The device flow is enabled by default. By setting `GHTKN_ENABLE_DEVICE_FLOW` to `false`, `ghtkn` will fail fast with an actionable error instead of blocking.
 
 e.g.
 
@@ -29,9 +29,15 @@ e.g.
 ```json
 {
   "env": {
-    "GHTKN_DISABLE_DEVICE_FLOW": "true"
+    "GHTKN_ENABLE_DEVICE_FLOW": "false"
   }
 }
+```
+
+When you do need to authenticate in your own interactive terminal, you can re-enable the device flow for a single command with the `--device-flow` (`-d`) flag, which overrides the environment variable:
+
+```sh
+ghtkn get -d
 ```
 
 ```console
@@ -48,7 +54,7 @@ e.g.
   ⎿  Error: Exit code 1
      May 31 14:27:42.175 ERR ghtkn failed program=ghtkn version=v3.0.0-local error="get or create access token: get or create token: create a
      GitHub App User Access Token: a GitHub App User access token can't be created via Device Flow because it's disabled by 
-     GHTKN_DISABLE_DEVICE_FLOW. The Device Flow is interactive and can't be completed by a background or non-interactive process. If you are a
+     GHTKN_ENABLE_DEVICE_FLOW=false. The Device Flow is interactive and can't be completed by a background or non-interactive process. If you are a
      coding agent, do NOT run `ghtkn get` yourself because it would fail the same way; instead, ask the user to run `ghtkn get` in their own 
      interactive terminal to authenticate"
 

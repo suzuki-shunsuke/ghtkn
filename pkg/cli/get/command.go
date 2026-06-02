@@ -29,6 +29,7 @@ type Args struct {
 	AppName       string // positional argument for 'get' command
 	SubCommand    string // positional argument for 'git-credential' command (e.g., "get")
 	Silent        bool
+	DeviceFlow    bool
 }
 
 // New creates either a 'get' or 'git-credential' command instance based on the isGitCredential flag.
@@ -89,6 +90,7 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 			flag.Format(&args.Format),
 			flag.MinExpiration(&args.MinExpiration),
 			flag.Silent(&args.Silent),
+			flag.DeviceFlow(&args.DeviceFlow),
 		},
 		Arguments: []cli.Argument{
 			&cli.StringArg{
@@ -131,6 +133,10 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args
 		if args.AppName != "" {
 			inputGet.AppName = args.AppName
 		}
+		// Only the 'get' command exposes --device-flow; the override lets the flag
+		// take precedence over GHTKN_ENABLE_DEVICE_FLOW. git-credential leaves this
+		// nil so the SDK falls back to the environment variable.
+		inputGet.EnableDeviceFlow = &args.DeviceFlow
 	}
 	if err := resolveConfigFilePath(inputGet); err != nil {
 		return err
