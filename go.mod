@@ -16,7 +16,7 @@ require (
 )
 
 // replace github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.2 => ../ghtkn-go-sdk
-replace github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.2 => github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.3-0.20260601103132-400152040231
+replace github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.2 => github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.3-0.20260602232307-742ca7041604
 
 require (
 	github.com/danieljoos/wincred v1.2.3 // indirect
