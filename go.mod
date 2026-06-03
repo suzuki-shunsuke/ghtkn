@@ -6,7 +6,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/lmittmann/tint v1.1.3
 	github.com/spf13/afero v1.15.0
-	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.2
+	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.3-0.20260603132012-a41f5fbae483
 	github.com/suzuki-shunsuke/slog-error v0.2.2
 	github.com/suzuki-shunsuke/slog-util v0.3.2
 	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.3
@@ -14,9 +14,6 @@ require (
 	golang.org/x/crypto v0.52.0
 	golang.org/x/term v0.43.0
 )
-
-// replace github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.2 => ../ghtkn-go-sdk
-replace github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.2 => github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.3-0.20260602232307-742ca7041604
 
 require (
 	github.com/danieljoos/wincred v1.2.3 // indirect
