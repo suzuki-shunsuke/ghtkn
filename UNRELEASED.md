@@ -41,24 +41,22 @@ ghtkn get -d
 ```
 
 ```console
-❯ claude
-▗ ▗   ▖ ▖  Claude Code v2.1.158
-           Opus 4.8 (1M context) with high effort · Claude Max
-  ▘▘ ▝▝    ~/repos/src/github.com/csm-actions/securefix-action
+$ claude
+  Claude Code v2.1.158
+  Opus 4.8 (1M context) with high effort - Claude Max
+  ~/repos/src/github.com/csm-actions/securefix-action
 
-   Opus 4.8 is here! Now defaults to high effort · /effort xhigh for your hardest tasks
+$ gh repo view
 
-❯ gh repo view                                                                                                                                
+> Bash(gh repo view)
+  | Error: Exit code 1
+    May 31 14:27:42.175 ERR ghtkn failed program=ghtkn version=v3.0.0-local error="get or create access token: get or create token: create a
+    GitHub App User Access Token: a GitHub App User access token can't be created via Device Flow because it's disabled by
+    GHTKN_ENABLE_DEVICE_FLOW=false. The Device Flow is interactive and can't be completed by a background or non-interactive process. If you are a
+    coding agent, do NOT run `ghtkn get` yourself because it would fail the same way; instead, ask the user to run `ghtkn get` in their own
+    interactive terminal to authenticate"
 
-⏺ Bash(gh repo view)
-  ⎿  Error: Exit code 1
-     May 31 14:27:42.175 ERR ghtkn failed program=ghtkn version=v3.0.0-local error="get or create access token: get or create token: create a
-     GitHub App User Access Token: a GitHub App User access token can't be created via Device Flow because it's disabled by 
-     GHTKN_ENABLE_DEVICE_FLOW=false. The Device Flow is interactive and can't be completed by a background or non-interactive process. If you are a
-     coding agent, do NOT run `ghtkn get` yourself because it would fail the same way; instead, ask the user to run `ghtkn get` in their own 
-     interactive terminal to authenticate"
-
-⏺ gh repo view failed — it couldn't authenticate. The gh CLI here goes through ghtkn, which needs an interactive GitHub App user access token
+> gh repo view failed - it couldn't authenticate. The gh CLI here goes through ghtkn, which needs an interactive GitHub App user access token
   (Device Flow is disabled for non-interactive processes).
 
   Could you authenticate in your own terminal by typing:
@@ -291,3 +289,76 @@ ghtkn get
 ```
 
 Great! ghtkn is now working with the agent backend too.
+
+## A browser opens on its own when using cmux
+
+### Symptom
+
+When using [cmux](https://github.com/manaflow-ai/cmux), ghtkn may open a browser on its own.
+Worse, the one-time code isn't shown anywhere, so you can't complete the device flow and have to close the browser tab.
+
+### Cause
+
+When cmux's `Show Pull Requests in Sidebar` is enabled (it is enabled by default), cmux periodically calls the GitHub API per pane to poll the state of pull requests.
+To get an access token for this, it runs `gh auth token`.
+If you wrap the `gh` command so that `ghtkn get` is called, the device flow runs and a browser opens when the access token has expired or is not found.
+Because cmux runs these commands in the background, you can't see the one-time code.
+
+### Solutions
+
+There are several options.
+
+1. Disable `Show Pull Requests in Sidebar` - this is a cmux setting, so the details are omitted.
+1. Set `GHTKN_ENABLE_DEVICE_FLOW=false` in your shell configuration (`.bashrc`, `.zshrc`, etc.) to disable the device flow by default. When the token expires, explicitly run `ghtkn get -s -d` to renew the access token (requires ghtkn v0.2.5 or later).
+1. Modify your `gh` wrapper script so that it sets `GHTKN_ENABLE_DEVICE_FLOW=false` only for the commands cmux runs in the background.
+
+#### Set `GHTKN_ENABLE_DEVICE_FLOW=false` in your shell configuration
+
+This approach disables the device flow by default, so it affects more than just cmux.
+Note that you have to run `ghtkn get -s -d` explicitly, which is extra work, and that a script will fail partway through if it runs ghtkn.
+On the other hand, always running the device flow explicitly makes you less likely to fall for phishing.
+
+```sh
+export GHTKN_ENABLE_DEVICE_FLOW=false
+```
+
+```sh
+ghtkn get -s -d
+```
+
+#### Modify your `gh` wrapper script
+
+This approach limits the impact of the change more than option 2.
+However, it depends on cmux's implementation, so it may stop working in the future.
+Also, the device flow is disabled when a human runs the same command on cmux too.
+This probably rarely happens, but it may be confusing when it does.
+
+Make your wrapper like the following.
+The important part is the `if` block that checks `CMUX_PANEL_ID`.
+Adjust the script to fit your own environment.
+
+```sh
+#!/usr/bin/env bash
+
+set -eu
+
+# Prevent cmux's PR-badge polling (gh pr view ... --json number,state,url) from
+# opening a browser on its own via ghtkn's device flow when the token has expired.
+# Disable the device flow only inside a cmux pane (CMUX_PANEL_ID) and only for the
+# probe-like arguments. Manual gh/git pass through (device flow stays enabled).
+if [ -n "${CMUX_PANEL_ID:-}" ]; then
+  case " $* " in
+    *" pr view "*) case " $* " in
+        *"--json number,state,url"*) export GHTKN_ENABLE_DEVICE_FLOW=false ;;
+      esac ;;
+  esac
+fi
+
+# If GH_TOKEN or GITHUB_TOKEN is set, use it.
+if [ -z "${GH_TOKEN:-}" ] && [ -z "${GITHUB_TOKEN:-}" ]; then
+  GH_TOKEN="$(ghtkn get)"
+  export GH_TOKEN
+fi
+
+exec aqua exec -- gh "$@"
+```
