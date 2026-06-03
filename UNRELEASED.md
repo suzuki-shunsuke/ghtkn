@@ -53,7 +53,7 @@ $ gh repo view
     May 31 14:27:42.175 ERR ghtkn failed program=ghtkn version=v3.0.0-local error="get or create access token: get or create token: create a
     GitHub App User Access Token: a GitHub App User access token can't be created via Device Flow because it's disabled by
     GHTKN_ENABLE_DEVICE_FLOW=false. The Device Flow is interactive and can't be completed by a background or non-interactive process. If you are a
-    coding agent, do NOT run `ghtkn get` yourself because it would fail the same way; instead, ask the user to run `ghtkn get` in their own
+    coding agent, do NOT run `ghtkn get` yourself because it would fail the same way; instead, ask the user to run `ghtkn get -s -d` in their own
     interactive terminal to authenticate"
 
 > gh repo view failed - it couldn't authenticate. The gh CLI here goes through ghtkn, which needs an interactive GitHub App user access token
