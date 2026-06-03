@@ -16,9 +16,6 @@ ghtkn auth
 If a valid (non-expired) token is already cached, it does nothing.
 Unlike `ghtkn get`, the device flow is always allowed even when `GHTKN_ENABLE_DEVICE_FLOW=false` (it still runs only when there is no valid cached token), because authentication is inherently interactive.
 
-`ghtkn get` no longer has a `--silent (-s)` option; use `ghtkn auth` instead.
-`ghtkn get`'s job is to output a token, so suppressing the output with `-s` was contradictory.
-
 ## Disable Device Flow
 
 `ghtkn` obtains a GitHub App User access token via the OAuth Device Flow, which is interactive: it prints a one-time (user) code and waits for the user.
