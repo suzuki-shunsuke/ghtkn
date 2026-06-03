@@ -1,7 +1,9 @@
 package agent
 
 import (
+	"bytes"
 	"encoding/json"
+	"log/slog"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -174,6 +176,31 @@ func TestController_handle_unlock(t *testing.T) {
 	get, _ := c.handle(strings.NewReader(`{"command":"GET","client_id":"Iv1.x"}` + "\n"))
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, get); diff != "" {
 		t.Fatalf("GET after unlock (-want +got):\n%s", diff)
+	}
+}
+
+// TestController_handle_unlock_orphanTokens verifies that unlocking with a freshly
+// generated key warns when token files written under a previous key are still
+// present (they can't be decrypted and will be re-minted).
+func TestController_handle_unlock_orphanTokens(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	// A token left behind, encrypted under a previous key.
+	if err := newDiskStore(testDataKey(t), dir).Set("Iv1.old", json.RawMessage(`{"access_token":"x"}`)); err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	c := New()
+	c.logger = slog.New(slog.NewTextHandler(&buf, nil))
+	c.keyFile = filepath.Join(t.TempDir(), "key") // absent: a new key is generated
+	c.tokenDir = dir
+
+	unlock, _ := c.handle(strings.NewReader(`{"command":"UNLOCK","passphrase":"pw"}` + "\n"))
+	if diff := cmp.Diff(&agentapi.Response{OK: true}, unlock); diff != "" {
+		t.Fatalf("UNLOCK (-want +got):\n%s", diff)
+	}
+	if !strings.Contains(buf.String(), "predate the new agent key") {
+		t.Fatalf("expected an orphan-token warning, got logs:\n%s", buf.String())
 	}
 }
 

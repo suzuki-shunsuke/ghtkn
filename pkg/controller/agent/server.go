@@ -174,6 +174,12 @@ func (c *Controller) handleUnlock(req *agentapi.Request) *agentapi.Response {
 	if c.logger != nil {
 		if created {
 			c.logger.Info("generated a new agent key", "path", c.keyFile)
+			// A new key can't decrypt token files written under a previous key
+			// (e.g. when the key file was deleted while the tokens remained), so
+			// warn that those cached tokens are orphaned and will be re-minted.
+			if n := c.store.Len(); n > 0 {
+				c.logger.Warn("found cached token files that predate the new agent key; they can't be decrypted and will be re-minted on the next get", "path", c.tokenDir, "count", n)
+			}
 		}
 		c.logger.Info("agent unlocked")
 	}
