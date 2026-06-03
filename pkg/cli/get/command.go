@@ -28,7 +28,6 @@ type Args struct {
 	MinExpiration string
 	AppName       string // positional argument for 'get' command
 	SubCommand    string // positional argument for 'git-credential' command (e.g., "get")
-	Silent        bool
 	DeviceFlow    bool
 }
 
@@ -89,7 +88,6 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 			flag.Config(&args.Config),
 			flag.Format(&args.Format),
 			flag.MinExpiration(&args.MinExpiration),
-			flag.Silent(&args.Silent),
 			flag.DeviceFlow(&args.DeviceFlow),
 		},
 		Arguments: []cli.Argument{
@@ -145,7 +143,6 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args
 		return err //nolint:wrapcheck
 	}
 	return get.New(input).Run(ctx, logger.Logger, &get.InputRun{ //nolint:wrapcheck
-		Silent:   args.Silent,
 		InputGet: inputGet,
 	})
 }

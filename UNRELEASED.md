@@ -3,18 +3,21 @@
 > [!WARNING]
 > These features haven't been released yet.
 
-## Get an access token without outputting it
+## Authenticate without outputting an access token
 
-Add `--silent (-s)` to the `ghtkn get` command to retrieve an access token (running the device flow if needed) without outputting it to stdout.
+Add the `ghtkn auth` command, which authenticates to GitHub and caches an access token without printing it to stdout.
+If there is no valid cached token, it runs the device flow to create one.
 
 ```sh
-ghtkn get -s
+ghtkn auth
 ```
 
-This is similar to `ghtkn get >/dev/null`, but
+`ghtkn auth` is for authentication rather than retrieving a token to use, so it doesn't output the token.
+If a valid (non-expired) token is already cached, it does nothing.
+Unlike `ghtkn get`, the device flow is always allowed even when `GHTKN_ENABLE_DEVICE_FLOW=false` (it still runs only when there is no valid cached token), because authentication is inherently interactive.
 
-- `-s` is shorter than `>/dev/null`
-- `-s` works on Windows too
+`ghtkn get` no longer has a `--silent (-s)` option; use `ghtkn auth` instead.
+`ghtkn get`'s job is to output a token, so suppressing the output with `-s` was contradictory.
 
 ## Disable Device Flow
 
@@ -53,7 +56,7 @@ $ gh repo view
     May 31 14:27:42.175 ERR ghtkn failed program=ghtkn version=v3.0.0-local error="get or create access token: get or create token: create a
     GitHub App User Access Token: a GitHub App User access token can't be created via Device Flow because it's disabled by
     GHTKN_ENABLE_DEVICE_FLOW=false. The Device Flow is interactive and can't be completed by a background or non-interactive process. If you are a
-    coding agent, do NOT run `ghtkn get` yourself because it would fail the same way; instead, ask the user to run `ghtkn get -s -d` in their own
+    coding agent, do NOT run `ghtkn get` yourself because it would fail the same way; instead, ask the user to run `ghtkn auth` in their own
     interactive terminal to authenticate"
 
 > gh repo view failed - it couldn't authenticate. The gh CLI here goes through ghtkn, which needs an interactive GitHub App user access token
@@ -61,7 +64,7 @@ $ gh repo view
 
   Could you authenticate in your own terminal by typing:
 
-  ! ghtkn get
+  ! ghtkn auth
 
   Once that succeeds, I'll re-run gh repo view.
 ```
@@ -377,13 +380,13 @@ Because cmux runs these commands in the background, you can't see the one-time c
 There are several options.
 
 1. Disable `Show Pull Requests in Sidebar` - this is a cmux setting, so the details are omitted.
-1. Set `GHTKN_ENABLE_DEVICE_FLOW=false` in your shell configuration (`.bashrc`, `.zshrc`, etc.) to disable the device flow by default. When the token expires, explicitly run `ghtkn get -s -d` to renew the access token (requires ghtkn v0.2.5 or later).
+1. Set `GHTKN_ENABLE_DEVICE_FLOW=false` in your shell configuration (`.bashrc`, `.zshrc`, etc.) to disable the device flow by default. When the token expires, explicitly run `ghtkn auth` to renew the access token (requires ghtkn v0.2.5 or later).
 1. Modify your `gh` wrapper script so that it sets `GHTKN_ENABLE_DEVICE_FLOW=false` only for the commands cmux runs in the background.
 
 #### Set `GHTKN_ENABLE_DEVICE_FLOW=false` in your shell configuration
 
 This approach disables the device flow by default, so it affects more than just cmux.
-Note that you have to run `ghtkn get -s -d` explicitly, which is extra work, and that a script will fail partway through if it runs ghtkn.
+Note that you have to run `ghtkn auth` explicitly, which is extra work, and that a script will fail partway through if it runs ghtkn.
 On the other hand, always running the device flow explicitly makes you less likely to fall for phishing.
 
 ```sh
@@ -391,7 +394,7 @@ export GHTKN_ENABLE_DEVICE_FLOW=false
 ```
 
 ```sh
-ghtkn get -s -d
+ghtkn auth
 ```
 
 #### Modify your `gh` wrapper script
