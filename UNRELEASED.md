@@ -34,12 +34,6 @@ e.g.
 }
 ```
 
-When you do need to authenticate in your own interactive terminal, you can re-enable the device flow for a single command with the `--device-flow` (`-d`) flag, which overrides the environment variable:
-
-```sh
-ghtkn get -d
-```
-
 ```console
 $ claude
   Claude Code v2.1.158
@@ -66,6 +60,13 @@ $ gh repo view
   Once that succeeds, I'll re-run gh repo view.
 ```
 
+`ghtkn get`'s `--device-flow (-d)` flag overrides the `GHTKN_ENABLE_DEVICE_FLOW` environment variable.
+
+```sh
+ghtkn get -d
+```
+
+`ghtkn auth` also re-authenticates.
 
 ## Backend
 
