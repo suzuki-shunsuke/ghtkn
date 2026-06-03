@@ -211,14 +211,16 @@ exec "$@"
 ```
 
 ```dockerfile
+ENV GHTKN_BACKEND=agent
 ENTRYPOINT ["entrypoint.sh"]
 ```
 
-After attaching to the container (for example `docker exec -it <container> bash`), unlock the agent once and select the backend:
+Setting `GHTKN_BACKEND=agent` with `ENV` in the Dockerfile selects the backend for every process in the container, so you don't have to `export` it in each shell.
+
+After attaching to the container (for example `docker exec -it <container> bash`), unlock the agent once:
 
 ```sh
 ghtkn agent unlock
-export GHTKN_BACKEND=agent
 ghtkn get
 ```
 
