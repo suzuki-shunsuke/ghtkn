@@ -6,7 +6,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/lmittmann/tint v1.1.3
 	github.com/spf13/afero v1.15.0
-	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.3-0.20260603132012-a41f5fbae483
+	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.3-0.20260603134920-e32d06ee40fa
 	github.com/suzuki-shunsuke/slog-error v0.2.2
 	github.com/suzuki-shunsuke/slog-util v0.3.2
 	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.3
