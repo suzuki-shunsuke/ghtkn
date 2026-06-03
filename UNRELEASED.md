@@ -161,6 +161,72 @@ ghtkn agent reset
 
 The socket, the encryption key, and the encrypted access tokens are created with permission `0600`, so other users can't read them or connect to the socket.
 
+#### Running the agent as a service
+
+`ghtkn agent start &` runs the agent for the current shell session.
+Whether it keeps running after you close the terminal depends on your shell, so for a long-lived agent run it under a service manager (or detach it explicitly with `nohup` / `disown`).
+In every case the agent starts locked, so after it (re)starts you need to run `ghtkn agent unlock` once.
+
+##### Linux (systemd user service)
+
+On a VM, a microVM, or a minimal Linux box without a keyring, run the agent as a systemd user service.
+Create `~/.config/systemd/user/ghtkn-agent.service`:
+
+```ini
+[Unit]
+Description=ghtkn agent
+
+[Service]
+ExecStart=/path/to/ghtkn agent start
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+```
+
+```sh
+: Enable and start the service
+systemctl --user enable --now ghtkn-agent
+: Unlock it once after it starts
+ghtkn agent unlock
+```
+
+Notes:
+
+- Use the absolute path to `ghtkn` in `ExecStart`; the systemd user environment has a minimal `PATH`.
+- Use `Restart=on-failure`, not `Restart=always`. `ghtkn agent stop` exits successfully, so `Restart=always` would immediately start the agent again.
+- To keep the agent running even when you are not logged in, enable lingering with `loginctl enable-linger "$USER"`.
+
+##### Containers (Docker / devcontainer)
+
+Containers usually have no init system, so start the agent from the container's entrypoint.
+Use a wrapper that starts the agent in the background and then runs the container's main process:
+
+```sh
+#!/usr/bin/env bash
+# entrypoint.sh
+set -eu
+ghtkn agent start &
+exec "$@"
+```
+
+```dockerfile
+ENTRYPOINT ["entrypoint.sh"]
+```
+
+After attaching to the container (for example `docker exec -it <container> bash`), unlock the agent once and select the backend:
+
+```sh
+ghtkn agent unlock
+export GHTKN_BACKEND=agent
+ghtkn get
+```
+
+The encryption key and the encrypted access tokens live on the container's filesystem, so they are lost when the container is removed (the tokens are reminted on the next `ghtkn get`).
+To persist them, mount a volume for `$XDG_DATA_HOME` (the key) and `$XDG_CACHE_HOME` (the tokens).
+
+A microVM (Firecracker, Cloud Hypervisor, Kata Containers, Lima, etc.) fits one of the two patterns above: use the systemd service if it boots a minimal Linux with systemd, or the entrypoint approach if it runs a single application like a container.
+
 #### Socket path
 
 The socket path is resolved in the following order of precedence:
