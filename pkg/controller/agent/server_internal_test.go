@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -134,6 +135,26 @@ func TestController_handle_disk(t *testing.T) {
 	get, _ := c.handle(strings.NewReader(`{"command":"GET","client_id":"Iv1.abc"}` + "\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true, Token: []byte(`{"access_token":"abc"}`)}, get); diff != "" {
 		t.Fatalf("GET (-want +got):\n%s", diff)
+	}
+}
+
+// TestController_handle_undecryptable verifies that a token persisted under a
+// previous data key (which can't be decrypted after a key rotation) is treated as
+// a cache miss (RespNotFound) so the client re-mints it, rather than a hard error.
+func TestController_handle_undecryptable(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	// Persist a token encrypted with one key.
+	if err := newDiskStore(testDataKey(t), dir).Set("Iv1.abc", json.RawMessage(`{"access_token":"abc"}`)); err != nil {
+		t.Fatal(err)
+	}
+	// Unlock the agent with a different key over the same directory.
+	c := New()
+	c.store = newDiskStore(make([]byte, dataKeyLen), dir)
+
+	get, _ := c.handle(strings.NewReader(`{"command":"GET","client_id":"Iv1.abc"}` + "\n"))
+	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, get); diff != "" {
+		t.Fatalf("GET of an undecryptable token must be a miss (-want +got):\n%s", diff)
 	}
 }
 

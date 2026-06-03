@@ -5,12 +5,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
 	"os"
 
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
+	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
 // Error messages returned to clients in the response.
@@ -109,8 +111,17 @@ func (c *Controller) handleGet(req *agentapi.Request) *agentapi.Response {
 	switch {
 	case errors.Is(err, errInvalidClientID):
 		return &agentapi.Response{Error: errMsgInvalidClientID}
+	case errors.Is(err, errDecryptToken):
+		// A token persisted under a previous data key (e.g. after a key
+		// rotation) can't be decrypted. Treat it as a cache miss so the client
+		// re-mints the token via the device flow and overwrites the stale file,
+		// instead of failing permanently with an opaque error.
+		if c.logger != nil {
+			slogerr.WithError(c.logger, err).Warn("discard an undecryptable cached token; it will be re-minted", "client_id", req.ClientID)
+		}
+		return &agentapi.Response{Error: agentapi.RespNotFound}
 	case err != nil:
-		return &agentapi.Response{Error: errMsgGet}
+		return &agentapi.Response{Error: fmt.Sprintf("%s: %s", errMsgGet, err)}
 	case !ok:
 		return &agentapi.Response{Error: agentapi.RespNotFound}
 	}

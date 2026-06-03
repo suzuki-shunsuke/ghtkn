@@ -18,6 +18,12 @@ var clientIDPattern = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 // errInvalidClientID is returned when a client ID is unsafe to use as a file name.
 var errInvalidClientID = errors.New("invalid client id")
 
+// errDecryptToken is returned (wrapped) when a persisted token file exists but
+// can't be decrypted with the current data key, e.g. after the agent key was
+// rotated. Callers can detect it with errors.Is to treat the stale token as a
+// cache miss rather than a hard failure.
+var errDecryptToken = errors.New("decrypt the token file")
+
 // validClientID reports whether id is safe to use as a token file name.
 // It rejects empty strings, "." and "..", and anything outside clientIDPattern,
 // which prevents path traversal.
@@ -78,7 +84,7 @@ func (s *store) Get(clientID string) (json.RawMessage, bool, error) {
 	}
 	plaintext, err := open(s.dataKey, blob)
 	if err != nil {
-		return nil, false, fmt.Errorf("decrypt the token file: %w", err)
+		return nil, false, fmt.Errorf("%w: %w", errDecryptToken, err)
 	}
 	token := json.RawMessage(plaintext)
 	s.tokens[clientID] = token
