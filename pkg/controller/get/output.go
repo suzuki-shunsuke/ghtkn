@@ -11,20 +11,22 @@ import (
 type JSONOutputToken struct {
 	ExpirationDate string `json:"expiration_date"`
 	AccessToken    string `json:"access_token"`
-	Login          string `json:"login,omitempty"`
 	AppName        string `json:"app_name,omitempty"`
 }
 
 // output writes the access token to stdout in the configured format.
 // For Git credential helper mode, it outputs both username and password in the format:
 //
-//	username=<login>
+//	username=x-access-token
 //	password=<token>
+//
+// The username is a fixed placeholder because GitHub ignores it when the password
+// is an access token, so there is no need to look up the authenticated user.
 //
 // For standard mode, it outputs either the raw token string (default) or a JSON object based on OutputFormat.
 func (c *Controller) output(appName string, token *ghtkn.AccessToken) error {
 	if c.input.IsGitCredential {
-		fmt.Fprintf(c.input.Stdout, "username=%s\n", token.Login)
+		fmt.Fprintf(c.input.Stdout, "username=%s\n", "x-access-token")
 		fmt.Fprintf(c.input.Stdout, "password=%s\n\n", token.AccessToken)
 		return nil
 	}
@@ -34,7 +36,6 @@ func (c *Controller) output(appName string, token *ghtkn.AccessToken) error {
 		if err := c.outputJSON(&JSONOutputToken{
 			ExpirationDate: token.ExpirationDate.Format(time.RFC3339),
 			AccessToken:    token.AccessToken,
-			Login:          token.Login,
 			AppName:        appName,
 		}); err != nil {
 			return fmt.Errorf("output access token: %w", err)

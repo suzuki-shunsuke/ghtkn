@@ -6,7 +6,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/lmittmann/tint v1.1.3
 	github.com/spf13/afero v1.15.0
-	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.3-0.20260604011649-b38c69b23adc
+	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.2.3-0.20260606092210-de6ec8f10f43
 	github.com/suzuki-shunsuke/slog-error v0.2.2
 	github.com/suzuki-shunsuke/slog-util v0.3.2
 	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.3
@@ -18,8 +18,6 @@ require (
 require (
 	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
-	github.com/google/go-github/v88 v88.0.0 // indirect
-	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0 // indirect
