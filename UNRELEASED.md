@@ -3,6 +3,11 @@
 > [!WARNING]
 > These features haven't been released yet.
 
+## Support the environment variable `GHTKN_GITHUB_TOKEN`
+
+If the `GHTKN_GITHUB_TOKEN` environment variable is set, `ghtkn` will use it as the GitHub token.
+This is useful when a personal access token is required due to [the limitations of user access tokens](README.md#limitations).
+
 ## Authenticate without outputting an access token
 
 Add the `ghtkn auth` command, which authenticates to GitHub and caches an access token without printing it to stdout.
