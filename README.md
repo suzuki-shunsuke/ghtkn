@@ -671,10 +671,6 @@ In that case, you need to:
 1. Run `ghtkn auth [app for process A]` manually to renew the access token
 1. Re-run the process `A`
 
-```sh
-ghtkn get >/dev/null
-```
-
 As of ghtkn v0.2.5, you can prevent this kind of issue by setting `GHTKN_ENABLE_DEVICE_FLOW` to false.
 
 ```sh
