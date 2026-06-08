@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime"
-
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 )
 
+// Output is the troubleshooting information printed by the info command as JSON.
 type Output struct {
 	OS         string            `json:"os"`
 	Arch       string            `json:"arch"`
@@ -18,11 +17,18 @@ type Output struct {
 	ConfigPath string            `json:"config_path"`
 }
 
-func (c *Controller) Info(appName, version string) error {
+// Info writes the environment information to the controller's stdout as indented JSON.
+// The caller resolves and passes configPath, so the controller reads only the
+// environment variables it reports, via the injected getEnv.
+// Token-bearing variables (GH_TOKEN, GITHUB_TOKEN, GHTKN_GITHUB_TOKEN) are
+// redacted, and empty variables are omitted. Backend defaults to "keyring" when
+// GHTKN_BACKEND is unset. appName, when non-empty, overrides GHTKN_APP.
+func (c *Controller) Info(configPath, appName, version string) error {
 	output := &Output{
-		OS:      runtime.GOOS,
-		Arch:    runtime.GOARCH,
-		Version: version,
+		OS:         runtime.GOOS,
+		Arch:       runtime.GOARCH,
+		Version:    version,
+		ConfigPath: configPath,
 	}
 
 	envNames := []string{
@@ -69,11 +75,6 @@ func (c *Controller) Info(appName, version string) error {
 	}
 	output.Backend = backend
 
-	p, err := ghtkn.GetConfigPath()
-	if err != nil {
-		return fmt.Errorf("get config path: %w", err)
-	}
-	output.ConfigPath = p
 	output.App = c.getEnv("GHTKN_APP")
 	if appName != "" {
 		output.App = appName

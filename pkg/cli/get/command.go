@@ -13,6 +13,7 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
@@ -136,27 +137,15 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args
 		// nil so the SDK falls back to the environment variable.
 		inputGet.EnableDeviceFlow = &args.DeviceFlow
 	}
-	if err := resolveConfigFilePath(inputGet); err != nil {
-		return err
+	p, err := config.ResolvePath(inputGet.ConfigFilePath)
+	if err != nil {
+		return err //nolint:wrapcheck
 	}
+	inputGet.ConfigFilePath = p
 	if err := input.Validate(); err != nil {
 		return err //nolint:wrapcheck
 	}
 	return get.New(input).Run(ctx, logger.Logger, &get.InputRun{ //nolint:wrapcheck
 		InputGet: inputGet,
 	})
-}
-
-// resolveConfigFilePath fills in inputGet.ConfigFilePath with the default
-// configuration path when it has not been set by a flag.
-func resolveConfigFilePath(inputGet *ghtkn.InputGet) error {
-	if inputGet.ConfigFilePath != "" {
-		return nil
-	}
-	p, err := ghtkn.GetConfigPath()
-	if err != nil {
-		return fmt.Errorf("get the config path: %w", err)
-	}
-	inputGet.ConfigFilePath = p
-	return nil
 }

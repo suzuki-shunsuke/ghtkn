@@ -16,6 +16,7 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/urfave/cli/v3"
@@ -82,9 +83,11 @@ func action(ctx context.Context, logger *slogutil.Logger, args *Args) error {
 	if err != nil {
 		return fmt.Errorf("create the controller input: %w", err)
 	}
-	if err := resolveConfigFilePath(inputGet); err != nil {
-		return err
+	p, err := config.ResolvePath(inputGet.ConfigFilePath)
+	if err != nil {
+		return err //nolint:wrapcheck
 	}
+	inputGet.ConfigFilePath = p
 	if err := input.Validate(); err != nil {
 		return err //nolint:wrapcheck
 	}
@@ -92,18 +95,4 @@ func action(ctx context.Context, logger *slogutil.Logger, args *Args) error {
 		Silent:   true,
 		InputGet: inputGet,
 	})
-}
-
-// resolveConfigFilePath fills in inputGet.ConfigFilePath with the default
-// configuration path when it has not been set by a flag.
-func resolveConfigFilePath(inputGet *ghtkn.InputGet) error {
-	if inputGet.ConfigFilePath != "" {
-		return nil
-	}
-	p, err := ghtkn.GetConfigPath()
-	if err != nil {
-		return fmt.Errorf("get the config path: %w", err)
-	}
-	inputGet.ConfigFilePath = p
-	return nil
 }
