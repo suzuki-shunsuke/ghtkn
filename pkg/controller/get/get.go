@@ -26,8 +26,14 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger, input *InputR
 	if input.Silent {
 		return nil
 	}
+	// app is nil when the token comes from GHTKN_GITHUB_TOKEN; fall back to an
+	// empty app name in that case.
+	appName := ""
+	if app != nil {
+		appName = app.Name
+	}
 	// Output access token
-	if err := c.output(app.Name, token); err != nil {
+	if err := c.output(appName, token); err != nil {
 		return err
 	}
 

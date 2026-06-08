@@ -9,7 +9,7 @@ import (
 )
 
 type JSONOutputToken struct {
-	ExpirationDate string `json:"expiration_date"`
+	ExpirationDate string `json:"expiration_date,omitempty"`
 	AccessToken    string `json:"access_token"`
 	AppName        string `json:"app_name,omitempty"`
 }
@@ -32,9 +32,15 @@ func (c *Controller) output(appName string, token *ghtkn.AccessToken) error {
 	}
 
 	if c.input.IsJSON() {
-		// JSON format
+		// JSON format.
+		// The expiration date is zero when the token comes from GHTKN_GITHUB_TOKEN;
+		// omit it in that case instead of emitting a meaningless zero timestamp.
+		expirationDate := ""
+		if !token.ExpirationDate.IsZero() {
+			expirationDate = token.ExpirationDate.Format(time.RFC3339)
+		}
 		if err := c.outputJSON(&JSONOutputToken{
-			ExpirationDate: token.ExpirationDate.Format(time.RFC3339),
+			ExpirationDate: expirationDate,
 			AccessToken:    token.AccessToken,
 			AppName:        appName,
 		}); err != nil {

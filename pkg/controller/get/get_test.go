@@ -54,6 +54,23 @@ func TestController_Run(t *testing.T) {
 			wantOutput: "test-token-123\n",
 		},
 		{
+			name: "nil app (GHTKN_GITHUB_TOKEN) does not panic",
+			setupInput: func() *get.Input {
+				return &get.Input{
+					OutputFormat: "",
+					Stdout:       &bytes.Buffer{},
+					Client: &mockClient{
+						token: &ghtkn.AccessToken{
+							AccessToken: "env-token",
+						},
+						app: nil,
+					},
+				}
+			},
+			wantErr:    false,
+			wantOutput: "env-token\n",
+		},
+		{
 			name: "token creation error",
 			setupInput: func() *get.Input {
 				return &get.Input{
