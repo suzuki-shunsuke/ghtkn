@@ -5,14 +5,14 @@
 
 **Stop risking token leaks - Use secure, short-lived GitHub tokens for local development**
 
-## ⚠️ The Security Problem
+## :warning: The Security Problem
 
 Are you still using Personal Access Tokens (PATs) or GitHub CLI OAuth tokens stored on your local machine? These long-lived tokens pose **significant security risks**:
 - **Indefinite or months-long validity** - A leaked token remains dangerous for extended periods
 - **Broad permissions** - Often configured with wide access for convenience
 - **Difficult to rotate** - Manual management leads to tokens being used far longer than they should
 
-## ✅ The ghtkn Solution
+## :white_check_mark: The ghtkn Solution
 
 ghtkn generates **8-hour User Access Tokens** from GitHub Apps using Device Flow - a fundamentally more secure approach:
 - **Short-lived tokens** - Only 8 hours validity minimizes damage from any potential leak
@@ -282,8 +282,8 @@ So, it's quite useful.
 
 ```yaml
 apps:
-  - name: suzuki-shunsuke/none
-    client_id: xxx
+  - name: suzuki-shunsuke/none
+    client_id: xxx
 ```
 
 With this setup, the access token is transparently switched depending on the working directory. What's written in the `.envrc` is the `GHTKN_APP`, not the access token itself, which is safe because it's not a secret.
@@ -315,6 +315,10 @@ However, if you're passing the access token to a script that takes, say, 30 minu
 By the way, if you set the value to 8 hours or more, you can replicate how ghtkn regenerates the access token.
 This could be useful if you want to test how `ghtkn` behaves.
 
+`ghtkn auth` always regenerates the access token via Device Flow, regardless of any cached token.
+It does not accept `-min-expiration (-m)` nor read `GHTKN_MIN_EXPIRATION`; those only affect `ghtkn get` and `ghtkn git-credential`.
+Running `ghtkn auth` periodically (before the 8-hour validity period elapses) lets you proactively refresh the cached token and prevent it from expiring.
+
 ## Using ghtkn in Enterprise Organizations
 
 When using ghtkn in a company's GitHub Organization, it may not be practical for each developer to create their own GitHub App in organizations with a certain scale. In such cases, you can create a shared GitHub App and share the Client ID within the company.
@@ -333,7 +337,7 @@ All environment variables are optional.
 - GHTKN_OUTPUT_FORMAT: The output format of `ghtkn get` command
   - `json`: JSON Format
 - GHTKN_APP: The app identifier to get an access token
-- GHTKN_MIN_EXPIRATION: The minimum expiration duration of access token. If `ghtkn get` gets the access token from keying but the expiration duration is shorter than the minimum expiratino duration, `ghtkn get` creates a new access token via Device Flow
+- GHTKN_MIN_EXPIRATION: The minimum expiration duration of access token. If `ghtkn get` gets the access token from keying but the expiration duration is shorter than the minimum expiratino duration, `ghtkn get` creates a new access token via Device Flow. This only affects `ghtkn get` and `ghtkn git-credential`; `ghtkn auth` ignores it and always regenerates the token
 - GHTKN_CONFIG: The configuration file path
 - XDG_CONFIG_HOME
 
@@ -373,7 +377,7 @@ You can revoke access tokens by `Revoke all user tokens` button in the GitHub Ap
 If you want to revoke only a specific access token, [you can revoke it via GitHub API](https://docs.github.com/en/rest/apps/oauth-applications?apiVersion=2022-11-28#delete-an-app-token).
 This API requires a client secret. You should manage it securely.
 
-If you don't want to create a client secret, [you can revoke the target app from the `Authorized GitHub Apps` section in the user’s settings page](https://github.com/settings/apps/authorizations).
+If you don't want to create a client secret, [you can revoke the target app from the `Authorized GitHub Apps` section in the user's settings page](https://github.com/settings/apps/authorizations).
 Revoking the app will invalidate all User Access Tokens for the user.
 However, if the user reauthorizes the app, previously issued access tokens will become valid again as long as they have not yet expired.
 This means the app cannot be re-enabled until the leaked access token expires (up to 8 hours).

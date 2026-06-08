@@ -1,9 +1,12 @@
 // Package auth implements the 'ghtkn auth' command.
 // It authenticates to GitHub and caches a GitHub App User Access Token without
-// printing it to stdout. When no valid token is cached, it runs the OAuth device
-// flow to create one. Unlike 'ghtkn get', the device flow is always allowed,
-// regardless of GHTKN_ENABLE_DEVICE_FLOW, because authentication is inherently
-// interactive.
+// printing it to stdout. It always runs the OAuth device flow to regenerate the
+// token, regardless of any cached token, so that running it proactively refreshes
+// the cached token before it expires. Unlike 'ghtkn get', the device flow is
+// always allowed, regardless of GHTKN_ENABLE_DEVICE_FLOW, because authentication
+// is inherently interactive. Unlike 'ghtkn get', it does not accept the
+// -min-expiration flag nor read GHTKN_MIN_EXPIRATION; that knob is reserved for
+// 'ghtkn get'.
 package auth
 
 import (
@@ -14,17 +17,20 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
-	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/urfave/cli/v3"
 )
+
+// alwaysRenewMinExpiration forces 'ghtkn auth' to always regenerate the token via
+// the device flow. It must exceed GitHub's 8h User Access Token TTL so the cached
+// token is always treated as expired (see checkExpired in the SDK).
+const alwaysRenewMinExpiration = 9 * time.Hour
 
 // Args holds the flag and argument values for the auth command.
 type Args struct {
 	*flag.GlobalFlags
 
-	MinExpiration string
-	AppName       string // positional argument
+	AppName string // positional argument
 }
 
 // New creates a new auth command instance with the provided logger.
@@ -42,7 +48,6 @@ func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
 		Flags: []cli.Flag{
 			flag.LogLevel(&args.LogLevel),
 			flag.Config(&args.Config),
-			flag.MinExpiration(&args.MinExpiration),
 		},
 		Arguments: []cli.Argument{
 			&cli.StringArg{
@@ -61,13 +66,9 @@ func action(ctx context.Context, logger *slogutil.Logger, args *Args) error {
 		return fmt.Errorf("set log level: %w", err)
 	}
 	inputGet := &ghtkn.InputGet{}
-	if args.MinExpiration != "" {
-		d, err := time.ParseDuration(args.MinExpiration)
-		if err != nil {
-			return fmt.Errorf("parse the min expiration: %w", slogerr.With(err, "min_expiration", args.MinExpiration))
-		}
-		inputGet.MinExpiration = d
-	}
+	// auth always regenerates the token, so it ignores -min-expiration and
+	// GHTKN_MIN_EXPIRATION and forces a min expiration larger than the token TTL.
+	inputGet.MinExpiration = alwaysRenewMinExpiration
 	inputGet.ConfigFilePath = args.Config
 	if args.AppName != "" {
 		inputGet.AppName = args.AppName

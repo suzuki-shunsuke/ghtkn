@@ -11,15 +11,16 @@ This is useful when a personal access token is required due to [the limitations 
 ## Authenticate without outputting an access token
 
 Add the `ghtkn auth` command, which authenticates to GitHub and caches an access token without printing it to stdout.
-If there is no valid cached token, it runs the device flow to create one.
 
 ```sh
 ghtkn auth
 ```
 
 `ghtkn auth` is for authentication rather than retrieving a token to use, so it doesn't output the token.
-If a valid (non-expired) token is already cached, it does nothing.
-Unlike `ghtkn get`, the device flow is always allowed even when `GHTKN_ENABLE_DEVICE_FLOW=false` (it still runs only when there is no valid cached token), because authentication is inherently interactive.
+It always runs the device flow to regenerate the token, regardless of any cached token.
+This lets you run it periodically (before the 8-hour validity period elapses) to proactively refresh the cached token and prevent it from expiring.
+Unlike `ghtkn get`, the device flow is always allowed even when `GHTKN_ENABLE_DEVICE_FLOW=false`, because authentication is inherently interactive.
+Also unlike `ghtkn get`, it does not accept `-min-expiration (-m)` nor read `GHTKN_MIN_EXPIRATION`; those knobs are reserved for `ghtkn get`.
 
 ## Disable Device Flow
 
