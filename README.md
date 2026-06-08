@@ -712,8 +712,23 @@ The rate limit for authenticated users is 5,000 per hour, so it should be fine f
 
 ### Limitations
 
-GitHub App User Access Tokens can't write repositories where the GitHub App isn't installed. For instance, you can't create pull requests by `gh pr create` command to repositories where your GitHub App isn't installed.
-In case of `gh pr create`, `--web` option of `gh pr create` is useful.
+ghtkn obtains a user access token, but unfortunately it has some limitations so a personal access token is required for some operations.
+
+1. Packages API requires a classic personal access token
+1. It's difficult to write other user's repositories  
+  
+#### Packages API requires a classic personal access token
+
+- https://docs.github.com/en/rest/packages/packages?apiVersion=2026-03-10
+- > To use the REST API to manage GitHub Packages, you must authenticate using a personal access token (classic).
+
+#### It's difficult to write other user's repositories  
+
+To write other users' repositories, a GitHub App installed on the target repository and its client id is required.
+It's hard to ask others to install a GitHub App on their repository and share the client id with you.
+
+For instance, it's difficult to create pull requests to other users' repositories by `gh pr create` command.
+In that case, the `--web` option of `gh pr create` is useful.
 
 ## LICENSE
 
