@@ -18,7 +18,7 @@ ghtkn generates **8-hour User Access Tokens** from GitHub Apps using Device Flow
 - **Short-lived tokens** - Only 8 hours validity minimizes damage from any potential leak
 - **No secrets required** - Only needs a Client ID (which isn't secret), no Private Keys or Client Secrets
 - **User-attributed actions** - Operations are performed as you, not as an app
-- **Automatic token management** - Integrates with OS keyring or another backend for secure storage and reuse
+- **Automatic token management** - Integrates with the backend (the default is OS keyring) for secure storage and reuse
 
 ghtkn (pronounced `GH-Token`) allows you to manage multiple GitHub Apps through configuration files and securely store tokens using OS keyring (Windows Credential Manager, macOS Keychain, or GNOME Keyring) or another backend.
 
@@ -118,6 +118,7 @@ set -eu
 
 # If GH_TOKEN or GITHUB_TOKEN is set, use it.
 if [ -z "${GH_TOKEN:-}" ] && [ -z "${GITHUB_TOKEN:-}" ]; then
+  # echo "[WARN] skip ghtkn because GH_TOKEN or GITHUB_TOKEN is set" >&2
   GH_TOKEN="$(ghtkn get)" 
   export GH_TOKEN
 fi
@@ -371,10 +372,10 @@ ghtkn gets and outputs an access token in the following way:
 2. Read a configuration file. It has pairs of app name and client id
 3. [Determine the GitHub App](#using-multiple-apps)
 4. Get the client id from the configuration file
-5. Get the access token by client id from the keyring
-6. If the access token isn't found in the keyring or the access token expires, [creating a new access token through Device Flow. A user need to input the verification code and approve the request](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app#using-the-device-flow-to-generate-a-user-access-token)
+5. Get the access token by client id from the backend
+6. If the access token isn't found in the backend or the access token expires, [creating a new access token through Device Flow. A user need to input the verification code and approve the request](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app#using-the-device-flow-to-generate-a-user-access-token)
 7. Get the authenticated user login by GitHub API for Git Credential Helper
-8. Store the access token, expiration date, and authenticated user login in the keyring
+8. Store the access token, expiration date, and authenticated user login in the backend
 9. Output the access token
 
 ## How To Revoke Access Tokens
@@ -586,13 +587,88 @@ https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-githu
   
 ## :warning: Troubleshooting
 
+### ghtkn doesn't work well
+
+1. Check environment variables, ghtkn version, etc.
+
+```sh
+ghtkn info [<app name>]
+```
+
+If `ghtkn info` command isn't found or the version isn't latest, please upgrade ghtkn to the latest version.
+
+2. Check the token and expiration date.
+
+```sh
+ghtkn get -f json [<app name>]
+```
+
+3. Check the access token is available.
+
+```sh
+env GH_TOKEN=$(ghtkn get) gh auth status
+```
+
+Please confirm the prefix of the token is `ghu_`.
+If the prefix isn't `ghu_`, another type of token is used.
+
+```
+github.com
+  o Logged in to github.com account suzuki-shunsuke (GH_TOKEN)
+  - Active account: true
+  - Git operations protocol: https
+  - Token: ghu_************************************
+```
+
+4. Check the access token is valid using curl.
+
+```sh
+curl -L \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer $(ghtkn get)" \
+  -H "X-GitHub-Api-Version: 2026-03-10" \
+  https://api.github.com/user
+```
+
+5. Check the configuration file is correct.
+
+### The wrapper of `gh` command doesn't work well
+
+1. [Check if `ghtkn` works well](#ghtkn-doesnt-work-well)
+1. Check if the wrapper is invoked correctly.
+
+```sh
+command -v gh
+```
+
+1. Check if another access token like personal access token is set
+1. Add the debug log to the wrapper.
+
+e.g.
+
+```sh
+if [ -z "${GH_TOKEN:-}" ] && [ -z "${GITHUB_TOKEN:-}" ]; then
+  echo "[WARN] skip ghtkn because GH_TOKEN or GITHUB_TOKEN is set" >&2 # Add the debug log
+  GH_TOKEN="$(ghtkn get)" 
+  export GH_TOKEN
+fi
+```
+
+### ghtkn returns an expired token (401)
+
+If `ghtkn get` returns an expired token, you can renew it by running `ghtkn auth`.
+
+```sh
+ghtkn auth
+```
+
 ### The device flow asks the verification code, but the code isn't shown anywhere
 
 When ghtkn is run in the background process, the verification code is not displayed in the terminal.
 In that case, you need to:
 
 1. Cancel the process `A`
-1. Run `ghtkn get [app for process A] >/dev/null` manually to renew the access token
+1. Run `ghtkn auth [app for process A]` manually to renew the access token
 1. Re-run the process `A`
 
 ```sh
