@@ -109,7 +109,7 @@ Shell scripts:
 
 1. Put shell scripts in $PATH:
 
-e.g. ~/bin/gh:
+e.g. ~/.local/bin/gh:
 
 ```sh
 #!/usr/bin/env bash
@@ -135,7 +135,7 @@ exec aqua exec -- gh "$@"
 2. Make scripts executable
 
 ```sh
-chmod +x ~/bin/gh
+chmod +x ~/.local/bin/gh
 ```
 
 It's useful to wrap `gh` using shell script as gh always requires GitHub access tokens.
