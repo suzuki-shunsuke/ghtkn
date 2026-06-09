@@ -13,6 +13,7 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
@@ -28,6 +29,7 @@ type Args struct {
 	MinExpiration string
 	AppName       string // positional argument for 'get' command
 	SubCommand    string // positional argument for 'git-credential' command (e.g., "get")
+	DeviceFlow    bool
 }
 
 // New creates either a 'get' or 'git-credential' command instance based on the isGitCredential flag.
@@ -87,6 +89,7 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 			flag.Config(&args.Config),
 			flag.Format(&args.Format),
 			flag.MinExpiration(&args.MinExpiration),
+			flag.DeviceFlow(&args.DeviceFlow),
 		},
 		Arguments: []cli.Argument{
 			&cli.StringArg{
@@ -116,7 +119,10 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args
 	}
 	inputGet.ConfigFilePath = args.Config
 
-	input := get.NewInput()
+	input, err := get.NewInput()
+	if err != nil {
+		return fmt.Errorf("create the controller input: %w", err)
+	}
 	if r.isGitCredential {
 		if err := r.handleGitCredential(ctx, logger.Logger, args.SubCommand, input, inputGet); err != nil {
 			return err
@@ -126,16 +132,20 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args
 		if args.AppName != "" {
 			inputGet.AppName = args.AppName
 		}
+		// Only the 'get' command exposes --device-flow; the override lets the flag
+		// take precedence over GHTKN_ENABLE_DEVICE_FLOW. git-credential leaves this
+		// nil so the SDK falls back to the environment variable.
+		inputGet.EnableDeviceFlow = &args.DeviceFlow
 	}
-	if inputGet.ConfigFilePath == "" {
-		p, err := ghtkn.GetConfigPath()
-		if err != nil {
-			return fmt.Errorf("get the config path: %w", err)
-		}
-		inputGet.ConfigFilePath = p
+	p, err := config.ResolvePath(inputGet.ConfigFilePath)
+	if err != nil {
+		return err //nolint:wrapcheck
 	}
+	inputGet.ConfigFilePath = p
 	if err := input.Validate(); err != nil {
 		return err //nolint:wrapcheck
 	}
-	return get.New(input).Run(ctx, logger.Logger, inputGet) //nolint:wrapcheck
+	return get.New(input).Run(ctx, logger.Logger, &get.InputRun{ //nolint:wrapcheck
+		InputGet: inputGet,
+	})
 }

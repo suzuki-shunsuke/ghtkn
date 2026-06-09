@@ -19,7 +19,11 @@ func TestNew(t *testing.T) {
 func TestNewInput(t *testing.T) {
 	t.Parallel()
 
-	input := get.NewInput()
+	input, err := get.NewInput()
+	if err != nil {
+		t.Error(err)
+		return
+	}
 	if input == nil {
 		t.Error("NewInput() returned nil")
 		return

@@ -20,6 +20,7 @@ linters:
     - wsl_v5
     - noinlineerr
     - embeddedstructfieldcheck
+    - gomodguard
   exclusions:
     generated: lax
     presets:

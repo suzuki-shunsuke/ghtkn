@@ -8,8 +8,11 @@ package cli
 import (
 	"context"
 
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/agent"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/auth"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/get"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/info"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/initcmd"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
@@ -34,6 +37,9 @@ func Run(ctx context.Context, logger *slogutil.Logger, env *urfave.Env) error {
 			initcmd.New(logger, gFlags),
 			get.New(logger, env, true, gFlags),
 			get.New(logger, env, false, gFlags),
+			auth.New(logger, gFlags),
+			agent.New(logger, gFlags),
+			info.New(logger, env, gFlags),
 		},
 	}).Run(ctx, env.Args)
 }

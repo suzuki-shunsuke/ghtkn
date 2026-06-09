@@ -5,29 +5,22 @@
 
 **Stop risking token leaks - Use secure, short-lived GitHub tokens for local development**
 
-## ⚠️ The Security Problem
+## :warning: The Security Problem
 
 Are you still using Personal Access Tokens (PATs) or GitHub CLI OAuth tokens stored on your local machine? These long-lived tokens pose **significant security risks**:
 - **Indefinite or months-long validity** - A leaked token remains dangerous for extended periods
 - **Broad permissions** - Often configured with wide access for convenience
 - **Difficult to rotate** - Manual management leads to tokens being used far longer than they should
 
-## ✅ The ghtkn Solution
+## :white_check_mark: The ghtkn Solution
 
 ghtkn generates **8-hour User Access Tokens** from GitHub Apps using Device Flow - a fundamentally more secure approach:
 - **Short-lived tokens** - Only 8 hours validity minimizes damage from any potential leak
 - **No secrets required** - Only needs a Client ID (which isn't secret), no Private Keys or Client Secrets
 - **User-attributed actions** - Operations are performed as you, not as an app
-- **Automatic token management** - Integrates with OS keychains for secure storage and reuse
+- **Automatic token management** - Integrates with the backend (the default is OS keyring) for secure storage and reuse
 
-ghtkn (pronounced `GH-Token`) allows you to manage multiple GitHub Apps through configuration files and securely store tokens using Windows Credential Manager, macOS Keychain, or GNOME Keyring.
-
-> [!NOTE]
-> In this document, we call Windows Credential Manger, macOS KeyChain, and GNOME Keyring as secret manager.
-
-## Requirements
-
-A secret manager is required.
+ghtkn (pronounced `GH-Token`) allows you to manage multiple GitHub Apps through configuration files and securely store tokens using OS keyring (Windows Credential Manager, macOS Keychain, or GNOME Keyring) or another backend.
 
 ## :rocket: Getting Started
 
@@ -74,7 +67,7 @@ You can close the opened tab.
 With Device Flow, access tokens cannot be generated in non-interactive environments like CI.
 ghtkn is primarily intended for local development.
 
-If you run the same command immediately, it will now run without the authorization flow because ghtkn stores access tokens into the secret manager and reuse them.
+If you run the same command immediately, it will now run without the authorization flow because ghtkn stores access tokens into the backend and reuse them.
 
 ```sh
 ghtkn get
@@ -125,6 +118,7 @@ set -eu
 
 # If GH_TOKEN or GITHUB_TOKEN is set, use it.
 if [ -z "${GH_TOKEN:-}" ] && [ -z "${GITHUB_TOKEN:-}" ]; then
+  # echo "[WARN] skip ghtkn because GH_TOKEN or GITHUB_TOKEN is set" >&2
   GH_TOKEN="$(ghtkn get)" 
   export GH_TOKEN
 fi
@@ -282,15 +276,15 @@ So, it's quite useful.
 
 ```yaml
 apps:
-  - name: suzuki-shunsuke/none
-    client_id: xxx
+  - name: suzuki-shunsuke/none
+    client_id: xxx
 ```
 
 With this setup, the access token is transparently switched depending on the working directory. What's written in the `.envrc` is the `GHTKN_APP`, not the access token itself, which is safe because it's not a secret.
 
 ## Access Token Regeneration
 
-ghtkn stores generated access tokens and their expiration dates in the secret manager.
+ghtkn stores generated access tokens and their expiration dates in the backend.
 `ghtkn get` retrieves these, and if the expiration has passed, regenerates the access token through Device Flow.
 The access token validity period is 8 hours.
 
@@ -315,6 +309,40 @@ However, if you're passing the access token to a script that takes, say, 30 minu
 By the way, if you set the value to 8 hours or more, you can replicate how ghtkn regenerates the access token.
 This could be useful if you want to test how `ghtkn` behaves.
 
+## ghtkn auth
+
+`ghtkn auth` command authenticates to GitHub and caches an access token without printing it to stdout.
+It always runs the device flow to regenerate the token, regardless of any cached token.
+Unlike `ghtkn get`, the device flow is always allowed even when `GHTKN_ENABLE_DEVICE_FLOW=false`.
+Also unlike `ghtkn get`, it does not accept `-min-expiration (-m)` nor read `GHTKN_MIN_EXPIRATION`.
+
+## Disabling Device Flow
+
+`ghtkn` obtains a GitHub App User access token via the OAuth Device Flow, which is interactive: it prints a one-time (user) code and waits for the user.
+A coding agent (or any background / non-interactive process) cannot complete this, so it would block until a device code expires.
+The device flow is enabled by default.
+By setting `GHTKN_ENABLE_DEVICE_FLOW` to `false`, `ghtkn` will fail fast with an actionable error instead of blocking.
+
+`ghtkn get`'s `--device-flow (-d)` flag overrides the `GHTKN_ENABLE_DEVICE_FLOW` environment variable.
+`ghtkn auth` also re-authenticates.
+
+```sh
+ghtkn get -d
+```
+
+## Backend
+
+By default ghtkn stores access tokens in the OS keyring.
+You can change where they are stored with the `GHTKN_BACKEND` environment variable.
+This is useful in environments where the OS keyring is hard to use, such as containers and microVMs.
+`GHTKN_BACKEND` supports the following values:
+
+- `keyring`: OS keyring (default)
+- `text`: Store tokens as plaintext files
+- `agent`: Store tokens encrypted via the ghtkn agent
+
+For more details, see the [backend documentation](docs/backend.md).
+
 ## Using ghtkn in Enterprise Organizations
 
 When using ghtkn in a company's GitHub Organization, it may not be practical for each developer to create their own GitHub App in organizations with a certain scale. In such cases, you can create a shared GitHub App and share the Client ID within the company.
@@ -325,22 +353,16 @@ Therefore, the risk of sharing within a limited internal space is considered to 
 
 From a company's perspective, this can prevent the leakage of developers' PATs or GitHub CLI OAuth App access tokens that have access to the company's Organization. Even if a Client ID is leaked outside the company, it doesn't provide direct access to the company's Organization, and even if an access token is leaked, the risk can be minimized due to its short validity period (8 hours).
 
-## Environment Variables
+## Using personal access token for one-off operations
 
-All environment variables are optional.
-
-- GHTKN_LOG_LEVEL: Log level. One of `debug`, `info` (default), `warn`, `error`.
-- GHTKN_OUTPUT_FORMAT: The output format of `ghtkn get` command
-  - `json`: JSON Format
-- GHTKN_APP: The app identifier to get an access token
-- GHTKN_MIN_EXPIRATION: The minimum expiration duration of access token. If `ghtkn get` gets the access token from keying but the expiration duration is shorter than the minimum expiratino duration, `ghtkn get` creates a new access token via Device Flow
-- GHTKN_CONFIG: The configuration file path
-- XDG_CONFIG_HOME
+If the `GHTKN_GITHUB_TOKEN` environment variable is set, `ghtkn` will use it as the GitHub token.
+This is useful when a personal access token is required due to [the limitations of user access tokens](#limitations).
 
 ## Go SDK
 
 You can enable your CLI application to create GitHub User Access Tokens using [ghtkn Go SDK](pkg.go.dev/github.com/suzuki-shunsuke/ghtkn-go-sdk).
 ghtkn itself uses this.
+If SDK doesn't work well, please check if the version is latest.
 
 ## How does ghtkn work?
 
@@ -350,10 +372,10 @@ ghtkn gets and outputs an access token in the following way:
 2. Read a configuration file. It has pairs of app name and client id
 3. [Determine the GitHub App](#using-multiple-apps)
 4. Get the client id from the configuration file
-5. Get the access token by client id from the keyring
-6. If the access token isn't found in the keyring or the access token expires, [creating a new access token through Device Flow. A user need to input the verification code and approve the request](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app#using-the-device-flow-to-generate-a-user-access-token)
+5. Get the access token by client id from the backend
+6. If the access token isn't found in the backend or the access token expires, [creating a new access token through Device Flow. A user need to input the verification code and approve the request](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app#using-the-device-flow-to-generate-a-user-access-token)
 7. Get the authenticated user login by GitHub API for Git Credential Helper
-8. Store the access token, expiration date, and authenticated user login in the keyring
+8. Store the access token, expiration date, and authenticated user login in the backend
 9. Output the access token
 
 ## How To Revoke Access Tokens
@@ -373,7 +395,7 @@ You can revoke access tokens by `Revoke all user tokens` button in the GitHub Ap
 If you want to revoke only a specific access token, [you can revoke it via GitHub API](https://docs.github.com/en/rest/apps/oauth-applications?apiVersion=2022-11-28#delete-an-app-token).
 This API requires a client secret. You should manage it securely.
 
-If you don't want to create a client secret, [you can revoke the target app from the `Authorized GitHub Apps` section in the user’s settings page](https://github.com/settings/apps/authorizations).
+If you don't want to create a client secret, [you can revoke the target app from the `Authorized GitHub Apps` section in the user's settings page](https://github.com/settings/apps/authorizations).
 Revoking the app will invalidate all User Access Tokens for the user.
 However, if the user reauthorizes the app, previously issued access tokens will become valid again as long as they have not yet expired.
 This means the app cannot be re-enabled until the leaked access token expires (up to 8 hours).
@@ -565,18 +587,130 @@ https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-githu
   
 ## :warning: Troubleshooting
 
-### the device flow asks the verification code, but the code isn't shown anywhere
+### ghtkn doesn't work well
+
+1. Check environment variables, ghtkn version, etc.
+
+```sh
+ghtkn info [<app name>]
+```
+
+If `ghtkn info` command isn't found or the version isn't latest, please upgrade ghtkn to the latest version.
+
+2. Check the token and expiration date.
+
+```sh
+ghtkn get -f json [<app name>]
+```
+
+3. Check the access token is available.
+
+```sh
+env GH_TOKEN=$(ghtkn get) gh auth status
+```
+
+Please confirm the prefix of the token is `ghu_`.
+If the prefix isn't `ghu_`, another type of token is used.
+
+```
+github.com
+  o Logged in to github.com account suzuki-shunsuke (GH_TOKEN)
+  - Active account: true
+  - Git operations protocol: https
+  - Token: ghu_************************************
+```
+
+4. Check the access token is valid using curl.
+
+```sh
+curl -L \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer $(ghtkn get)" \
+  -H "X-GitHub-Api-Version: 2026-03-10" \
+  https://api.github.com/user
+```
+
+5. Check the configuration file is correct.
+
+### The wrapper of `gh` command doesn't work well
+
+1. [Check if `ghtkn` works well](#ghtkn-doesnt-work-well)
+1. Check if the wrapper is invoked correctly.
+
+```sh
+command -v gh
+```
+
+1. Check if another access token like personal access token is set
+1. Add the debug log to the wrapper.
+
+e.g.
+
+```sh
+if [ -z "${GH_TOKEN:-}" ] && [ -z "${GITHUB_TOKEN:-}" ]; then
+  echo "[WARN] skip ghtkn because GH_TOKEN or GITHUB_TOKEN is set" >&2 # Add the debug log
+  GH_TOKEN="$(ghtkn get)" 
+  export GH_TOKEN
+fi
+```
+
+### ghtkn returns an expired token (401)
+
+If `ghtkn get` returns an expired token, you can renew it by running `ghtkn auth`.
+
+```sh
+ghtkn auth
+```
+
+### The device flow asks the verification code, but the code isn't shown anywhere
 
 When ghtkn is run in the background process, the verification code is not displayed in the terminal.
 In that case, you need to:
 
 1. Cancel the process `A`
-1. Run `ghtkn get [app for process A] >/dev/null` manually to renew the access token
+1. Run `ghtkn auth [app for process A]` manually to renew the access token
 1. Re-run the process `A`
 
+As of ghtkn v0.2.5, you can prevent this kind of issue by setting `GHTKN_ENABLE_DEVICE_FLOW` to false.
+
 ```sh
-ghtkn get >/dev/null
+export GHTKN_ENABLE_DEVICE_FLOW=false
 ```
+
+When the token expires, you need to run `ghtkn auth` to renew it.
+
+### A browser opens when using tools like cmux and warp
+
+When using [cmux](https://github.com/manaflow-ai/cmux) and [warp](https://github.com/warpdotdev/warp), ghtkn may open a browser on its own.
+Worse, the one-time code isn't shown anywhere, so you can't complete the device flow and have to close the browser tab.
+
+As of ghtkn v0.2.5, you can prevent this kind of issue by setting `GHTKN_ENABLE_DEVICE_FLOW` to false.
+
+```sh
+export GHTKN_ENABLE_DEVICE_FLOW=false
+```
+
+When the token expires, you need to run `ghtkn auth` to renew it.
+
+## Limitations
+
+ghtkn obtains a user access token, but unfortunately it has some limitations so a personal access token is required for some operations.
+
+1. Packages API requires a classic personal access token
+1. It's difficult to write other user's repositories  
+  
+### Packages API requires a classic personal access token
+
+- https://docs.github.com/en/rest/packages/packages?apiVersion=2026-03-10
+- > To use the REST API to manage GitHub Packages, you must authenticate using a personal access token (classic).
+
+### It's difficult to write other user's repositories  
+
+To write other users' repositories, a GitHub App installed on the target repository and its client id is required.
+It's hard to ask others to install a GitHub App on their repository and share the client id with you.
+
+For instance, it's difficult to create pull requests to other users' repositories by `gh pr create` command.
+In that case, the `--web` option of `gh pr create` is useful.
 
 ## :memo: Note
 
@@ -591,27 +725,3 @@ https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api?
 The rate limit for authenticated users is 5,000 per hour, so it should be fine for normal use.
 
 > All of these requests count towards your personal rate limit of 5,000 requests per hour.
-
-### Limitations
-
-ghtkn obtains a user access token, but unfortunately it has some limitations so a personal access token is required for some operations.
-
-1. Packages API requires a classic personal access token
-1. It's difficult to write other user's repositories  
-  
-#### Packages API requires a classic personal access token
-
-- https://docs.github.com/en/rest/packages/packages?apiVersion=2026-03-10
-- > To use the REST API to manage GitHub Packages, you must authenticate using a personal access token (classic).
-
-#### It's difficult to write other user's repositories  
-
-To write other users' repositories, a GitHub App installed on the target repository and its client id is required.
-It's hard to ask others to install a GitHub App on their repository and share the client id with you.
-
-For instance, it's difficult to create pull requests to other users' repositories by `gh pr create` command.
-In that case, the `--web` option of `gh pr create` is useful.
-
-## LICENSE
-
-[MIT](LICENSE)

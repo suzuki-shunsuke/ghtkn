@@ -1,0 +1,83 @@
+package agent
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"os"
+	"runtime"
+)
+
+// Reset recovers from a forgotten passphrase by reinitializing the agent: it stops
+// a running agent, deletes the key file and all encrypted token files, and creates a
+// new key from a freshly entered passphrase. The old passphrase is not needed and
+// the cached tokens are discarded (they are reminted from GitHub on the next get).
+//
+// It asks for confirmation first because the operation is destructive, and requires
+// a terminal both for that confirmation and for the new passphrase.
+func (c *Controller) Reset(ctx context.Context, logger *slog.Logger) error {
+	keyFile, err := keyPath(os.Getenv, runtime.GOOS)
+	if err != nil {
+		return err
+	}
+	dir, err := tokenDir(os.Getenv, runtime.GOOS)
+	if err != nil {
+		return err
+	}
+
+	ok, err := c.confirm("This stops the agent and deletes the key and all cached tokens, then recreates the key. Continue? (y/N): ")
+	if err != nil {
+		return err
+	}
+	if !ok {
+		logger.Info("ghtkn agent reset was canceled")
+		return nil
+	}
+
+	// Stop a running agent first so it does not keep using the old data key or
+	// write tokens after the files are deleted. Stop is a no-op (nil) when no agent
+	// is running.
+	if err := c.Stop(ctx, logger); err != nil {
+		return err
+	}
+	if err := deleteAgentFiles(keyFile, dir); err != nil {
+		return err
+	}
+	if err := c.recreateKey(keyFile); err != nil {
+		return err
+	}
+
+	logger.Info("ghtkn agent has been reset", "key", keyFile)
+	return nil
+}
+
+// deleteAgentFiles removes the encrypted token directory and the key file. Tokens
+// are deleted first because they are useless without the key.
+func deleteAgentFiles(keyFile, tokenDir string) error {
+	if err := os.RemoveAll(tokenDir); err != nil {
+		return fmt.Errorf("delete the token directory: %w", err)
+	}
+	if err := os.Remove(keyFile); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("delete the key file: %w", err)
+	}
+	return nil
+}
+
+// recreateKey prompts for a new passphrase (twice, to confirm) and writes a new key
+// file. The key file must not exist when this is called.
+func (c *Controller) recreateKey(keyFile string) error {
+	pass, err := c.promptPassphrase(false)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		for i := range pass {
+			pass[i] = 0
+		}
+	}()
+	if _, err := createDataKey(keyFile, pass); err != nil {
+		return err
+	}
+	return nil
+}

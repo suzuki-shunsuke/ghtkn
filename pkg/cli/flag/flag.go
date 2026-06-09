@@ -63,3 +63,20 @@ func MinExpiration(dest *string) *cli.StringFlag {
 		Destination: dest,
 	}
 }
+
+// DeviceFlow returns a flag controlling whether the OAuth device flow may run to
+// create a new access token. It defaults to true and can be set via the
+// GHTKN_ENABLE_DEVICE_FLOW environment variable (set it to false to disable);
+// the flag overrides the environment variable. Disabling it makes ghtkn fail fast
+// instead of blocking in non-interactive environments.
+// Alias: -d
+func DeviceFlow(dest *bool) *cli.BoolFlag {
+	return &cli.BoolFlag{
+		Name:        "device-flow",
+		Aliases:     []string{"d"},
+		Usage:       "Allow the interactive device flow to create a new access token",
+		Value:       true,
+		Sources:     cli.EnvVars("GHTKN_ENABLE_DEVICE_FLOW"),
+		Destination: dest,
+	}
+}

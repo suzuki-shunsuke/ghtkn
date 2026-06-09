@@ -49,11 +49,10 @@ func TestController_output(t *testing.T) {
 			token: &ghtkn.AccessToken{
 				AccessToken:    "test-token-git",
 				ExpirationDate: time.Time{},
-				Login:          "testuser",
 			},
 			outputFormat:    "",
 			isGitCredential: true,
-			wantOutput:      "username=testuser\npassword=test-token-git\n\n",
+			wantOutput:      "username=x-access-token\npassword=test-token-git\n\n",
 			wantErr:         false,
 		},
 	}
