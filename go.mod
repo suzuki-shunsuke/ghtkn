@@ -12,7 +12,7 @@ require (
 	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.3
 	github.com/urfave/cli/v3 v3.9.0
 	golang.org/x/crypto v0.52.0
-	golang.org/x/term v0.43.0
+	golang.org/x/term v0.44.0
 )
 
 require (
