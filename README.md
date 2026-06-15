@@ -195,6 +195,27 @@ apps:
 >     # git_owner: suzuki-shunsuke # Don't set `git_owner` to read-only app to push commits
 > ```
 
+#### Switching GitHub Apps to access fork repositories
+
+Unfortunately, `.apps[].git_owner` doesn't match when accessing fork repositories.
+For instance, when you checkout a pull request from a fork repository by [gh pr checkout](https://cli.github.com/manual/gh_pr_checkout) command and push commits to the fork repository, `.apps[].git_owner` doesn't work unless you configure fork repositories in `ghtkn.yaml`.
+
+As of ghtkn v0.2.6, the environment variable `GHTKN_GIT_APP` is useful.
+`GHTKN_GIT_APP` is similar to `GHTKN_APP` but it's used for Git Credential Helper.
+
+e.g.
+
+```sh
+export GHTKN_GIT_APP=suzuki-shunsuke/git
+```
+
+The priority of the app used for Git Credential Helper is as follows:
+
+1. `.apps[].git_owner` if git credential helper's username matches
+1. `GHTKN_GIT_APP`
+1. `GHTKN_APP` if `GHTKN_GIT_APP` is not set
+1. The default app
+
 ### :warning: Troubleshooting of Git Credential Helper on macOS
 
 If Git Credential Helper doesn't work on macOS, please check if osxkeychain is used.

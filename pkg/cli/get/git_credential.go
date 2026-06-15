@@ -35,6 +35,9 @@ func (r *runner) handleGitCredential(ctx context.Context, logger *slog.Logger, a
 		logger.Warn("failed to get the repository owner from stdin for Git Credential Helper")
 	}
 	inputGet.AppOwner = result.Owner
+	if app := r.getEnv("GHTKN_GIT_APP"); app != "" {
+		inputGet.AppName = app
+	}
 	return nil
 }
 
