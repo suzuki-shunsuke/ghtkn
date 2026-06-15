@@ -43,6 +43,7 @@ func New(logger *slogutil.Logger, env *urfave.Env, isGitCredential bool, gFlags 
 	r := &runner{
 		isGitCredential: isGitCredential,
 		stdin:           env.Stdin,
+		getEnv:          env.Getenv,
 	}
 	return r.Command(logger, args)
 }
@@ -51,6 +52,7 @@ func New(logger *slogutil.Logger, env *urfave.Env, isGitCredential bool, gFlags 
 type runner struct {
 	isGitCredential bool
 	stdin           io.Reader
+	getEnv          func(string) string
 }
 
 // Command returns the CLI command definition for either the get or git-credential subcommand.
