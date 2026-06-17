@@ -25,7 +25,7 @@ ghtkn (pronounced `GH-Token`) allows you to manage multiple GitHub Apps through 
 ## :rocket: Getting Started
 
 1. [Install ghtkn](INSTALL.md)
-2. Create a GitHub App
+2. [Create a GitHub App](https://github.com/settings/apps/new?url=https://github.com/suzuki-shunsuke/ghtkn&device_flow_enabled=true&webhook_active=false&public=false)
 
 - Enable Device Flow
 - Disable Webhook
