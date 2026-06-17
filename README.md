@@ -405,162 +405,28 @@ If an access token is leaked, it must be immediately invalidated.
 [You can confirm if the leaked access token expires or not by GitHub API.](https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-the-authenticated-user)
 
 ```sh
-env GH_TOKEN=$LEAKED_GITHUB_TOKEN gh api \
+curl -L \
+  -X POST \
   -H "Accept: application/vnd.github+json" \
-  -H "X-GitHub-Api-Version: 2022-11-28" \
-  /user
+  -H "X-GitHub-Api-Version: 2026-03-10" \
+  https://api.github.com/credentials/revoke \
+  -d '{"credentials":["ghu_<REDACTED>"]}'
 ```
 
-You can revoke access tokens by `Revoke all user tokens` button in the GitHub App setting page.
+[You can revoke access tokens by GitHub REST API.](https://docs.github.com/en/rest/credentials/revoke?apiVersion=2022-11-28#revoke-a-list-of-credentials)
 
-If you want to revoke only a specific access token, [you can revoke it via GitHub API](https://docs.github.com/en/rest/apps/oauth-applications?apiVersion=2022-11-28#delete-an-app-token).
-This API requires a client secret. You should manage it securely.
-
-If you don't want to create a client secret, [you can revoke the target app from the `Authorized GitHub Apps` section in the user's settings page](https://github.com/settings/apps/authorizations).
-Revoking the app will invalidate all User Access Tokens for the user.
-However, if the user reauthorizes the app, previously issued access tokens will become valid again as long as they have not yet expired.
-This means the app cannot be re-enabled until the leaked access token expires (up to 8 hours).
-During that time, it may be necessary to temporarily use another GitHub App instead.
-
-### Revoking a user access token by GitHub Actions
-
-If you create a shared GitHub App and share it within the company, it's useful to allow users to revoke their access tokens themselves by GitHub Actions when their access tokens are leaked accidentally.
-It's so important to revoke leaked access tokens immediately, so it's undesirable that only administrators can revoke them.
-Revoking a user access token by GitHub API requires a client secret, but you should not share it widely.
-Instead, you can manage it by GitHub Environment Secret or Secrets Manager such as AWS SecretsManager securely, allowing people to revoke their access tokens via `workflow_dispatch` workflow.
-
-> [!WARNING]
-> Generally, passing secrets via inputs of `workflow_dispatch` isn't good, but in this case it can't be helped and the passed access token is revoked so there is no problem.
-
-<details>
-<summary>GitHub Actions Workflow</summary>
-
-```yaml
----
-name: Revoke a User Access Token
-run-name: Revoke a User Access Token (${{github.actor}})
-on:
-  workflow_dispatch:
-    inputs:
-      access_token:
-        description: 'The access token to revoke'
-        required: true
-        type: string
-jobs:
-  revoke:
-    timeout-minutes: 10
-    runs-on: ubuntu-24.04
-    permissions: {}
-    steps:
-      - name: Check if the access token is available
-        # This step is optional.
-        continue-on-error: true # Continue even if the access token is unavailable
-        env:
-          GH_TOKEN: ${{inputs.access_token}} # GitHub Actions automatically masks access tokens
-        run: |
-          gh api \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            /user
-      - name: Revoke the access token
-        env:
-          GH_TOKEN: ${{inputs.access_token}} # GitHub Actions automatically masks access tokens
-          CLIENT_ID: ${{secrets.CLIENT_ID}}
-          CLIENT_SECRET: ${{secrets.CLIENT_SECRET}}
-        run: |
-          curl -L \
-            -X DELETE \
-            -H "Accept: application/vnd.github+json" \
-            -u "${CLIENT_ID}:${CLIENT_SECRET}" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/applications/${CLIENT_ID}/token" \
-            -d '{"access_token":"'"${GH_TOKEN}"'"}'
+```sh
+curl -L \
+  -X POST \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2026-03-10" \
+  https://api.github.com/credentials/revoke \
+  -d '{"credentials":["ghu_<REDACTED>"]}'
 ```
 
-</details>
-
-<details>
-<summary>GitHub Actions Workflow For Multiple GitHub Apps</summary>
-
-1. Register client ids and secrets to GitHub Environment Secrets, allowing only the default branch to access secrets
-
-Secret names:
-
-- `CLIENT_ID_${NAME}`
-- `CLIENT_SECRET_${NAME}`
-
-```yaml
----
-name: Revoke a User Access Token
-run-name: Revoke a User Access Token (${{github.actor}}/${{inputs.app_name}})
-on:
-  workflow_dispatch:
-    inputs:
-      app_name:
-        description: GitHub App name
-        required: true
-        type: choice
-        default: write
-        options: # PLEASE CHANGE
-          - none
-          - read
-          - write
-          - full
-      access_token:
-        description: 'The access token to revoke'
-        required: true
-        type: string
-jobs:
-  revoke:
-    timeout-minutes: 10
-    runs-on: ubuntu-24.04
-    permissions: {}
-    environment: main
-    steps:
-      - name: Check if the access token is available
-        # This step is optional.
-        continue-on-error: true # Continue even if the access token is unavailable
-        env:
-          GH_TOKEN: ${{inputs.access_token}} # GitHub Actions automatically masks access tokens
-        run: |
-          gh api \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            /user
-      - name: Choose the client id and client secret
-        id: secret_names
-        env:
-          APP_NAME: ${{inputs.app_name}}
-        run: |
-          UPPER_APP_NAME=$(echo "$APP_NAME" | tr '[:lower:]' '[:upper:]')
-          echo CLIENT_ID_NAME="CLIENT_ID_${UPPER_APP_NAME}" >> "$GITHUB_OUTPUT"
-          echo CLIENT_SECRET_NAME="CLIENT_SECRET_${UPPER_APP_NAME}" >> "$GITHUB_OUTPUT"
-      - name: Revoke the access token
-        env:
-          GH_TOKEN: ${{inputs.access_token}} # GitHub Actions automatically masks access tokens
-          CLIENT_ID: ${{secrets[steps.secret_names.outputs.CLIENT_ID_NAME]}}
-          CLIENT_SECRET: ${{secrets[steps.secret_names.outputs.CLIENT_SECRET_NAME]}}
-        run: |
-          curl -L \
-            -X DELETE \
-            -H "Accept: application/vnd.github+json" \
-            -u "${CLIENT_ID}:${CLIENT_SECRET}" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/applications/${CLIENT_ID}/token" \
-            -d '{"access_token":"'"${GH_TOKEN}"'"}'
-      - name: Check if the access token has been revoked
-        # This step is optional.
-        continue-on-error: true # Continue even if the access token is unavailable
-        env:
-          GH_TOKEN: ${{inputs.access_token}} # GitHub Actions automatically masks access tokens
-        run: |
-          gh api \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            /user
-```
-
-</details>
+> [!NOTE]
+> We Updated the guide at 2026-06-17. Previously, we misunderstood that the REST API doesn't support User Access Tokens and a client secret is required to revoke them.
+> But actually, a client secret is unnecessary.
 
 ## Comparison between GitHub App User Access Token and other access tokens
 
