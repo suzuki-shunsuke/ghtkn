@@ -11,7 +11,7 @@ USAGE:
    ghtkn [global options] [command [command options]]
 
 VERSION:
-   0.2.5
+   0.2.6
 
 COMMANDS:
    init            Create ghtkn.yaml if it doesn't exist
@@ -317,7 +317,7 @@ NAME:
    ghtkn completion - Output shell completion script for bash, zsh, fish, or Powershell
 
 USAGE:
-   ghtkn completion [options]
+   ghtkn completion [command [command options]]
 
 DESCRIPTION:
    Output shell completion script for bash, zsh, fish, or Powershell.
@@ -336,10 +336,68 @@ DESCRIPTION:
    Output the script to path/to/autocomplete/ghtkn.ps1 an run it.
 
 
+COMMANDS:
+   bash  Output bash completion script
+   zsh   Output zsh completion script
+   fish  Output fish completion script
+   pwsh  Output pwsh completion script
+
 OPTIONS:
    --help, -h  show help
+```
 
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
+### completion bash
+
+```console
+$ completion bash --help
+NAME:
+   ghtkn completion bash - Output bash completion script
+
+USAGE:
+   ghtkn completion bash [options]
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### completion zsh
+
+```console
+$ completion zsh --help
+NAME:
+   ghtkn completion zsh - Output zsh completion script
+
+USAGE:
+   ghtkn completion zsh [options]
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### completion fish
+
+```console
+$ completion fish --help
+NAME:
+   ghtkn completion fish - Output fish completion script
+
+USAGE:
+   ghtkn completion fish [options]
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### completion pwsh
+
+```console
+$ completion pwsh --help
+NAME:
+   ghtkn completion pwsh - Output pwsh completion script
+
+USAGE:
+   ghtkn completion pwsh [options]
+
+OPTIONS:
+   --help, -h  show help
 ```
