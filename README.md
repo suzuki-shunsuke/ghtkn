@@ -351,6 +351,25 @@ By setting `GHTKN_ENABLE_DEVICE_FLOW` to `false`, `ghtkn` will fail fast with an
 ghtkn get -d
 ```
 
+## :bulb: Copying a one-time code to clipboard automatically
+
+[#446](https://github.com/suzuki-shunsuke/ghtkn/issues/446) [#309](https://github.com/suzuki-shunsuke/ghtkn/issues/309#issuecomment-4726483175)
+
+> [!WARNING]
+> Some applications—such as coding agents, cmux, and Warp—can start the device flow via ghtkn automatically. However, it is dangerous to use a one-time code when you didn't execute ghtkn explicitly, as this could be a phishing attack.
+> An attacker could initiate the device flow, copy the one-time code to your clipboard, trick you into submitting it, and compromise your access token.
+> To prevent this, if you use this tip, we recommend setting `GHTKN_ENABLE_DEVICE_FLOW` to `false` and always starting the device flow explicitly.
+
+This is a tip for automatically copying a one-time code to the clipboard.
+Feel free to change the function name and customize the code to your liking.
+
+```sh
+ghauth() {
+  ghtkn auth "$@" 2>&1 |
+    tee >(grep -oE "[A-Z0-9]{4}-[A-Z0-9]{4}" --line-buffered | head -n1 | tr -d "\n" | pbcopy)
+}
+```
+
 ## Backend
 
 By default ghtkn stores access tokens in the OS keyring.
