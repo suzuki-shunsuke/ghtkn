@@ -363,10 +363,21 @@ ghtkn get -d
 This is a tip for automatically copying a one-time code to the clipboard.
 Feel free to change the function name and customize the code to your liking.
 
+For macOS:
+
 ```sh
 ghauth() {
   ghtkn auth "$@" 2>&1 |
     tee >(grep -oE "[A-Z0-9]{4}-[A-Z0-9]{4}" --line-buffered | head -n1 | tr -d "\n" | pbcopy)
+}
+```
+
+For WSL:
+
+```sh
+ghauth() {
+  ghtkn auth "$@" 2>&1 |
+    tee >(grep -oE "[A-Z0-9]{4}-[A-Z0-9]{4}" --line-buffered | head -n1 | tr -d "\n" | clip.exe)
 }
 ```
 
