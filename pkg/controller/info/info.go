@@ -37,6 +37,7 @@ func (c *Controller) Info(configPath, appName, version string) error {
 		"GHTKN_MIN_EXPIRATION",
 		"GHTKN_LOG_LEVEL",
 		"GHTKN_ENABLE_DEVICE_FLOW",
+		"GHTKN_SKIP_ACCOUNT_PICKER",
 		"GHTKN_BACKEND",
 		"GHTKN_AGENT_SOCKET",
 		"GHTKN_AGENT_KEY",

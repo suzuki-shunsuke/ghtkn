@@ -25,11 +25,12 @@ import (
 type Args struct {
 	*flag.GlobalFlags
 
-	Format        string
-	MinExpiration string
-	AppName       string // positional argument for 'get' command
-	SubCommand    string // positional argument for 'git-credential' command (e.g., "get")
-	DeviceFlow    bool
+	Format            string
+	MinExpiration     string
+	AppName           string // positional argument for 'get' command
+	SubCommand        string // positional argument for 'git-credential' command (e.g., "get")
+	DeviceFlow        bool
+	SkipAccountPicker bool
 }
 
 // New creates either a 'get' or 'git-credential' command instance based on the isGitCredential flag.
@@ -92,6 +93,7 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 			flag.Format(&args.Format),
 			flag.MinExpiration(&args.MinExpiration),
 			flag.DeviceFlow(&args.DeviceFlow),
+			flag.SkipAccountPicker(&args.SkipAccountPicker),
 		},
 		Arguments: []cli.Argument{
 			&cli.StringArg{
@@ -134,10 +136,11 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args
 		if args.AppName != "" {
 			inputGet.AppName = args.AppName
 		}
-		// Only the 'get' command exposes --device-flow; the override lets the flag
-		// take precedence over GHTKN_ENABLE_DEVICE_FLOW. git-credential leaves this
-		// nil so the SDK falls back to the environment variable.
+		// Only the 'get' command exposes --device-flow and --skip-account-picker;
+		// the overrides let the flags take precedence over their environment variables.
+		// git-credential leaves these nil so the SDK falls back to the environment variables.
 		inputGet.EnableDeviceFlow = &args.DeviceFlow
+		inputGet.SkipAccountPicker = &args.SkipAccountPicker
 	}
 	p, err := config.ResolvePath(inputGet.ConfigFilePath)
 	if err != nil {

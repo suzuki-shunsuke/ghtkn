@@ -80,3 +80,14 @@ func DeviceFlow(dest *bool) *cli.BoolFlag {
 		Destination: dest,
 	}
 }
+
+// SkipAccountPicker returns a flag for bypassing GitHub's Device Flow account
+// picker. It defaults to false and can be set via GHTKN_SKIP_ACCOUNT_PICKER.
+func SkipAccountPicker(dest *bool) *cli.BoolFlag {
+	return &cli.BoolFlag{
+		Name:        "skip-account-picker",
+		Usage:       "Skip GitHub's Device Flow account picker",
+		Sources:     cli.EnvVars("GHTKN_SKIP_ACCOUNT_PICKER"),
+		Destination: dest,
+	}
+}

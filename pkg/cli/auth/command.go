@@ -31,7 +31,8 @@ const alwaysRenewMinExpiration = 9 * time.Hour
 type Args struct {
 	*flag.GlobalFlags
 
-	AppName string // positional argument
+	AppName           string // positional argument
+	SkipAccountPicker bool
 }
 
 // New creates a new auth command instance with the provided logger.
@@ -49,6 +50,7 @@ func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
 		Flags: []cli.Flag{
 			flag.LogLevel(&args.LogLevel),
 			flag.Config(&args.Config),
+			flag.SkipAccountPicker(&args.SkipAccountPicker),
 		},
 		Arguments: []cli.Argument{
 			&cli.StringArg{
@@ -78,6 +80,7 @@ func action(ctx context.Context, logger *slogutil.Logger, args *Args) error {
 	// because it is an explicit, interactive authentication command.
 	enable := true
 	inputGet.EnableDeviceFlow = &enable
+	inputGet.SkipAccountPicker = &args.SkipAccountPicker
 
 	input, err := get.NewInput()
 	if err != nil {

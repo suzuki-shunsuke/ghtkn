@@ -61,6 +61,13 @@ ghtkn get
 ```
 
 https://github.com/login/device will open in your browser, so enter the code displayed in the terminal and approve it.
+
+To bypass GitHub's account-picker step, set `GHTKN_SKIP_ACCOUNT_PICKER=true`. This uses GitHub's unofficial `skip_account_picker` query parameter.
+
+```sh
+GHTKN_SKIP_ACCOUNT_PICKER=true ghtkn auth
+```
+
 Then a user access token starting with `ghu_` is outputted.
 You can close the opened tab.
 
