@@ -1,4 +1,8 @@
-package agent
+// Package keystore implements the agent's at-rest encryption and on-disk layout:
+// the passphrase-wrapped data key, the AES-256-GCM token store, and the paths under
+// which the key and tokens live. It is shared by the agent server (which loads the
+// key and serves tokens) and the 'reset' command (which recreates the key).
+package keystore
 
 import (
 	"crypto/aes"

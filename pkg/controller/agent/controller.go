@@ -18,14 +18,14 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tty"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keystore"
 )
 
-// Controller runs the ghtkn agent server and also backs the 'reset' client command.
+// Controller runs the ghtkn agent server.
 type Controller struct {
 	// mu guards store, which is swapped from nil (locked) to a disk store on unlock.
 	mu    sync.RWMutex
-	store *store // nil while locked
+	store *keystore.Store // nil while locked
 
 	// shutdown cancels the serve loop. It is set while the server is running
 	// (see Start) and invoked when a STOP command is received.
@@ -35,21 +35,10 @@ type Controller struct {
 	// keyFile and tokenDir are the server's on-disk locations, set in Start.
 	keyFile  string
 	tokenDir string
-
-	// readPassphrase reads a passphrase from the terminal. It is a field so tests
-	// can inject a stub instead of driving a real TTY.
-	readPassphrase func(prompt string) ([]byte, error)
-	// confirm asks the user a yes/no question on the terminal. It is a field so tests
-	// can inject a stub instead of driving a real TTY.
-	confirm func(prompt string) (bool, error)
 }
 
 // New creates a new agent Controller. The server starts locked (no token store);
-// it is unlocked later via the UNLOCK command. The 'reset' client command reuses the
-// same type but never touches the store.
+// it is unlocked later via the UNLOCK command.
 func New() *Controller {
-	return &Controller{
-		readPassphrase: tty.ReadPassphrase,
-		confirm:        tty.Confirm,
-	}
+	return &Controller{}
 }

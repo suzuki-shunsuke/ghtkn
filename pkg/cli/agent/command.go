@@ -15,6 +15,7 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/reset"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/status"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/stop"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/unlock"
@@ -171,5 +172,5 @@ func (r *runner) reset(ctx context.Context, _ *cli.Command) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
-	return agent.New().Reset(ctx, r.logger.Logger) //nolint:wrapcheck
+	return reset.New().Run(ctx, r.logger.Logger) //nolint:wrapcheck
 }

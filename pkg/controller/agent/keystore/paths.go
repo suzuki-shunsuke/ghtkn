@@ -1,4 +1,4 @@
-package agent
+package keystore
 
 import (
 	"errors"
@@ -48,9 +48,9 @@ func dataDir(getEnv func(string) string, goos string) (string, error) {
 	return "", errors.New("XDG_DATA_HOME or HOME is required to use the agent backend")
 }
 
-// tokenDir resolves the directory that stores encrypted token files.
+// TokenDir resolves the directory that stores encrypted token files.
 // GHTKN_AGENT_TOKEN_DIR takes precedence; otherwise it is ${cache dir}/ghtkn/agent.
-func tokenDir(getEnv func(string) string, goos string) (string, error) {
+func TokenDir(getEnv func(string) string, goos string) (string, error) {
 	if dir := getEnv("GHTKN_AGENT_TOKEN_DIR"); dir != "" {
 		return dir, nil
 	}
@@ -61,9 +61,9 @@ func tokenDir(getEnv func(string) string, goos string) (string, error) {
 	return filepath.Join(dir, "ghtkn", "agent"), nil
 }
 
-// keyPath resolves the path of the wrapped data key file.
+// KeyPath resolves the path of the wrapped data key file.
 // GHTKN_AGENT_KEY takes precedence; otherwise it is ${data dir}/ghtkn/key.
-func keyPath(getEnv func(string) string, goos string) (string, error) {
+func KeyPath(getEnv func(string) string, goos string) (string, error) {
 	if path := getEnv("GHTKN_AGENT_KEY"); path != "" {
 		return path, nil
 	}

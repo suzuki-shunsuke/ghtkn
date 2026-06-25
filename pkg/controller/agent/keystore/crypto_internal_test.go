@@ -1,4 +1,4 @@
-package agent
+package keystore
 
 import (
 	"bytes"

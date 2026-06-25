@@ -1,4 +1,4 @@
-package agent
+package keystore
 
 import (
 	"path/filepath"
@@ -42,12 +42,12 @@ func TestTokenDir(t *testing.T) {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
 			getEnv := func(k string) string { return d.env[k] }
-			got, err := tokenDir(getEnv, d.goos)
+			got, err := TokenDir(getEnv, d.goos)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if got != filepath.FromSlash(d.want) {
-				t.Fatalf("tokenDir = %q, want %q", got, d.want)
+				t.Fatalf("TokenDir = %q, want %q", got, d.want)
 			}
 		})
 	}

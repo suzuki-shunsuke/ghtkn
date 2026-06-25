@@ -1,4 +1,4 @@
-package agent
+package keystore
 
 import (
 	"crypto/rand"
@@ -16,19 +16,19 @@ const (
 	keyFileHeaderSize = 1 + saltLen // version byte + salt
 )
 
-// errIncorrectPassphrase is returned when the key file cannot be unwrapped with the
+// ErrIncorrectPassphrase is returned when the key file cannot be unwrapped with the
 // supplied passphrase, which means the passphrase is wrong (or the file is corrupt).
-var errIncorrectPassphrase = errors.New("incorrect passphrase")
+var ErrIncorrectPassphrase = errors.New("incorrect passphrase")
 
-// loadOrCreateDataKey loads the data key from path, decrypting it with passphrase.
+// LoadOrCreateDataKey loads the data key from path, decrypting it with passphrase.
 // If the file does not exist, it generates a new data key, wraps it with a
 // passphrase-derived KEK, writes the key file (0600), and returns the data key.
 // The bool result reports whether a new key file was created.
-func loadOrCreateDataKey(path string, passphrase []byte) ([]byte, bool, error) {
+func LoadOrCreateDataKey(path string, passphrase []byte) ([]byte, bool, error) {
 	blob, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			dataKey, cerr := createDataKey(path, passphrase)
+			dataKey, cerr := CreateDataKey(path, passphrase)
 			return dataKey, true, cerr
 		}
 		return nil, false, fmt.Errorf("read the key file: %w", err)
@@ -40,9 +40,9 @@ func loadOrCreateDataKey(path string, passphrase []byte) ([]byte, bool, error) {
 	return dataKey, false, nil
 }
 
-// createDataKey generates a new random data key and salt, wraps the data key with
+// CreateDataKey generates a new random data key and salt, wraps the data key with
 // the passphrase-derived KEK, and writes the key file atomically.
-func createDataKey(path string, passphrase []byte) ([]byte, error) {
+func CreateDataKey(path string, passphrase []byte) ([]byte, error) {
 	dataKey := make([]byte, dataKeyLen)
 	if _, err := rand.Read(dataKey); err != nil {
 		return nil, fmt.Errorf("generate a data key: %w", err)
@@ -66,7 +66,7 @@ func createDataKey(path string, passphrase []byte) ([]byte, error) {
 }
 
 // unwrapDataKey parses a key file blob and decrypts the data key with passphrase.
-// It returns errIncorrectPassphrase when decryption fails.
+// It returns ErrIncorrectPassphrase when decryption fails.
 func unwrapDataKey(blob, passphrase []byte) ([]byte, error) {
 	if len(blob) < keyFileHeaderSize {
 		return nil, errors.New("the key file is too short")
@@ -79,7 +79,7 @@ func unwrapDataKey(blob, passphrase []byte) ([]byte, error) {
 	dataKey, err := open(deriveKEK(passphrase, salt), wrapped)
 	if err != nil {
 		if errors.Is(err, errDecrypt) {
-			return nil, errIncorrectPassphrase
+			return nil, ErrIncorrectPassphrase
 		}
 		return nil, fmt.Errorf("unwrap the data key: %w", err)
 	}

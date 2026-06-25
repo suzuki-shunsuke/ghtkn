@@ -1,4 +1,4 @@
-package agent
+package keystore
 
 import (
 	"encoding/json"
@@ -13,7 +13,7 @@ func TestStore_diskPersistence(t *testing.T) {
 	key := testDataKey(t)
 	token := json.RawMessage(`{"access_token":"abc"}`)
 
-	if err := newDiskStore(key, dir).Set("Iv1.abc", token); err != nil {
+	if err := NewDiskStore(key, dir).Set("Iv1.abc", token); err != nil {
 		t.Fatal(err)
 	}
 
@@ -27,7 +27,7 @@ func TestStore_diskPersistence(t *testing.T) {
 	}
 
 	// A fresh store with the same key must decrypt the token from disk.
-	got, ok, err := newDiskStore(key, dir).Get("Iv1.abc")
+	got, ok, err := NewDiskStore(key, dir).Get("Iv1.abc")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestStore_diskPersistence(t *testing.T) {
 
 func TestStore_getMissing(t *testing.T) {
 	t.Parallel()
-	got, ok, err := newDiskStore(testDataKey(t), t.TempDir()).Get("Iv1.absent")
+	got, ok, err := NewDiskStore(testDataKey(t), t.TempDir()).Get("Iv1.absent")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,18 +53,18 @@ func TestStore_getMissing(t *testing.T) {
 func TestStore_wrongKey(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	if err := newDiskStore(testDataKey(t), dir).Set("Iv1.abc", json.RawMessage(`{"a":1}`)); err != nil {
+	if err := NewDiskStore(testDataKey(t), dir).Set("Iv1.abc", json.RawMessage(`{"a":1}`)); err != nil {
 		t.Fatal(err)
 	}
 	wrong := make([]byte, dataKeyLen)
-	if _, _, err := newDiskStore(wrong, dir).Get("Iv1.abc"); err == nil {
+	if _, _, err := NewDiskStore(wrong, dir).Get("Iv1.abc"); err == nil {
 		t.Fatal("decrypting with the wrong key must fail")
 	}
 }
 
 func TestStore_invalidClientID(t *testing.T) {
 	t.Parallel()
-	s := newDiskStore(testDataKey(t), t.TempDir())
+	s := NewDiskStore(testDataKey(t), t.TempDir())
 	if _, _, err := s.Get("../escape"); err == nil {
 		t.Fatal("Get must reject an invalid client id")
 	}
@@ -77,7 +77,7 @@ func TestStore_lenCountsDiskFiles(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	key := testDataKey(t)
-	s := newDiskStore(key, dir)
+	s := NewDiskStore(key, dir)
 	if err := s.Set("Iv1.a", json.RawMessage(`{}`)); err != nil {
 		t.Fatal(err)
 	}

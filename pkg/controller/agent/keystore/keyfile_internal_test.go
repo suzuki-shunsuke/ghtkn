@@ -1,4 +1,4 @@
-package agent
+package keystore
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ func TestLoadOrCreateDataKey(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "key")
 	pass := []byte("correct horse")
 
-	key, created, err := loadOrCreateDataKey(path, pass)
+	key, created, err := LoadOrCreateDataKey(path, pass)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func TestLoadOrCreateDataKey(t *testing.T) {
 		t.Fatalf("key file perm = %o, want %o", perm, keyFilePerm)
 	}
 
-	again, created, err := loadOrCreateDataKey(path, pass)
+	again, created, err := LoadOrCreateDataKey(path, pass)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,11 +47,11 @@ func TestLoadOrCreateDataKey(t *testing.T) {
 func TestLoadOrCreateDataKey_wrongPassphrase(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "key")
-	if _, _, err := loadOrCreateDataKey(path, []byte("right")); err != nil {
+	if _, _, err := LoadOrCreateDataKey(path, []byte("right")); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := loadOrCreateDataKey(path, []byte("wrong")); !errors.Is(err, errIncorrectPassphrase) {
-		t.Fatalf("err = %v, want errIncorrectPassphrase", err)
+	if _, _, err := LoadOrCreateDataKey(path, []byte("wrong")); !errors.Is(err, ErrIncorrectPassphrase) {
+		t.Fatalf("err = %v, want ErrIncorrectPassphrase", err)
 	}
 }
 
@@ -92,12 +92,12 @@ func TestKeyPath(t *testing.T) {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
 			getEnv := func(k string) string { return d.env[k] }
-			got, err := keyPath(getEnv, d.goos)
+			got, err := KeyPath(getEnv, d.goos)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if got != d.want {
-				t.Fatalf("keyPath = %q, want %q", got, d.want)
+				t.Fatalf("KeyPath = %q, want %q", got, d.want)
 			}
 		})
 	}

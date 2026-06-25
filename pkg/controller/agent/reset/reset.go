@@ -1,4 +1,4 @@
-package agent
+package reset
 
 import (
 	"context"
@@ -8,25 +8,26 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keystore"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/stop"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tty"
 )
 
-// Reset recovers from a forgotten passphrase by reinitializing the agent: it stops
+// Run recovers from a forgotten passphrase by reinitializing the agent: it stops
 // a running agent, deletes the key file and all encrypted token files, and creates a
 // new key from a freshly entered passphrase. The old passphrase is not needed and
 // the cached tokens are discarded (they are reminted from GitHub on the next get).
 //
 // It asks for confirmation first because the operation is destructive, and requires
 // a terminal both for that confirmation and for the new passphrase.
-func (c *Controller) Reset(ctx context.Context, logger *slog.Logger) error {
-	keyFile, err := keyPath(os.Getenv, runtime.GOOS)
+func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
+	keyFile, err := keystore.KeyPath(os.Getenv, runtime.GOOS)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
-	dir, err := tokenDir(os.Getenv, runtime.GOOS)
+	dir, err := keystore.TokenDir(os.Getenv, runtime.GOOS)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	ok, err := c.confirm("This stops the agent and deletes the key and all cached tokens, then recreates the key. Continue? (y/N): ")
@@ -79,8 +80,8 @@ func (c *Controller) recreateKey(keyFile string) error {
 			pass[i] = 0
 		}
 	}()
-	if _, err := createDataKey(keyFile, pass); err != nil {
-		return err
+	if _, err := keystore.CreateDataKey(keyFile, pass); err != nil {
+		return err //nolint:wrapcheck
 	}
 	return nil
 }
