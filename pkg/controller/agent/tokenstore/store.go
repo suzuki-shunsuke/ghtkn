@@ -53,9 +53,9 @@ type Store struct {
 	dir     string // "" in memory-only mode
 }
 
-// NewDiskStore creates a token store that persists encrypted tokens under dir,
+// NewStore creates a token store that persists encrypted tokens under dir,
 // encrypting them with dataKey.
-func NewDiskStore(dataKey []byte, dir string) *Store {
+func NewStore(dataKey []byte, dir string) *Store {
 	return &Store{
 		tokens:  map[string]json.RawMessage{},
 		dataKey: dataKey,
