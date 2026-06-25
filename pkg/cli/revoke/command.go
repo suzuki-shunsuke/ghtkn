@@ -5,17 +5,16 @@
 // with --token. This is useful when a token has been leaked and must be revoked
 // quickly.
 //
-// When neither --token nor an app name is given, it falls back to the app selected
-// by GHTKN_APP (or the default app). When --token or an app name is given, GHTKN_APP
-// and the default app are NOT used, so revoking a raw token never revokes an
-// unrelated app's stored token.
+// Raw --token values are revoked directly. When neither --token nor an app name is
+// given, it falls back to the app selected by GHTKN_APP (or the default app). When
+// only --token is given, GHTKN_APP and the default app are NOT used, so revoking a
+// raw token never revokes an unrelated app's stored token.
 package revoke
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/revoke"
@@ -68,29 +67,27 @@ When neither --token nor an app name is given, the token stored for GHTKN_APP (o
 }
 
 // action revokes the requested tokens.
-// It passes only the explicitly given app name and --token values to the SDK; the
-// fallback to GHTKN_APP / the default app (when neither is given) is handled by the
-// SDK so that revoking a raw token never touches an unrelated app's stored token.
+// Raw --token values are revoked directly by the controller. The app name is
+// passed to the SDK to revoke the app's stored token. When neither --token nor an
+// app name is given, the SDK falls back to GHTKN_APP / the default app; when only
+// --token is given, the SDK is not called so a raw token never touches an
+// unrelated app's stored token.
 func action(ctx context.Context, logger *slogutil.Logger, args *Args) error {
 	if err := logger.SetLevel(args.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
-	}
-	inputRevoke := &ghtkn.InputRevoke{
-		Tokens:         args.Tokens,
-		ConfigFilePath: args.Config,
-	}
-	if args.AppName != "" {
-		inputRevoke.AppNames = []string{args.AppName}
 	}
 
 	input, err := revoke.NewInput()
 	if err != nil {
 		return fmt.Errorf("create the controller input: %w", err)
 	}
-	p, err := config.ResolvePath(inputRevoke.ConfigFilePath)
+	p, err := config.ResolvePath(args.Config)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
-	inputRevoke.ConfigFilePath = p
-	return revoke.New(input).Run(ctx, logger.Logger, inputRevoke) //nolint:wrapcheck
+	return revoke.New(input).Run(ctx, logger.Logger, &revoke.InputRevoke{ //nolint:wrapcheck
+		Tokens:         args.Tokens,
+		AppName:        args.AppName,
+		ConfigFilePath: p,
+	})
 }
