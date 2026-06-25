@@ -81,10 +81,10 @@ func runTestCases() []runTestCase {
 			wantClient:  false,
 		},
 		{
-			name:         "app name: the SDK is called, the revoker is not",
-			input:        &revoke.InputRevoke{AppName: "test"},
+			name:         "app names: the SDK is called, the revoker is not",
+			input:        &revoke.InputRevoke{AppNames: []string{"test", "test2"}},
 			wantClient:   true,
-			wantAppNames: []string{"test"},
+			wantAppNames: []string{"test", "test2"},
 			wantRevoker:  false,
 		},
 		{
@@ -95,7 +95,7 @@ func runTestCases() []runTestCase {
 		},
 		{
 			name:         "both: the revoker and the SDK are called",
-			input:        &revoke.InputRevoke{Tokens: []string{"ghu_x"}, AppName: "test"},
+			input:        &revoke.InputRevoke{Tokens: []string{"ghu_x"}, AppNames: []string{"test"}},
 			wantRevoker:  true,
 			wantTokens:   []string{"ghu_x"},
 			wantClient:   true,
@@ -109,7 +109,7 @@ func runTestCases() []runTestCase {
 		},
 		{
 			name:      "client error is propagated",
-			input:     &revoke.InputRevoke{AppName: "test"},
+			input:     &revoke.InputRevoke{AppNames: []string{"test"}},
 			clientErr: errors.New("boom"),
 			wantErr:   true,
 		},

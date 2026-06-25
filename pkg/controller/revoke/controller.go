@@ -44,11 +44,11 @@ func NewInput() (*Input, error) {
 
 // InputRevoke holds the values needed to revoke tokens.
 type InputRevoke struct {
-	// Tokens are raw access tokens passed with --token. They are revoked directly
-	// and are not looked up in or deleted from any backend.
+	// Tokens are raw access tokens given as positional arguments. They are revoked
+	// directly and are not looked up in or deleted from any backend.
 	Tokens []string
-	// AppName is the app whose stored token should be revoked (empty if not given).
-	AppName string
+	// AppNames are the apps whose stored tokens should be revoked (empty if none given).
+	AppNames []string
 	// ConfigFilePath is the resolved configuration file path.
 	ConfigFilePath string
 }
@@ -67,11 +67,11 @@ func New(input *Input) *Controller {
 
 // Run revokes the requested tokens.
 //
-// Raw --token values are revoked directly via the credential revocation API. The
-// SDK is invoked to revoke an app's stored token only when an app name is given,
-// or when neither --token nor an app name is given (the fallback to GHTKN_APP /
-// the default app). When only --token is given, the SDK is not called, so a raw
-// token is never expanded into an unrelated app's stored token.
+// Raw access tokens are revoked directly via the credential revocation API. The
+// SDK is invoked to revoke apps' stored tokens only when app names are given, or
+// when nothing at all is given (the fallback to GHTKN_APP / the default app). When
+// only raw tokens are given, the SDK is not called, so a raw token is never
+// expanded into an unrelated app's stored token.
 func (c *Controller) Run(ctx context.Context, logger *slog.Logger, input *InputRevoke) error {
 	if len(input.Tokens) > 0 {
 		if err := c.input.Revoker.Revoke(ctx, input.Tokens); err != nil {
@@ -79,14 +79,11 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger, input *InputR
 		}
 	}
 
-	if input.AppName != "" || len(input.Tokens) == 0 {
-		sdkInput := &ghtkn.InputRevoke{
+	if len(input.AppNames) > 0 || len(input.Tokens) == 0 {
+		if err := c.input.Client.Revoke(ctx, logger, &ghtkn.InputRevoke{
+			AppNames:       input.AppNames,
 			ConfigFilePath: input.ConfigFilePath,
-		}
-		if input.AppName != "" {
-			sdkInput.AppNames = []string{input.AppName}
-		}
-		if err := c.input.Client.Revoke(ctx, logger, sdkInput); err != nil {
+		}); err != nil {
 			return fmt.Errorf("revoke access tokens stored in the backend: %w", err)
 		}
 	}

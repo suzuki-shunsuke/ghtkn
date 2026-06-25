@@ -439,14 +439,14 @@ If an access token is leaked, it must be immediately invalidated.
 The simplest way is the `ghtkn revoke` command:
 
 ```sh
-ghtkn revoke <app name>            # revoke the token stored for an app and delete it from the backend
-ghtkn revoke --token ghu_xxx       # revoke a raw token directly (e.g. a leaked one)
-ghtkn revoke -t ghu_a -t ghu_b foo # revoke multiple tokens and an app's stored token at once
-ghtkn revoke                       # revoke the token stored for GHTKN_APP or the default app
+ghtkn revoke <app name>        # revoke the token stored for an app and delete it from the backend
+ghtkn revoke ghu_xxx           # revoke a raw token directly (e.g. a leaked one)
+ghtkn revoke ghu_a ghu_b foo   # revoke multiple tokens and an app's stored token at once
+ghtkn revoke                   # revoke the token stored for GHTKN_APP or the default app
 ```
 
-It revokes the token stored in the [backend](#backend) for the given app and removes it from the backend, and can also revoke raw tokens passed with `--token`.
-When neither `--token` nor an app name is given, it falls back to `GHTKN_APP` or the default app; when either is given, the fallback is not used, so revoking a raw token never touches an unrelated app's stored token.
+Each argument is classified by its prefix: arguments starting with a GitHub token prefix (`ghp_`, `github_pat_`, `gho_`, `ghu_`, `ghr_`) are revoked directly as raw access tokens, and all other arguments are treated as app names whose stored tokens are revoked and removed from the [backend](#backend).
+When no argument is given, it falls back to `GHTKN_APP` or the default app; when only raw tokens are given, the fallback is not used, so revoking a raw token never touches an unrelated app's stored token.
 
 ### GitHub REST API
 
