@@ -1,4 +1,4 @@
-package agent
+package tokenstore
 
 import (
 	"encoding/json"
@@ -7,13 +7,23 @@ import (
 	"testing"
 )
 
+// testDataKey returns a deterministic 32-byte key for tests.
+func testDataKey(t *testing.T) []byte {
+	t.Helper()
+	key := make([]byte, 32)
+	for i := range key {
+		key[i] = byte(i)
+	}
+	return key
+}
+
 func TestStore_diskPersistence(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	key := testDataKey(t)
 	token := json.RawMessage(`{"access_token":"abc"}`)
 
-	if err := newDiskStore(key, dir).Set("Iv1.abc", token); err != nil {
+	if err := New(key, dir).Set("Iv1.abc", token); err != nil {
 		t.Fatal(err)
 	}
 
@@ -27,7 +37,7 @@ func TestStore_diskPersistence(t *testing.T) {
 	}
 
 	// A fresh store with the same key must decrypt the token from disk.
-	got, ok, err := newDiskStore(key, dir).Get("Iv1.abc")
+	got, ok, err := New(key, dir).Get("Iv1.abc")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +51,7 @@ func TestStore_diskPersistence(t *testing.T) {
 
 func TestStore_getMissing(t *testing.T) {
 	t.Parallel()
-	got, ok, err := newDiskStore(testDataKey(t), t.TempDir()).Get("Iv1.absent")
+	got, ok, err := New(testDataKey(t), t.TempDir()).Get("Iv1.absent")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,18 +63,18 @@ func TestStore_getMissing(t *testing.T) {
 func TestStore_wrongKey(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	if err := newDiskStore(testDataKey(t), dir).Set("Iv1.abc", json.RawMessage(`{"a":1}`)); err != nil {
+	if err := New(testDataKey(t), dir).Set("Iv1.abc", json.RawMessage(`{"a":1}`)); err != nil {
 		t.Fatal(err)
 	}
-	wrong := make([]byte, dataKeyLen)
-	if _, _, err := newDiskStore(wrong, dir).Get("Iv1.abc"); err == nil {
+	wrong := make([]byte, 32)
+	if _, _, err := New(wrong, dir).Get("Iv1.abc"); err == nil {
 		t.Fatal("decrypting with the wrong key must fail")
 	}
 }
 
 func TestStore_invalidClientID(t *testing.T) {
 	t.Parallel()
-	s := newDiskStore(testDataKey(t), t.TempDir())
+	s := New(testDataKey(t), t.TempDir())
 	if _, _, err := s.Get("../escape"); err == nil {
 		t.Fatal("Get must reject an invalid client id")
 	}
@@ -77,7 +87,7 @@ func TestStore_lenCountsDiskFiles(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	key := testDataKey(t)
-	s := newDiskStore(key, dir)
+	s := New(key, dir)
 	if err := s.Set("Iv1.a", json.RawMessage(`{}`)); err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +95,7 @@ func TestStore_lenCountsDiskFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	// A leftover temp file and an invalid name must be ignored.
-	if err := os.WriteFile(filepath.Join(dir, ".ghtkn-tmp-xyz"), nil, tokenFilePerm); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".ghtkn-tmp-xyz"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if got := s.Len(); got != 2 {

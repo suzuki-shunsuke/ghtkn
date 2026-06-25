@@ -10,7 +10,18 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
 )
+
+// testDataKey returns a deterministic 32-byte key for tests.
+func testDataKey(t *testing.T) []byte {
+	t.Helper()
+	key := make([]byte, 32)
+	for i := range key {
+		key[i] = byte(i)
+	}
+	return key
+}
 
 type handleTestCase struct {
 	name     string
@@ -84,7 +95,7 @@ var handleTestCases = []handleTestCase{ //nolint:gochecknoglobals // test fixtur
 func newUnlockedController(t *testing.T) *Controller {
 	t.Helper()
 	c := New()
-	c.store = newDiskStore(testDataKey(t), t.TempDir())
+	c.store = tokenstore.New(testDataKey(t), t.TempDir())
 	return c
 }
 
@@ -147,12 +158,12 @@ func TestController_handle_undecryptable(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	// Persist a token encrypted with one key.
-	if err := newDiskStore(testDataKey(t), dir).Set("Iv1.abc", json.RawMessage(`{"access_token":"abc"}`)); err != nil {
+	if err := tokenstore.New(testDataKey(t), dir).Set("Iv1.abc", json.RawMessage(`{"access_token":"abc"}`)); err != nil {
 		t.Fatal(err)
 	}
 	// Unlock the agent with a different key over the same directory.
 	c := New()
-	c.store = newDiskStore(make([]byte, dataKeyLen), dir)
+	c.store = tokenstore.New(make([]byte, 32), dir)
 
 	get, _ := c.handle(strings.NewReader(`{"command":"GET","client_id":"Iv1.abc"}` + "\n"))
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, get); diff != "" {
@@ -186,7 +197,7 @@ func TestController_handle_unlock_orphanTokens(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	// A token left behind, encrypted under a previous key.
-	if err := newDiskStore(testDataKey(t), dir).Set("Iv1.old", json.RawMessage(`{"access_token":"x"}`)); err != nil {
+	if err := tokenstore.New(testDataKey(t), dir).Set("Iv1.old", json.RawMessage(`{"access_token":"x"}`)); err != nil {
 		t.Fatal(err)
 	}
 	var buf bytes.Buffer
@@ -219,5 +230,62 @@ func TestController_handle_stop(t *testing.T) {
 	// Non-stop commands must not request shutdown.
 	if _, shutdown := c.handle(strings.NewReader(`{"command":"STATUS"}` + "\n")); shutdown {
 		t.Fatal("STATUS must not request shutdown")
+	}
+}
+
+// TestServe_status_locked verifies that a locked agent, served over a real socket,
+// reports running and locked in response to STATUS.
+func TestServe_status_locked(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "agent.sock")
+	c := New() // starts locked: no store
+	listener, err := listen(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { listener.Close() })
+	go c.serve(listener, slog.New(slog.DiscardHandler)) //nolint:errcheck // serve returns nil once the listener is closed
+
+	resp, err := agentapi.Send(t.Context(), path, &agentapi.Request{Command: agentapi.CommandStatus})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !resp.OK {
+		t.Fatalf("resp.OK = false, error: %s", resp.Error)
+	}
+	if !resp.Locked {
+		t.Fatal("a freshly started agent must report locked")
+	}
+}
+
+// TestServe_status_unlocked verifies that an unlocked agent, served over a real
+// socket, reports running, unlocked, and the cached token count in STATUS.
+func TestServe_status_unlocked(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "agent.sock")
+	c := New()
+	// Unlock by installing a disk store before serving so the serve goroutine never
+	// observes a concurrent write to c.store.
+	c.store = tokenstore.New(testDataKey(t), t.TempDir())
+	listener, err := listen(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { listener.Close() })
+	go c.serve(listener, slog.New(slog.DiscardHandler)) //nolint:errcheck // serve returns nil once the listener is closed
+
+	if _, err := agentapi.Send(t.Context(), path, &agentapi.Request{Command: agentapi.CommandSet, ClientID: "Iv1.x", Token: []byte(`{"access_token":"abc"}`)}); err != nil {
+		t.Fatal(err)
+	}
+
+	resp, err := agentapi.Send(t.Context(), path, &agentapi.Request{Command: agentapi.CommandStatus})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !resp.OK || resp.Locked {
+		t.Fatalf("agent must be running and unlocked, got resp=%+v", resp)
+	}
+	if resp.Count != 1 {
+		t.Fatalf("count = %d, want 1", resp.Count)
 	}
 }

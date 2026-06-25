@@ -15,6 +15,10 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/reset"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/status"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/stop"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/unlock"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/urfave/cli/v3"
 )
@@ -93,7 +97,7 @@ func (r *runner) stop(ctx context.Context, _ *cli.Command) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
-	return agent.New().Stop(ctx, r.logger.Logger) //nolint:wrapcheck
+	return stop.New().Run(ctx, r.logger.Logger) //nolint:wrapcheck
 }
 
 // statusCommand returns the CLI command definition for the 'agent status' subcommand.
@@ -117,7 +121,7 @@ func (r *runner) status(ctx context.Context, _ *cli.Command) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
-	return agent.New().Status(ctx, r.logger.Logger) //nolint:wrapcheck
+	return status.New().Run(ctx, r.logger.Logger) //nolint:wrapcheck
 }
 
 // unlockCommand returns the CLI command definition for the 'agent unlock' subcommand.
@@ -142,7 +146,7 @@ func (r *runner) unlock(ctx context.Context, _ *cli.Command) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
-	return agent.New().Unlock(ctx, r.logger.Logger) //nolint:wrapcheck
+	return unlock.New().Run(ctx, r.logger.Logger) //nolint:wrapcheck
 }
 
 // resetCommand returns the CLI command definition for the 'agent reset' subcommand.
@@ -168,5 +172,5 @@ func (r *runner) reset(ctx context.Context, _ *cli.Command) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
-	return agent.New().Reset(ctx, r.logger.Logger) //nolint:wrapcheck
+	return reset.New().Run(ctx, r.logger.Logger) //nolint:wrapcheck
 }

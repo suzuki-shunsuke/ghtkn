@@ -1,4 +1,4 @@
-package agent
+package status
 
 import (
 	"context"
@@ -10,10 +10,10 @@ import (
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 )
 
-// Status reports whether a ghtkn agent is running, whether it is locked, and how
+// Run reports whether a ghtkn agent is running, whether it is locked, and how
 // many access tokens it currently caches when unlocked. A stopped agent is a normal
 // result, not an error, so this method returns nil in that case.
-func (c *Controller) Status(ctx context.Context, logger *slog.Logger) error {
+func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	path, err := agentapi.SocketPath(os.Getenv, runtime.GOOS)
 	if err != nil {
 		return err //nolint:wrapcheck

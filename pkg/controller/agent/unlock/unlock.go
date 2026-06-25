@@ -1,4 +1,4 @@
-package agent
+package unlock
 
 import (
 	"context"
@@ -8,13 +8,14 @@ import (
 	"runtime"
 
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tty"
 )
 
-// Unlock prompts for the agent passphrase on the terminal and sends it to a running
+// Run prompts for the agent passphrase on the terminal and sends it to a running
 // agent over the socket, loading (or creating) the data key. It is the client half
 // of the locked-start workflow: 'ghtkn agent start' runs locked in the background,
 // and 'ghtkn agent unlock' supplies the passphrase interactively.
-func (c *Controller) Unlock(ctx context.Context, logger *slog.Logger) error {
+func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	path, err := agentapi.SocketPath(os.Getenv, runtime.GOOS)
 	if err != nil {
 		return err //nolint:wrapcheck
@@ -33,10 +34,10 @@ func (c *Controller) Unlock(ctx context.Context, logger *slog.Logger) error {
 	}
 
 	// status.Initialized reports whether a key file already exists. On first use
-	// (not initialized) promptPassphrase asks twice and verifies the entries match.
-	pass, err := c.promptPassphrase(status.Initialized)
+	// (not initialized) PromptPassphrase asks twice and verifies the entries match.
+	pass, err := tty.PromptPassphrase(c.readPassphrase, status.Initialized)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 	// Best-effort scrubbing of the passphrase bytes.
 	defer func() {

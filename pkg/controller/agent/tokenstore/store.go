@@ -1,4 +1,7 @@
-package agent
+// Package tokenstore caches GitHub App access tokens for the agent, encrypted at
+// rest with AES-256-GCM (via the crypt package) under the data key produced by the
+// keyfile package. It also resolves the directory the token files live in.
+package tokenstore
 
 import (
 	"encoding/json"
@@ -9,20 +12,22 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/crypt"
 )
 
 // clientIDPattern restricts client IDs to characters that are safe to use directly
 // as a file name. GitHub App client IDs (e.g. "Iv1.<hex>", "Iv23<...>") match it.
 var clientIDPattern = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 
-// errInvalidClientID is returned when a client ID is unsafe to use as a file name.
-var errInvalidClientID = errors.New("invalid client id")
+// ErrInvalidClientID is returned when a client ID is unsafe to use as a file name.
+var ErrInvalidClientID = errors.New("invalid client id")
 
-// errDecryptToken is returned (wrapped) when a persisted token file exists but
+// ErrDecryptToken is returned (wrapped) when a persisted token file exists but
 // can't be decrypted with the current data key, e.g. after the agent key was
 // rotated. Callers can detect it with errors.Is to treat the stale token as a
 // cache miss rather than a hard failure.
-var errDecryptToken = errors.New("decrypt the token file")
+var ErrDecryptToken = errors.New("decrypt the token file")
 
 // validClientID reports whether id is safe to use as a token file name.
 // It rejects empty strings, "." and "..", and anything outside clientIDPattern,
@@ -34,24 +39,24 @@ func validClientID(id string) bool {
 	return clientIDPattern.MatchString(id)
 }
 
-// store caches access tokens keyed by client ID.
+// Store caches access tokens keyed by client ID.
 //
 // In memory-only mode (dataKey == nil, dir == "") tokens live only for the lifetime
 // of the process. In disk mode tokens are encrypted with dataKey (AES-256-GCM) and
 // persisted under dir as one file per client ID; the in-memory map is a lazily
 // populated cache. Tokens are opaque JSON so the agent does not depend on the
 // concrete access token type defined in the ghtkn SDK.
-type store struct {
+type Store struct {
 	mu      sync.Mutex
 	tokens  map[string]json.RawMessage
 	dataKey []byte // nil in memory-only mode
 	dir     string // "" in memory-only mode
 }
 
-// newDiskStore creates a token store that persists encrypted tokens under dir,
+// New creates a token store that persists encrypted tokens under dir,
 // encrypting them with dataKey.
-func newDiskStore(dataKey []byte, dir string) *store {
-	return &store{
+func New(dataKey []byte, dir string) *Store {
+	return &Store{
 		tokens:  map[string]json.RawMessage{},
 		dataKey: dataKey,
 		dir:     dir,
@@ -61,9 +66,9 @@ func newDiskStore(dataKey []byte, dir string) *store {
 // Get returns the cached token for clientID. The bool result is false when no token
 // is cached for the client ID. In disk mode a miss falls through to reading and
 // decrypting the token file, caching it on success.
-func (s *store) Get(clientID string) (json.RawMessage, bool, error) {
+func (s *Store) Get(clientID string) (json.RawMessage, bool, error) {
 	if !validClientID(clientID) {
-		return nil, false, errInvalidClientID
+		return nil, false, ErrInvalidClientID
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -82,9 +87,9 @@ func (s *store) Get(clientID string) (json.RawMessage, bool, error) {
 		}
 		return nil, false, fmt.Errorf("read the token file: %w", err)
 	}
-	plaintext, err := open(s.dataKey, blob)
+	plaintext, err := crypt.Open(s.dataKey, blob)
 	if err != nil {
-		return nil, false, fmt.Errorf("%w: %w", errDecryptToken, err)
+		return nil, false, fmt.Errorf("%w: %w", ErrDecryptToken, err)
 	}
 	token := json.RawMessage(plaintext)
 	s.tokens[clientID] = token
@@ -93,19 +98,19 @@ func (s *store) Get(clientID string) (json.RawMessage, bool, error) {
 
 // Set stores a token for clientID. In disk mode it encrypts the token and writes it
 // atomically before updating the in-memory cache.
-func (s *store) Set(clientID string, token json.RawMessage) error {
+func (s *Store) Set(clientID string, token json.RawMessage) error {
 	if !validClientID(clientID) {
-		return errInvalidClientID
+		return ErrInvalidClientID
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if s.dir != "" {
-		blob, err := seal(s.dataKey, token)
+		blob, err := crypt.Seal(s.dataKey, token)
 		if err != nil {
 			return fmt.Errorf("encrypt the token: %w", err)
 		}
-		if err := atomicWrite(filepath.Join(s.dir, clientID), blob); err != nil {
+		if err := crypt.AtomicWrite(filepath.Join(s.dir, clientID), blob); err != nil {
 			return fmt.Errorf("write the token file: %w", err)
 		}
 	}
@@ -117,7 +122,7 @@ func (s *store) Set(clientID string, token json.RawMessage) error {
 // files on disk (ignoring temporary files and invalid names), since lazy loading
 // means the in-memory map only reflects tokens touched since start. A read error
 // yields 0 so that STATUS stays infallible.
-func (s *store) Len() int {
+func (s *Store) Len() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

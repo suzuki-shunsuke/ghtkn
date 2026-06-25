@@ -1,4 +1,4 @@
-package agent
+package reset
 
 import (
 	"context"
@@ -7,23 +7,28 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
+
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keyfile"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/stop"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tty"
 )
 
-// Reset recovers from a forgotten passphrase by reinitializing the agent: it stops
+// Run recovers from a forgotten passphrase by reinitializing the agent: it stops
 // a running agent, deletes the key file and all encrypted token files, and creates a
 // new key from a freshly entered passphrase. The old passphrase is not needed and
 // the cached tokens are discarded (they are reminted from GitHub on the next get).
 //
 // It asks for confirmation first because the operation is destructive, and requires
 // a terminal both for that confirmation and for the new passphrase.
-func (c *Controller) Reset(ctx context.Context, logger *slog.Logger) error {
-	keyFile, err := keyPath(os.Getenv, runtime.GOOS)
+func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
+	keyFile, err := keyfile.KeyPath(os.Getenv, runtime.GOOS)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
-	dir, err := tokenDir(os.Getenv, runtime.GOOS)
+	dir, err := tokenstore.TokenDir(os.Getenv, runtime.GOOS)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 
 	ok, err := c.confirm("This stops the agent and deletes the key and all cached tokens, then recreates the key. Continue? (y/N): ")
@@ -38,8 +43,8 @@ func (c *Controller) Reset(ctx context.Context, logger *slog.Logger) error {
 	// Stop a running agent first so it does not keep using the old data key or
 	// write tokens after the files are deleted. Stop is a no-op (nil) when no agent
 	// is running.
-	if err := c.Stop(ctx, logger); err != nil {
-		return err
+	if err := stop.New().Run(ctx, logger); err != nil {
+		return err //nolint:wrapcheck
 	}
 	if err := deleteAgentFiles(keyFile, dir); err != nil {
 		return err
@@ -67,17 +72,17 @@ func deleteAgentFiles(keyFile, tokenDir string) error {
 // recreateKey prompts for a new passphrase (twice, to confirm) and writes a new key
 // file. The key file must not exist when this is called.
 func (c *Controller) recreateKey(keyFile string) error {
-	pass, err := c.promptPassphrase(false)
+	pass, err := tty.PromptPassphrase(c.readPassphrase, false)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 	defer func() {
 		for i := range pass {
 			pass[i] = 0
 		}
 	}()
-	if _, err := createDataKey(keyFile, pass); err != nil {
-		return err
+	if _, err := keyfile.CreateDataKey(keyFile, pass); err != nil {
+		return err //nolint:wrapcheck
 	}
 	return nil
 }
