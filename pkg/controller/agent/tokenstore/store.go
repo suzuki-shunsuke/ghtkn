@@ -118,6 +118,25 @@ func (s *Store) Set(clientID string, token json.RawMessage) error {
 	return nil
 }
 
+// Delete removes the token cached for clientID from memory and, in disk mode, from
+// disk. Deleting a client ID with no cached token is a no-op (a missing file is not
+// an error), so callers can delete unconditionally.
+func (s *Store) Delete(clientID string) error {
+	if !validClientID(clientID) {
+		return ErrInvalidClientID
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.dir != "" {
+		if err := os.Remove(filepath.Join(s.dir, clientID)); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("remove the token file: %w", err)
+		}
+	}
+	delete(s.tokens, clientID)
+	return nil
+}
+
 // Len returns the number of cached tokens. In disk mode it counts the valid token
 // files on disk (ignoring temporary files and invalid names), since lazy loading
 // means the in-memory map only reflects tokens touched since start. A read error

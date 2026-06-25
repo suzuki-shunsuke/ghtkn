@@ -434,14 +434,23 @@ ghtkn gets and outputs an access token in the following way:
 If an access token is leaked, it must be immediately invalidated.
 [You can confirm if the leaked access token expires or not by GitHub API.](https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-the-authenticated-user)
 
+### `ghtkn revoke`
+
+The simplest way is the `ghtkn revoke` command:
+
 ```sh
-curl -L \
-  -X POST \
-  -H "Accept: application/vnd.github+json" \
-  -H "X-GitHub-Api-Version: 2026-03-10" \
-  https://api.github.com/credentials/revoke \
-  -d '{"credentials":["ghu_<REDACTED>"]}'
+ghtkn revoke <app name>            # revoke the token stored for an app and delete it from the backend
+ghtkn revoke --token ghu_xxx       # revoke a raw token directly (e.g. a leaked one)
+ghtkn revoke -t ghu_a -t ghu_b foo # revoke multiple tokens and an app's stored token at once
+ghtkn revoke                       # revoke the token stored for GHTKN_APP or the default app
 ```
+
+It revokes the token stored in the [backend](#backend) for the given app and removes it from the backend, and can also revoke raw tokens passed with `--token`.
+When neither `--token` nor an app name is given, it falls back to `GHTKN_APP` or the default app; when either is given, the fallback is not used, so revoking a raw token never touches an unrelated app's stored token.
+
+### GitHub REST API
+
+You can also revoke access tokens directly via the GitHub REST API.
 
 [You can revoke access tokens by GitHub REST API.](https://docs.github.com/en/rest/credentials/revoke?apiVersion=2022-11-28#revoke-a-list-of-credentials)
 

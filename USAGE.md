@@ -10,15 +10,13 @@ NAME:
 USAGE:
    ghtkn [global options] [command [command options]]
 
-VERSION:
-   0.2.6
-
 COMMANDS:
    init            Create ghtkn.yaml if it doesn't exist
    git-credential  Git Credential Helper
    get             Output a GitHub App User Access Token to stdout
    auth            Authenticate to GitHub and cache an access token without outputting it
    agent           Manage the ghtkn agent that caches access tokens and serves them over a Unix socket
+   revoke          Revoke GitHub App User Access Tokens
    info            Output information about the environment which is useful for troubleshooting
    version         Show version
    help, h         Shows a list of commands or help for one command
@@ -28,7 +26,6 @@ GLOBAL OPTIONS:
    --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
    --config string, -c string  configuration file path [$GHTKN_CONFIG]
    --help, -h                  show help
-   --version, -v               print the version
 ```
 
 ## ghtkn init
@@ -134,6 +131,10 @@ COMMANDS:
 
 OPTIONS:
    --help, -h  show help
+
+GLOBAL OPTIONS:
+   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
+   --config string, -c string  configuration file path [$GHTKN_CONFIG]
 ```
 
 ### agent start
@@ -264,6 +265,33 @@ DESCRIPTION:
 
 OPTIONS:
    --help, -h  show help
+
+GLOBAL OPTIONS:
+   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
+   --config string, -c string  configuration file path [$GHTKN_CONFIG]
+```
+
+## ghtkn revoke
+
+```console
+$ ghtkn revoke --help
+NAME:
+   ghtkn revoke - Revoke GitHub App User Access Tokens
+
+USAGE:
+   ghtkn revoke [options] [<app name>]
+
+DESCRIPTION:
+   Revoke GitHub App User Access Tokens via GitHub's credential revocation API and remove them from the backend.
+
+   The tokens to revoke are the union of the token stored for the given app and any tokens passed with --token.
+   When neither --token nor an app name is given, the token stored for GHTKN_APP (or the default app) is revoked.
+
+OPTIONS:
+   --log-level string                                       Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
+   --config string, -c string                               configuration file path [$GHTKN_CONFIG]
+   --token string, -t string [ --token string, -t string ]  an access token to revoke (can be specified multiple times)
+   --help, -h                                               show help
 
 GLOBAL OPTIONS:
    --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
