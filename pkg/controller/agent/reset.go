@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/stop"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tty"
 )
 
@@ -40,8 +41,8 @@ func (c *Controller) Reset(ctx context.Context, logger *slog.Logger) error {
 	// Stop a running agent first so it does not keep using the old data key or
 	// write tokens after the files are deleted. Stop is a no-op (nil) when no agent
 	// is running.
-	if err := c.Stop(ctx, logger); err != nil {
-		return err
+	if err := stop.New().Run(ctx, logger); err != nil {
+		return err //nolint:wrapcheck
 	}
 	if err := deleteAgentFiles(keyFile, dir); err != nil {
 		return err

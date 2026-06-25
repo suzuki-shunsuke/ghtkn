@@ -1,4 +1,4 @@
-package agent
+package stop
 
 import (
 	"context"
@@ -10,12 +10,12 @@ import (
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 )
 
-// Stop connects to a running agent over its Unix domain socket and asks it to
+// Run connects to a running agent over its Unix domain socket and asks it to
 // shut down by sending a STOP command. Stopping an agent that is not running is a
 // normal result (like 'systemctl stop'), so it returns nil in that case. It returns
 // an error only when the agent is reachable but reports a failure, or on an
 // unexpected protocol error.
-func (c *Controller) Stop(ctx context.Context, logger *slog.Logger) error {
+func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	path, err := agentapi.SocketPath(os.Getenv, runtime.GOOS)
 	if err != nil {
 		return err //nolint:wrapcheck

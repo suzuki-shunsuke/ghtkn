@@ -21,8 +21,7 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tty"
 )
 
-// Controller runs the ghtkn agent server and also backs the agent client commands
-// (stop, status, reset).
+// Controller runs the ghtkn agent server and also backs the 'reset' client command.
 type Controller struct {
 	// mu guards store, which is swapped from nil (locked) to a disk store on unlock.
 	mu    sync.RWMutex
@@ -46,8 +45,8 @@ type Controller struct {
 }
 
 // New creates a new agent Controller. The server starts locked (no token store);
-// it is unlocked later via the UNLOCK command. The client commands (stop, status,
-// reset) reuse the same type but never touch the store.
+// it is unlocked later via the UNLOCK command. The 'reset' client command reuses the
+// same type but never touches the store.
 func New() *Controller {
 	return &Controller{
 		readPassphrase: tty.ReadPassphrase,
