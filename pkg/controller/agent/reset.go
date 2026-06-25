@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
+
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tty"
 )
 
 // Reset recovers from a forgotten passphrase by reinitializing the agent: it stops
@@ -67,9 +69,9 @@ func deleteAgentFiles(keyFile, tokenDir string) error {
 // recreateKey prompts for a new passphrase (twice, to confirm) and writes a new key
 // file. The key file must not exist when this is called.
 func (c *Controller) recreateKey(keyFile string) error {
-	pass, err := c.promptPassphrase(false)
+	pass, err := tty.PromptPassphrase(c.readPassphrase, false)
 	if err != nil {
-		return err
+		return err //nolint:wrapcheck
 	}
 	defer func() {
 		for i := range pass {

@@ -15,6 +15,7 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/unlock"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/urfave/cli/v3"
 )
@@ -142,7 +143,7 @@ func (r *runner) unlock(ctx context.Context, _ *cli.Command) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
-	return agent.New().Unlock(ctx, r.logger.Logger) //nolint:wrapcheck
+	return unlock.New().Run(ctx, r.logger.Logger) //nolint:wrapcheck
 }
 
 // resetCommand returns the CLI command definition for the 'agent reset' subcommand.

@@ -1,4 +1,4 @@
-package agent
+package tty
 
 import (
 	"bufio"
@@ -11,11 +11,11 @@ import (
 	"golang.org/x/term"
 )
 
-// confirm asks the user a yes/no question on the controlling terminal and reports
+// Confirm asks the user a yes/no question on the controlling terminal and reports
 // whether they answered yes. The prompt is written to stderr. It returns an error
 // when stdin is not a terminal, so a destructive operation is never confirmed
 // non-interactively (e.g. from a pipe).
-func confirm(prompt string) (bool, error) {
+func Confirm(prompt string) (bool, error) {
 	if !term.IsTerminal(int(os.Stdin.Fd())) {
 		return false, errors.New("a terminal is required to confirm this operation")
 	}
