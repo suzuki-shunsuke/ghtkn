@@ -1,4 +1,4 @@
-package keystore
+package crypt
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ func TestAtomicWrite(t *testing.T) {
 	path := filepath.Join(dir, "file")
 	data := []byte("payload")
 
-	if err := atomicWrite(path, data); err != nil {
+	if err := AtomicWrite(path, data); err != nil {
 		t.Fatal(err)
 	}
 
@@ -29,8 +29,8 @@ func TestAtomicWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if perm := info.Mode().Perm(); perm != tokenFilePerm {
-		t.Fatalf("perm = %o, want %o", perm, tokenFilePerm)
+	if perm := info.Mode().Perm(); perm != filePerm {
+		t.Fatalf("perm = %o, want %o", perm, filePerm)
 	}
 
 	entries, err := os.ReadDir(dir)

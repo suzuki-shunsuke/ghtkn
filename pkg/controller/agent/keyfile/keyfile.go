@@ -1,19 +1,24 @@
-package keystore
+// Package keyfile manages the agent's data key on disk: a 32-byte AES-256 data key
+// wrapped with a passphrase-derived (Argon2id) key-encryption key and stored as a key
+// file. It encrypts/decrypts via the crypt package and resolves the key file path.
+package keyfile
 
 import (
 	"crypto/rand"
 	"errors"
 	"fmt"
 	"os"
+
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/crypt"
 )
 
 // Key file layout: version(1) || salt(saltLen) || wrapped data key (nonce||ciphertext).
 // The wrapped data key is the 32-byte data key encrypted with the passphrase-derived
 // KEK using AES-256-GCM.
 const (
-	keyFileVersion    = 1
-	keyFilePerm       = tokenFilePerm
-	keyFileHeaderSize = 1 + saltLen // version byte + salt
+	keyFileVersion                = 1
+	keyFilePerm       os.FileMode = 0o600       // matches crypt.AtomicWrite
+	keyFileHeaderSize             = 1 + saltLen // version byte + salt
 )
 
 // ErrIncorrectPassphrase is returned when the key file cannot be unwrapped with the
@@ -51,7 +56,7 @@ func CreateDataKey(path string, passphrase []byte) ([]byte, error) {
 	if _, err := rand.Read(salt); err != nil {
 		return nil, fmt.Errorf("generate a salt: %w", err)
 	}
-	wrapped, err := seal(deriveKEK(passphrase, salt), dataKey)
+	wrapped, err := crypt.Seal(deriveKEK(passphrase, salt), dataKey)
 	if err != nil {
 		return nil, fmt.Errorf("wrap the data key: %w", err)
 	}
@@ -59,7 +64,7 @@ func CreateDataKey(path string, passphrase []byte) ([]byte, error) {
 	blob = append(blob, keyFileVersion)
 	blob = append(blob, salt...)
 	blob = append(blob, wrapped...)
-	if err := atomicWrite(path, blob); err != nil {
+	if err := crypt.AtomicWrite(path, blob); err != nil {
 		return nil, fmt.Errorf("write the key file: %w", err)
 	}
 	return dataKey, nil
@@ -76,9 +81,9 @@ func unwrapDataKey(blob, passphrase []byte) ([]byte, error) {
 	}
 	salt := blob[1:keyFileHeaderSize]
 	wrapped := blob[keyFileHeaderSize:]
-	dataKey, err := open(deriveKEK(passphrase, salt), wrapped)
+	dataKey, err := crypt.Open(deriveKEK(passphrase, salt), wrapped)
 	if err != nil {
-		if errors.Is(err, errDecrypt) {
+		if errors.Is(err, crypt.ErrDecrypt) {
 			return nil, ErrIncorrectPassphrase
 		}
 		return nil, fmt.Errorf("unwrap the data key: %w", err)

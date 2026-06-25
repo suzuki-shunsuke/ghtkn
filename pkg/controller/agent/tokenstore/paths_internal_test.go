@@ -1,4 +1,4 @@
-package keystore
+package tokenstore
 
 import (
 	"path/filepath"

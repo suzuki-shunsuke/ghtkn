@@ -1,8 +1,9 @@
 // Package reset implements the 'ghtkn agent reset' command: it recovers from a
 // forgotten passphrase by stopping the agent, deleting the key file and cached
 // tokens, and recreating the key from a freshly entered passphrase. Unlike the other
-// client commands it manipulates the keystore on disk directly (see
-// pkg/controller/agent/keystore) rather than talking to the agent over the socket.
+// client commands it manipulates the key file and token store on disk directly (see
+// pkg/controller/agent/keyfile and pkg/controller/agent/tokenstore) rather than
+// talking to the agent over the socket.
 package reset
 
 import "github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tty"

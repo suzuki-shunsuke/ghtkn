@@ -12,7 +12,8 @@ import (
 	"os"
 
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keystore"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keyfile"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
@@ -110,9 +111,9 @@ func (c *Controller) handleGet(req *agentapi.Request) *agentapi.Response {
 	}
 	token, ok, err := st.Get(req.ClientID)
 	switch {
-	case errors.Is(err, keystore.ErrInvalidClientID):
+	case errors.Is(err, tokenstore.ErrInvalidClientID):
 		return &agentapi.Response{Error: errMsgInvalidClientID}
-	case errors.Is(err, keystore.ErrDecryptToken):
+	case errors.Is(err, tokenstore.ErrDecryptToken):
 		// A token persisted under a previous data key (e.g. after a key
 		// rotation) can't be decrypted. Treat it as a cache miss so the client
 		// re-mints the token via the device flow and overwrites the stale file,
@@ -136,7 +137,7 @@ func (c *Controller) handleSet(req *agentapi.Request) *agentapi.Response {
 		return &agentapi.Response{Error: agentapi.RespLocked}
 	}
 	if err := st.Set(req.ClientID, req.Token); err != nil {
-		if errors.Is(err, keystore.ErrInvalidClientID) {
+		if errors.Is(err, tokenstore.ErrInvalidClientID) {
 			return &agentapi.Response{Error: errMsgInvalidClientID}
 		}
 		return &agentapi.Response{Error: errMsgSet}
@@ -164,14 +165,14 @@ func (c *Controller) handleUnlock(req *agentapi.Request) *agentapi.Response {
 	if c.store != nil {
 		return &agentapi.Response{OK: true}
 	}
-	dataKey, created, err := keystore.LoadOrCreateDataKey(c.keyFile, []byte(req.Passphrase))
+	dataKey, created, err := keyfile.LoadOrCreateDataKey(c.keyFile, []byte(req.Passphrase))
 	if err != nil {
-		if errors.Is(err, keystore.ErrIncorrectPassphrase) {
-			return &agentapi.Response{Error: keystore.ErrIncorrectPassphrase.Error()}
+		if errors.Is(err, keyfile.ErrIncorrectPassphrase) {
+			return &agentapi.Response{Error: keyfile.ErrIncorrectPassphrase.Error()}
 		}
 		return &agentapi.Response{Error: errMsgUnlock}
 	}
-	c.store = keystore.NewDiskStore(dataKey, c.tokenDir)
+	c.store = tokenstore.NewDiskStore(dataKey, c.tokenDir)
 	if c.logger != nil {
 		if created {
 			c.logger.Info("generated a new agent key", "path", c.keyFile)
@@ -188,7 +189,7 @@ func (c *Controller) handleUnlock(req *agentapi.Request) *agentapi.Response {
 }
 
 // tokenStore returns the current token store, or nil when the agent is locked.
-func (c *Controller) tokenStore() *keystore.Store {
+func (c *Controller) tokenStore() *tokenstore.Store {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.store

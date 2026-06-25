@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keystore"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keyfile"
 )
 
 // resetEnv isolates the agent's key/token/socket paths under temp dirs and points
@@ -67,7 +67,7 @@ func TestReset_recreates(t *testing.T) { //nolint:paralleltest // uses t.Setenv
 	if string(blob) == "OLD-KEY-FILE" {
 		t.Fatal("key file was not recreated")
 	}
-	if _, created, err := keystore.LoadOrCreateDataKey(keyFile, []byte("pw")); err != nil || created {
+	if _, created, err := keyfile.LoadOrCreateDataKey(keyFile, []byte("pw")); err != nil || created {
 		t.Fatalf("new key file must unwrap with the new passphrase (created=%v): %v", created, err)
 	}
 }

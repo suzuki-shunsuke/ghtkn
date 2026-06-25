@@ -1,4 +1,4 @@
-package keystore
+package tokenstore
 
 import (
 	"encoding/json"
@@ -6,6 +6,16 @@ import (
 	"path/filepath"
 	"testing"
 )
+
+// testDataKey returns a deterministic 32-byte key for tests.
+func testDataKey(t *testing.T) []byte {
+	t.Helper()
+	key := make([]byte, 32)
+	for i := range key {
+		key[i] = byte(i)
+	}
+	return key
+}
 
 func TestStore_diskPersistence(t *testing.T) {
 	t.Parallel()
@@ -56,7 +66,7 @@ func TestStore_wrongKey(t *testing.T) {
 	if err := NewDiskStore(testDataKey(t), dir).Set("Iv1.abc", json.RawMessage(`{"a":1}`)); err != nil {
 		t.Fatal(err)
 	}
-	wrong := make([]byte, dataKeyLen)
+	wrong := make([]byte, 32)
 	if _, _, err := NewDiskStore(wrong, dir).Get("Iv1.abc"); err == nil {
 		t.Fatal("decrypting with the wrong key must fail")
 	}
@@ -85,7 +95,7 @@ func TestStore_lenCountsDiskFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	// A leftover temp file and an invalid name must be ignored.
-	if err := os.WriteFile(filepath.Join(dir, ".ghtkn-tmp-xyz"), nil, tokenFilePerm); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".ghtkn-tmp-xyz"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if got := s.Len(); got != 2 {

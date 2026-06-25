@@ -1,4 +1,7 @@
-package keystore
+// Package tokenstore caches GitHub App access tokens for the agent, encrypted at
+// rest with AES-256-GCM (via the crypt package) under the data key produced by the
+// keyfile package. It also resolves the directory the token files live in.
+package tokenstore
 
 import (
 	"encoding/json"
@@ -9,6 +12,8 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/crypt"
 )
 
 // clientIDPattern restricts client IDs to characters that are safe to use directly
@@ -82,7 +87,7 @@ func (s *Store) Get(clientID string) (json.RawMessage, bool, error) {
 		}
 		return nil, false, fmt.Errorf("read the token file: %w", err)
 	}
-	plaintext, err := open(s.dataKey, blob)
+	plaintext, err := crypt.Open(s.dataKey, blob)
 	if err != nil {
 		return nil, false, fmt.Errorf("%w: %w", ErrDecryptToken, err)
 	}
@@ -101,11 +106,11 @@ func (s *Store) Set(clientID string, token json.RawMessage) error {
 	defer s.mu.Unlock()
 
 	if s.dir != "" {
-		blob, err := seal(s.dataKey, token)
+		blob, err := crypt.Seal(s.dataKey, token)
 		if err != nil {
 			return fmt.Errorf("encrypt the token: %w", err)
 		}
-		if err := atomicWrite(filepath.Join(s.dir, clientID), blob); err != nil {
+		if err := crypt.AtomicWrite(filepath.Join(s.dir, clientID), blob); err != nil {
 			return fmt.Errorf("write the token file: %w", err)
 		}
 	}

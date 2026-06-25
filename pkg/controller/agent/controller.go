@@ -18,14 +18,14 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keystore"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
 )
 
 // Controller runs the ghtkn agent server.
 type Controller struct {
 	// mu guards store, which is swapped from nil (locked) to a disk store on unlock.
 	mu    sync.RWMutex
-	store *keystore.Store // nil while locked
+	store *tokenstore.Store // nil while locked
 
 	// shutdown cancels the serve loop. It is set while the server is running
 	// (see Start) and invoked when a STOP command is received.

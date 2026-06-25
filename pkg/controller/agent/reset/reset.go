@@ -8,8 +8,9 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keystore"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keyfile"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/stop"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tty"
 )
 
@@ -21,11 +22,11 @@ import (
 // It asks for confirmation first because the operation is destructive, and requires
 // a terminal both for that confirmation and for the new passphrase.
 func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
-	keyFile, err := keystore.KeyPath(os.Getenv, runtime.GOOS)
+	keyFile, err := keyfile.KeyPath(os.Getenv, runtime.GOOS)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
-	dir, err := keystore.TokenDir(os.Getenv, runtime.GOOS)
+	dir, err := tokenstore.TokenDir(os.Getenv, runtime.GOOS)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
@@ -80,7 +81,7 @@ func (c *Controller) recreateKey(keyFile string) error {
 			pass[i] = 0
 		}
 	}()
-	if _, err := keystore.CreateDataKey(keyFile, pass); err != nil {
+	if _, err := keyfile.CreateDataKey(keyFile, pass); err != nil {
 		return err //nolint:wrapcheck
 	}
 	return nil

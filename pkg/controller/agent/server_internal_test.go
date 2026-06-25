@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keystore"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
 )
 
 // testDataKey returns a deterministic 32-byte key for tests.
@@ -95,7 +95,7 @@ var handleTestCases = []handleTestCase{ //nolint:gochecknoglobals // test fixtur
 func newUnlockedController(t *testing.T) *Controller {
 	t.Helper()
 	c := New()
-	c.store = keystore.NewDiskStore(testDataKey(t), t.TempDir())
+	c.store = tokenstore.NewDiskStore(testDataKey(t), t.TempDir())
 	return c
 }
 
@@ -158,12 +158,12 @@ func TestController_handle_undecryptable(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	// Persist a token encrypted with one key.
-	if err := keystore.NewDiskStore(testDataKey(t), dir).Set("Iv1.abc", json.RawMessage(`{"access_token":"abc"}`)); err != nil {
+	if err := tokenstore.NewDiskStore(testDataKey(t), dir).Set("Iv1.abc", json.RawMessage(`{"access_token":"abc"}`)); err != nil {
 		t.Fatal(err)
 	}
 	// Unlock the agent with a different key over the same directory.
 	c := New()
-	c.store = keystore.NewDiskStore(make([]byte, 32), dir)
+	c.store = tokenstore.NewDiskStore(make([]byte, 32), dir)
 
 	get, _ := c.handle(strings.NewReader(`{"command":"GET","client_id":"Iv1.abc"}` + "\n"))
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, get); diff != "" {
@@ -197,7 +197,7 @@ func TestController_handle_unlock_orphanTokens(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	// A token left behind, encrypted under a previous key.
-	if err := keystore.NewDiskStore(testDataKey(t), dir).Set("Iv1.old", json.RawMessage(`{"access_token":"x"}`)); err != nil {
+	if err := tokenstore.NewDiskStore(testDataKey(t), dir).Set("Iv1.old", json.RawMessage(`{"access_token":"x"}`)); err != nil {
 		t.Fatal(err)
 	}
 	var buf bytes.Buffer
@@ -266,7 +266,7 @@ func TestServe_status_unlocked(t *testing.T) {
 	c := New()
 	// Unlock by installing a disk store before serving so the serve goroutine never
 	// observes a concurrent write to c.store.
-	c.store = keystore.NewDiskStore(testDataKey(t), t.TempDir())
+	c.store = tokenstore.NewDiskStore(testDataKey(t), t.TempDir())
 	listener, err := listen(t.Context(), path)
 	if err != nil {
 		t.Fatal(err)
