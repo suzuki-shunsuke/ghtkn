@@ -23,7 +23,7 @@ func TestStore_diskPersistence(t *testing.T) {
 	key := testDataKey(t)
 	token := json.RawMessage(`{"access_token":"abc"}`)
 
-	if err := NewStore(key, dir).Set("Iv1.abc", token); err != nil {
+	if err := New(key, dir).Set("Iv1.abc", token); err != nil {
 		t.Fatal(err)
 	}
 
@@ -37,7 +37,7 @@ func TestStore_diskPersistence(t *testing.T) {
 	}
 
 	// A fresh store with the same key must decrypt the token from disk.
-	got, ok, err := NewStore(key, dir).Get("Iv1.abc")
+	got, ok, err := New(key, dir).Get("Iv1.abc")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestStore_diskPersistence(t *testing.T) {
 
 func TestStore_getMissing(t *testing.T) {
 	t.Parallel()
-	got, ok, err := NewStore(testDataKey(t), t.TempDir()).Get("Iv1.absent")
+	got, ok, err := New(testDataKey(t), t.TempDir()).Get("Iv1.absent")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,18 +63,18 @@ func TestStore_getMissing(t *testing.T) {
 func TestStore_wrongKey(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	if err := NewStore(testDataKey(t), dir).Set("Iv1.abc", json.RawMessage(`{"a":1}`)); err != nil {
+	if err := New(testDataKey(t), dir).Set("Iv1.abc", json.RawMessage(`{"a":1}`)); err != nil {
 		t.Fatal(err)
 	}
 	wrong := make([]byte, 32)
-	if _, _, err := NewStore(wrong, dir).Get("Iv1.abc"); err == nil {
+	if _, _, err := New(wrong, dir).Get("Iv1.abc"); err == nil {
 		t.Fatal("decrypting with the wrong key must fail")
 	}
 }
 
 func TestStore_invalidClientID(t *testing.T) {
 	t.Parallel()
-	s := NewStore(testDataKey(t), t.TempDir())
+	s := New(testDataKey(t), t.TempDir())
 	if _, _, err := s.Get("../escape"); err == nil {
 		t.Fatal("Get must reject an invalid client id")
 	}
@@ -87,7 +87,7 @@ func TestStore_lenCountsDiskFiles(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	key := testDataKey(t)
-	s := NewStore(key, dir)
+	s := New(key, dir)
 	if err := s.Set("Iv1.a", json.RawMessage(`{}`)); err != nil {
 		t.Fatal(err)
 	}

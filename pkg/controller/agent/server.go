@@ -172,7 +172,7 @@ func (c *Controller) handleUnlock(req *agentapi.Request) *agentapi.Response {
 		}
 		return &agentapi.Response{Error: errMsgUnlock}
 	}
-	c.store = tokenstore.NewStore(dataKey, c.tokenDir)
+	c.store = tokenstore.New(dataKey, c.tokenDir)
 	if c.logger != nil {
 		if created {
 			c.logger.Info("generated a new agent key", "path", c.keyFile)
