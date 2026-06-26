@@ -83,6 +83,37 @@ func TestStore_invalidClientID(t *testing.T) {
 	}
 }
 
+func TestStore_delete(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	key := testDataKey(t)
+	s := New(key, dir)
+
+	// Deleting a client ID with no cached token is a no-op.
+	if err := s.Delete("Iv1.absent"); err != nil {
+		t.Fatalf("Delete on miss must succeed, got %v", err)
+	}
+
+	if err := s.Set("Iv1.abc", json.RawMessage(`{"access_token":"abc"}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Delete("Iv1.abc"); err != nil {
+		t.Fatal(err)
+	}
+	// The token file must be gone and a fresh store must not find it.
+	if _, err := os.Stat(filepath.Join(dir, "Iv1.abc")); !os.IsNotExist(err) {
+		t.Fatalf("token file must be removed, stat err = %v", err)
+	}
+	if _, ok, err := New(key, dir).Get("Iv1.abc"); err != nil || ok {
+		t.Fatalf("deleted token must be gone, got ok=%v err=%v", ok, err)
+	}
+
+	// Delete rejects an invalid client ID.
+	if err := s.Delete("../escape"); err == nil {
+		t.Fatal("Delete must reject an invalid client id")
+	}
+}
+
 func TestStore_lenCountsDiskFiles(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

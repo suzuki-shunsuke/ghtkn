@@ -26,6 +26,7 @@ const (
 	errMsgInvalidClientID = "invalid client id"
 	errMsgGet             = "get the token"
 	errMsgSet             = "set the token"
+	errMsgDelete          = "delete the token"
 	errMsgUnlock          = "unlock the agent"
 )
 
@@ -92,6 +93,8 @@ func (c *Controller) dispatch(req *agentapi.Request) (*agentapi.Response, bool) 
 		return c.handleGet(req), false
 	case agentapi.CommandSet:
 		return c.handleSet(req), false
+	case agentapi.CommandDelete:
+		return c.handleDelete(req), false
 	case agentapi.CommandStatus:
 		return c.handleStatus(), false
 	case agentapi.CommandUnlock:
@@ -141,6 +144,23 @@ func (c *Controller) handleSet(req *agentapi.Request) *agentapi.Response {
 			return &agentapi.Response{Error: errMsgInvalidClientID}
 		}
 		return &agentapi.Response{Error: errMsgSet}
+	}
+	return &agentapi.Response{OK: true}
+}
+
+// handleDelete removes the token cached under the request's client ID. Deleting a
+// client ID with no cached token succeeds (it is a no-op), so the revoke flow does
+// not have to special-case a missing token.
+func (c *Controller) handleDelete(req *agentapi.Request) *agentapi.Response {
+	st := c.tokenStore()
+	if st == nil {
+		return &agentapi.Response{Error: agentapi.RespLocked}
+	}
+	if err := st.Delete(req.ClientID); err != nil {
+		if errors.Is(err, tokenstore.ErrInvalidClientID) {
+			return &agentapi.Response{Error: errMsgInvalidClientID}
+		}
+		return &agentapi.Response{Error: fmt.Sprintf("%s: %s", errMsgDelete, err)}
 	}
 	return &agentapi.Response{OK: true}
 }

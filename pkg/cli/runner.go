@@ -14,6 +14,7 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/get"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/info"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/initcmd"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/revoke"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
@@ -39,6 +40,7 @@ func Run(ctx context.Context, logger *slogutil.Logger, env *urfave.Env) error {
 			get.New(logger, env, false, gFlags),
 			auth.New(logger, gFlags),
 			agent.New(logger, gFlags),
+			revoke.New(logger, gFlags),
 			info.New(logger, env, gFlags),
 		},
 	}).Run(ctx, env.Args)
