@@ -6,7 +6,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/lmittmann/tint v1.1.3
 	github.com/spf13/afero v1.15.0
-	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.3.1
+	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.3.2-0.20260626092303-390cd591c046
 	github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.1
 	github.com/suzuki-shunsuke/slog-error v0.2.2
 	github.com/suzuki-shunsuke/slog-util v0.3.2
@@ -29,5 +29,3 @@ require (
 	golang.org/x/text v0.38.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/suzuki-shunsuke/ghtkn-go-sdk => ../ghtkn-go-sdk
