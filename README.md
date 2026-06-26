@@ -436,6 +436,8 @@ If an access token is leaked, it must be immediately invalidated.
 
 ### `ghtkn revoke`
 
+`ghtkn > v0.2.6`
+
 The simplest way is the `ghtkn revoke` command:
 
 ```sh
