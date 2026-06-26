@@ -356,7 +356,7 @@ ghtkn get -d
 [#446](https://github.com/suzuki-shunsuke/ghtkn/issues/446) [#309](https://github.com/suzuki-shunsuke/ghtkn/issues/309#issuecomment-4726483175)
 
 > [!WARNING]
-> Some applications—such as coding agents, cmux, and Warp—can start the device flow via ghtkn automatically. However, it is dangerous to use a one-time code when you didn't execute ghtkn explicitly, as this could be a phishing attack.
+> Some applications, such as coding agents, cmux, and Warp, can start the device flow via ghtkn automatically. However, it is dangerous to use a one-time code when you didn't execute ghtkn explicitly, as this could be a phishing attack.
 > An attacker could initiate the device flow, copy the one-time code to your clipboard, trick you into submitting it, and compromise your access token.
 > To prevent this, if you use this tip, we recommend setting `GHTKN_ENABLE_DEVICE_FLOW` to `false` and always starting the device flow explicitly.
 
@@ -457,6 +457,25 @@ curl -L \
 > [!NOTE]
 > We Updated the guide at 2026-06-17. Previously, we misunderstood that the REST API doesn't support User Access Tokens and a client secret is required to revoke them.
 > But actually, a client secret is unnecessary.
+
+## Enabling the GitHub Account Picker
+
+`ghtkn > v0.2.6`
+
+ghtkn skips GitHub's account picker by opening the authorization URL with the `skip_account_picker=true` query parameter.
+
+https://github.com/login/device?skip_account_picker=true
+
+Note that this query parameter is undocumented and may not be supported in the future.
+
+Most users don't need to choose a different GitHub account.
+However, if you do want to choose another account, set skip_account_picker: false in the configuration file.
+
+~/.config/ghtkn/ghtkn.yaml
+
+```yaml
+skip_account_picker: false
+```
 
 ## Comparison between GitHub App User Access Token and other access tokens
 
