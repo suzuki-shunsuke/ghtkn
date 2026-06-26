@@ -142,7 +142,7 @@ It's useful to wrap `gh` using shell script as gh always requires GitHub access 
 
 ## Git Credential Helper
 
-ghtkn >= v0.1.2
+`version >= v0.1.2`
 
 You can use ghtkn as a [Git Credential Helper](https://git-scm.com/book/en/v2/Git-Tools-Credential-Storage):
 
@@ -394,6 +394,35 @@ This is useful in environments where the OS keyring is hard to use, such as cont
 
 For more details, see the [backend documentation](docs/backend.md).
 
+## Disabling Browser Open
+
+`version > 0.2.7` [#453](https://github.com/suzuki-shunsuke/ghtkn/issues/453)
+
+By default, ghtkn opens the browser automatically for the device flow if commands such as `xdg-open` exist on PATH.
+You can disable this behavior by setting the `GHTKN_OPEN_BROWSER` environment variable or `.open_browser.enable` in a configuration file to `false`.
+
+```sh
+export GHTKN_OPEN_BROWSER=false
+```
+
+```yaml
+open_browser:
+  enable: false
+```
+
+This is useful in environments where those commands exist on PATH but don't work.
+For example, in WSL `xdg-open` exists but doesn't work.
+In that case, please open the browser yourself.
+
+## Configuration
+
+Some settings can be configured via multiple sources.
+The priority order of configuration sources is as follows:
+
+1. command line arguments
+2. environment variables
+3. configuration files
+
 ## Using ghtkn in Enterprise Organizations
 
 When using ghtkn in a company's GitHub Organization, it may not be practical for each developer to create their own GitHub App in organizations with a certain scale. In such cases, you can create a shared GitHub App and share the Client ID within the company.
@@ -436,7 +465,7 @@ If an access token is leaked, it must be immediately invalidated.
 
 ### `ghtkn revoke`
 
-`ghtkn > v0.2.6`
+`version >= v0.2.7`
 
 The simplest way is the `ghtkn revoke` command:
 
@@ -471,7 +500,7 @@ curl -L \
 
 ## Enabling the GitHub Account Picker
 
-`ghtkn > v0.2.6`
+`version >= v0.2.7`
 
 ghtkn skips GitHub's account picker by opening the authorization URL with the `skip_account_picker=true` query parameter.
 

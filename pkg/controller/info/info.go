@@ -32,19 +32,20 @@ func (c *Controller) Info(configPath, appName, version string) error {
 	}
 
 	envNames := []string{
-		"GHTKN_CONFIG",
-		"GHTKN_APP",
-		"GHTKN_MIN_EXPIRATION",
-		"GHTKN_LOG_LEVEL",
-		"GHTKN_ENABLE_DEVICE_FLOW",
-		"GHTKN_BACKEND",
-		"GHTKN_AGENT_SOCKET",
 		"GHTKN_AGENT_KEY",
+		"GHTKN_AGENT_SOCKET",
+		"GHTKN_APP",
+		"GHTKN_BACKEND",
+		"GHTKN_CONFIG",
 		"GHTKN_ENABLE",
+		"GHTKN_ENABLE_DEVICE_FLOW",
+		"GHTKN_LOG_LEVEL",
+		"GHTKN_MIN_EXPIRATION",
+		"GHTKN_OPEN_BROWSER",
 		"GHTKN_TEXT_BACKEND_DIR",
 		"XDG_CACHE_HOME",
-		"XDG_RUNTIME_DIR",
 		"XDG_CONFIG_HOME",
+		"XDG_RUNTIME_DIR",
 	}
 
 	// read envs
