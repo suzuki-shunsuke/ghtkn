@@ -67,9 +67,11 @@ func action(ctx context.Context, logger *slogutil.Logger, args *Args) error {
 		return fmt.Errorf("set log level: %w", err)
 	}
 	inputGet := &ghtkn.InputGet{}
-	// auth always regenerates the token, so it ignores -min-expiration and
-	// GHTKN_MIN_EXPIRATION and forces a min expiration larger than the token TTL.
-	inputGet.MinExpiration = alwaysRenewMinExpiration
+	// auth always regenerates the token, so it ignores -min-expiration,
+	// GHTKN_MIN_EXPIRATION and the config's min_expiration, and forces a min expiration
+	// larger than the token TTL. Passing it as an explicit override (non-nil pointer)
+	// makes it take precedence over the environment variable and config.
+	inputGet.MinExpiration = new(alwaysRenewMinExpiration)
 	inputGet.ConfigFilePath = args.Config
 	if args.AppName != "" {
 		inputGet.AppName = args.AppName

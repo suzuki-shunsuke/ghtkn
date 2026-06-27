@@ -2,13 +2,13 @@ module github.com/suzuki-shunsuke/ghtkn
 
 go 1.26.4
 
-// replace github.com/suzuki-shunsuke/ghtkn-go-sdk v0.3.4-0.20260627015846-a53277ee64d7 => ../ghtkn-go-sdk
+// replace github.com/suzuki-shunsuke/ghtkn-go-sdk v0.3.4-0.20260627030106-9671a6247315 => ../ghtkn-go-sdk
 
 require (
 	github.com/google/go-cmp v0.7.0
 	github.com/lmittmann/tint v1.1.3
 	github.com/spf13/afero v1.15.0
-	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.3.4-0.20260627015846-a53277ee64d7
+	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.3.4-0.20260627030106-9671a6247315
 	github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.1
 	github.com/suzuki-shunsuke/slog-error v0.2.2
 	github.com/suzuki-shunsuke/slog-util v0.3.2
