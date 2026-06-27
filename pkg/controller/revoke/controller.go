@@ -51,6 +51,9 @@ type InputRevoke struct {
 	AppNames []string
 	// ConfigFilePath is the resolved configuration file path.
 	ConfigFilePath string
+	// All revokes the stored tokens of every app in the config. When true, AppNames
+	// are ignored, but raw Tokens are still revoked.
+	All bool
 }
 
 // Controller revokes GitHub App User Access Tokens.
@@ -68,10 +71,11 @@ func New(input *Input) *Controller {
 // Run revokes the requested tokens.
 //
 // Raw access tokens are revoked directly via the credential revocation API. The
-// SDK is invoked to revoke apps' stored tokens only when app names are given, or
-// when nothing at all is given (the fallback to GHTKN_APP / the default app). When
-// only raw tokens are given, the SDK is not called, so a raw token is never
-// expanded into an unrelated app's stored token.
+// SDK is invoked to revoke apps' stored tokens when app names are given, when
+// --all is set (every app in the config), or when nothing at all is given (the
+// fallback to GHTKN_APP / the default app). When only raw tokens are given, the
+// SDK is not called, so a raw token is never expanded into an unrelated app's
+// stored token.
 func (c *Controller) Run(ctx context.Context, logger *slog.Logger, input *InputRevoke) error {
 	if len(input.Tokens) > 0 {
 		if err := c.input.Revoker.Revoke(ctx, input.Tokens); err != nil {
@@ -79,10 +83,11 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger, input *InputR
 		}
 	}
 
-	if len(input.AppNames) > 0 || len(input.Tokens) == 0 {
+	if input.All || len(input.AppNames) > 0 || len(input.Tokens) == 0 {
 		if err := c.input.Client.Revoke(ctx, logger, &ghtkn.InputRevoke{
 			AppNames:       input.AppNames,
 			ConfigFilePath: input.ConfigFilePath,
+			All:            input.All,
 		}); err != nil {
 			return fmt.Errorf("revoke access tokens stored in the backend: %w", err)
 		}

@@ -10,6 +10,10 @@
 // given, the token stored for GHTKN_APP (or the default app) is revoked. When only
 // raw tokens are given, GHTKN_APP and the default app are NOT used, so revoking a
 // raw token never revokes an unrelated app's stored token.
+//
+// The --all flag revokes the stored tokens of every app in the config at once,
+// for incident response when the environment running ghtkn is compromised. With
+// --all, app name arguments are ignored, but raw access tokens are still revoked.
 package revoke
 
 import (
@@ -29,6 +33,7 @@ type Args struct {
 	*flag.GlobalFlags
 
 	Args []string // positional arguments (raw tokens and/or app names)
+	All  bool     // --all: revoke the stored tokens of every app in the config
 }
 
 // New creates a new revoke command instance with the provided logger.
@@ -44,13 +49,20 @@ func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
 		Description: `Revoke GitHub App User Access Tokens via GitHub's credential revocation API and remove them from the backend.
 
 Each argument is classified by its prefix: arguments starting with a GitHub token prefix (ghp_, github_pat_, gho_, ghu_, ghr_) are revoked directly as raw access tokens, and all other arguments are treated as app names whose stored tokens are revoked and removed from the backend.
-When no argument is given, the token stored for GHTKN_APP (or the default app) is revoked.`,
+When no argument is given, the token stored for GHTKN_APP (or the default app) is revoked.
+
+With --all, the stored tokens of every app in the config are revoked. This is meant for incident response: when the environment running ghtkn is compromised, all stored tokens can be revoked at once. App name arguments are ignored when --all is set, but raw access tokens are still revoked as usual.`,
 		Action: func(ctx context.Context, _ *cli.Command) error {
 			return action(ctx, logger, args)
 		},
 		Flags: []cli.Flag{
 			flag.LogLevel(&args.LogLevel),
 			flag.Config(&args.Config),
+			&cli.BoolFlag{
+				Name:        "all",
+				Usage:       "Revoke the stored tokens of every app in the config",
+				Destination: &args.All,
+			},
 		},
 		Arguments: []cli.Argument{
 			&cli.StringArgs{
@@ -108,6 +120,11 @@ func action(ctx context.Context, logger *slogutil.Logger, args *Args) error {
 	}
 
 	tokens, appNames := classify(args.Args)
+	if args.All {
+		// --all revokes every app's stored token, so explicit app names are ignored.
+		// Raw tokens are still revoked.
+		appNames = nil
+	}
 
 	input, err := revoke.NewInput()
 	if err != nil {
@@ -121,5 +138,6 @@ func action(ctx context.Context, logger *slogutil.Logger, args *Args) error {
 		Tokens:         tokens,
 		AppNames:       appNames,
 		ConfigFilePath: p,
+		All:            args.All,
 	})
 }
