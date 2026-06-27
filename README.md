@@ -330,9 +330,6 @@ Or in the configuration file.
 min_expiration: 1h
 ```
 
-When more than one is set, the precedence is: the `-min-expiration (-m)` flag, then `GHTKN_MIN_EXPIRATION`, then `min_expiration` in the configuration file.
-An explicit `-m 0` (or `GHTKN_MIN_EXPIRATION=0`) overrides a non-zero `min_expiration` in the configuration file.
-
 If you're only using the GitHub CLI to call an API, it usually finishes in an instant, so you probably won't need to set this.
 However, if you're passing the access token to a script that takes, say, 30 minutes to run, setting it to something like `50m` will prevent the token from expiring in the middle of the script.
 
@@ -359,8 +356,6 @@ You can also disable it in the configuration file.
 device_flow:
   enable: false
 ```
-
-When more than one is set, the precedence is: `ghtkn get`'s `--device-flow (-d)` flag, then `GHTKN_ENABLE_DEVICE_FLOW`, then `device_flow.enable` in the configuration file.
 
 ```sh
 ghtkn get -d
