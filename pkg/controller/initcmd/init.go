@@ -1,6 +1,7 @@
 package initcmd
 
 import (
+	_ "embed"
 	"fmt"
 	"log/slog"
 	"os"
@@ -11,12 +12,9 @@ import (
 
 // defaultConfig provides a default configuration template for ghtkn.
 // This template can be used to create an initial configuration file.
-const defaultConfig = `# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn-go-sdk/refs/heads/main/json-schema/ghtkn.json
-# ghtkn - https://github.com/suzuki-shunsuke/ghtkn
-apps:
-  - name: suzuki-shunsuke/write # The name to identify the app
-    client_id: xxx # Your GitHub App Client ID
-`
+//
+//go:embed init.yaml
+var defaultConfig []byte
 
 // File and directory permissions for created configuration files
 const (
@@ -40,7 +38,7 @@ func (c *Controller) Init(logger *slog.Logger, configFilePath string) error {
 	if err := c.fs.MkdirAll(filepath.Dir(configFilePath), dirPermission); err != nil {
 		return fmt.Errorf("create config dir: %w", err)
 	}
-	if err := afero.WriteFile(c.fs, configFilePath, []byte(defaultConfig), filePermission); err != nil {
+	if err := afero.WriteFile(c.fs, configFilePath, defaultConfig, filePermission); err != nil {
 		return fmt.Errorf("create a configuration file: %w", err)
 	}
 	logger.Info("The configuration file has been created", slog.String("path", configFilePath))

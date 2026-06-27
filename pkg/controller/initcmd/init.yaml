@@ -1,0 +1,14 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn-go-sdk/refs/heads/main/json-schema/ghtkn.json
+# ghtkn - https://github.com/suzuki-shunsuke/ghtkn
+#
+# backend:
+#   type: agent # backend type. One of keyring(default), agent, or text
+# min_expiration: 1h # minimum expiration time. Default is 0h
+# skip_account_picker: false # Default is true
+# open_browser:
+#   enable: false # Default is true
+# device_flow:
+#   enable: false # Default is true
+apps:
+  - name: suzuki-shunsuke/write # The name to identify the app
+    client_id: xxx # Your GitHub App Client ID
