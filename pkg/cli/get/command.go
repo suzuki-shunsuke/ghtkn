@@ -68,8 +68,6 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 				return r.action(ctx, cmd, logger, args)
 			},
 			Flags: []cli.Flag{
-				flag.LogLevel(&args.LogLevel),
-				flag.Config(&args.Config),
 				flag.MinExpiration(&args.MinExpiration),
 			},
 			Arguments: []cli.Argument{
@@ -87,8 +85,6 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 			return r.action(ctx, cmd, logger, args)
 		},
 		Flags: []cli.Flag{
-			flag.LogLevel(&args.LogLevel),
-			flag.Config(&args.Config),
 			flag.Format(&args.Format),
 			flag.MinExpiration(&args.MinExpiration),
 			flag.DeviceFlow(&args.DeviceFlow),
