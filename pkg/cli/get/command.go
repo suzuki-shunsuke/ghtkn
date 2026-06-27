@@ -64,8 +64,8 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 		return &cli.Command{
 			Name:  "git-credential",
 			Usage: "Git Credential Helper",
-			Action: func(ctx context.Context, _ *cli.Command) error {
-				return r.action(ctx, logger, args)
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				return r.action(ctx, cmd, logger, args)
 			},
 			Flags: []cli.Flag{
 				flag.LogLevel(&args.LogLevel),
@@ -83,8 +83,8 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 	return &cli.Command{
 		Name:  "get",
 		Usage: "Output a GitHub App User Access Token to stdout",
-		Action: func(ctx context.Context, _ *cli.Command) error {
-			return r.action(ctx, logger, args)
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			return r.action(ctx, cmd, logger, args)
 		},
 		Flags: []cli.Flag{
 			flag.LogLevel(&args.LogLevel),
@@ -107,19 +107,16 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 // For get command, it supports different output formats (plain text or JSON).
 // It configures the controller with flags and arguments, then executes the token retrieval.
 // Returns an error if configuration is invalid or token retrieval fails.
-func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args) error {
+func (r *runner) action(ctx context.Context, cmd *cli.Command, logger *slogutil.Logger, args *Args) error {
 	if err := logger.SetLevel(args.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
-	inputGet := &ghtkn.InputGet{}
-	if args.MinExpiration != "" {
-		d, err := time.ParseDuration(args.MinExpiration)
-		if err != nil {
-			return fmt.Errorf("parse the min expiration: %w", slogerr.With(err, "min_expiration", args.MinExpiration))
-		}
-		inputGet.MinExpiration = d
+	inputGet := &ghtkn.InputGet{
+		ConfigFilePath: args.Config,
 	}
-	inputGet.ConfigFilePath = args.Config
+	if err := setMinExpiration(inputGet, args.MinExpiration); err != nil {
+		return err
+	}
 
 	input, err := get.NewInput()
 	if err != nil {
@@ -134,10 +131,13 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args
 		if args.AppName != "" {
 			inputGet.AppName = args.AppName
 		}
-		// Only the 'get' command exposes --device-flow; the override lets the flag
-		// take precedence over GHTKN_ENABLE_DEVICE_FLOW. git-credential leaves this
-		// nil so the SDK falls back to the environment variable.
-		inputGet.EnableDeviceFlow = &args.DeviceFlow
+		// Only the 'get' command exposes --device-flow. Pass the override only when the
+		// flag is explicitly set so it takes precedence over GHTKN_ENABLE_DEVICE_FLOW
+		// and the config; otherwise leave it nil so the SDK resolves them itself.
+		// git-credential never registers the flag, so IsSet is always false there.
+		if cmd.IsSet("device-flow") {
+			inputGet.EnableDeviceFlow = &args.DeviceFlow
+		}
 	}
 	p, err := config.ResolvePath(inputGet.ConfigFilePath)
 	if err != nil {
@@ -150,4 +150,20 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args
 	return get.New(input).Run(ctx, logger.Logger, &get.InputRun{ //nolint:wrapcheck
 		InputGet: inputGet,
 	})
+}
+
+// setMinExpiration parses the -min-expiration flag value and sets it on inputGet.
+// When the flag is not set it leaves inputGet.MinExpiration nil, so the SDK falls
+// back to GHTKN_MIN_EXPIRATION and the config; an explicit value, including 0, takes
+// precedence over both.
+func setMinExpiration(inputGet *ghtkn.InputGet, s string) error {
+	if s == "" {
+		return nil
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return fmt.Errorf("parse the min expiration: %w", slogerr.With(err, "min_expiration", s))
+	}
+	inputGet.MinExpiration = &d
+	return nil
 }

@@ -324,6 +324,15 @@ You can also set this using an environment variable.
 export GHTKN_MIN_EXPIRATION=10m
 ```
 
+Or in the configuration file.
+
+```yaml
+min_expiration: 1h
+```
+
+When more than one is set, the precedence is: the `-min-expiration (-m)` flag, then `GHTKN_MIN_EXPIRATION`, then `min_expiration` in the configuration file.
+An explicit `-m 0` (or `GHTKN_MIN_EXPIRATION=0`) overrides a non-zero `min_expiration` in the configuration file.
+
 If you're only using the GitHub CLI to call an API, it usually finishes in an instant, so you probably won't need to set this.
 However, if you're passing the access token to a script that takes, say, 30 minutes to run, setting it to something like `50m` will prevent the token from expiring in the middle of the script.
 
@@ -334,8 +343,8 @@ This could be useful if you want to test how `ghtkn` behaves.
 
 `ghtkn auth` command authenticates to GitHub and caches an access token without printing it to stdout.
 It always runs the device flow to regenerate the token, regardless of any cached token.
-Unlike `ghtkn get`, the device flow is always allowed even when `GHTKN_ENABLE_DEVICE_FLOW=false`.
-Also unlike `ghtkn get`, it does not accept `-min-expiration (-m)` nor read `GHTKN_MIN_EXPIRATION`.
+Unlike `ghtkn get`, the device flow is always allowed even when `GHTKN_ENABLE_DEVICE_FLOW=false` or `device_flow.enable: false` in the configuration file.
+Also unlike `ghtkn get`, it does not accept `-min-expiration (-m)`, nor read `GHTKN_MIN_EXPIRATION` or `min_expiration` in the configuration file.
 
 ## Disabling Device Flow
 
@@ -344,8 +353,14 @@ A coding agent (or any background / non-interactive process) cannot complete thi
 The device flow is enabled by default.
 By setting `GHTKN_ENABLE_DEVICE_FLOW` to `false`, `ghtkn` will fail fast with an actionable error instead of blocking.
 
-`ghtkn get`'s `--device-flow (-d)` flag overrides the `GHTKN_ENABLE_DEVICE_FLOW` environment variable.
-`ghtkn auth` also re-authenticates.
+You can also disable it in the configuration file.
+
+```yaml
+device_flow:
+  enable: false
+```
+
+When more than one is set, the precedence is: `ghtkn get`'s `--device-flow (-d)` flag, then `GHTKN_ENABLE_DEVICE_FLOW`, then `device_flow.enable` in the configuration file.
 
 ```sh
 ghtkn get -d

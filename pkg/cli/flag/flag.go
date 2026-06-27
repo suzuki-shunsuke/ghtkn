@@ -53,22 +53,24 @@ func Format(dest *string) *cli.StringFlag {
 
 // MinExpiration returns a flag for specifying the minimum token expiration duration.
 // Accepts duration strings like "1h", "30m", "30s".
+// The GHTKN_MIN_EXPIRATION environment variable is read by the SDK, not this flag,
+// so that it applies to SDK consumers too; the flag only carries the explicit -m value.
 // Alias: -m
 func MinExpiration(dest *string) *cli.StringFlag {
 	return &cli.StringFlag{
 		Name:        "min-expiration",
 		Aliases:     []string{"m"},
 		Usage:       "minimum expiration duration (e.g. 1h, 30m, 30s)",
-		Sources:     cli.EnvVars("GHTKN_MIN_EXPIRATION"),
 		Destination: dest,
 	}
 }
 
 // DeviceFlow returns a flag controlling whether the OAuth device flow may run to
-// create a new access token. It defaults to true and can be set via the
-// GHTKN_ENABLE_DEVICE_FLOW environment variable (set it to false to disable);
-// the flag overrides the environment variable. Disabling it makes ghtkn fail fast
+// create a new access token. It defaults to true. Disabling it makes ghtkn fail fast
 // instead of blocking in non-interactive environments.
+// The GHTKN_ENABLE_DEVICE_FLOW environment variable is read by the SDK, not this
+// flag, so that it applies to SDK consumers too; the flag, when explicitly set,
+// overrides both the environment variable and the config file.
 // Alias: -d
 func DeviceFlow(dest *bool) *cli.BoolFlag {
 	return &cli.BoolFlag{
@@ -76,7 +78,6 @@ func DeviceFlow(dest *bool) *cli.BoolFlag {
 		Aliases:     []string{"d"},
 		Usage:       "Allow the interactive device flow to create a new access token",
 		Value:       true,
-		Sources:     cli.EnvVars("GHTKN_ENABLE_DEVICE_FLOW"),
 		Destination: dest,
 	}
 }

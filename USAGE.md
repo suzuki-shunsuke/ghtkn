@@ -65,7 +65,7 @@ USAGE:
 OPTIONS:
    --log-level string                  Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
    --config string, -c string          configuration file path [$GHTKN_CONFIG]
-   --min-expiration string, -m string  minimum expiration duration (e.g. 1h, 30m, 30s) [$GHTKN_MIN_EXPIRATION]
+   --min-expiration string, -m string  minimum expiration duration (e.g. 1h, 30m, 30s)
    --help, -h                          show help
 
 GLOBAL OPTIONS:
@@ -87,8 +87,8 @@ OPTIONS:
    --log-level string                  Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
    --config string, -c string          configuration file path [$GHTKN_CONFIG]
    --format string, -f string          output format (json) [$GHTKN_OUTPUT_FORMAT]
-   --min-expiration string, -m string  minimum expiration duration (e.g. 1h, 30m, 30s) [$GHTKN_MIN_EXPIRATION]
-   --device-flow, -d                   Allow the interactive device flow to create a new access token [$GHTKN_ENABLE_DEVICE_FLOW]
+   --min-expiration string, -m string  minimum expiration duration (e.g. 1h, 30m, 30s)
+   --device-flow, -d                   Allow the interactive device flow to create a new access token
    --help, -h                          show help
 
 GLOBAL OPTIONS:
