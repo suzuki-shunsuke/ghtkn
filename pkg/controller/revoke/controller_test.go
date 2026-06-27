@@ -47,7 +47,7 @@ func checkRevoker(t *testing.T, revoker *mockRevoker, wantCalled bool, wantToken
 	}
 }
 
-func checkClient(t *testing.T, client *mockClient, wantCalled bool, wantAppNames []string) {
+func checkClient(t *testing.T, client *mockClient, wantCalled bool, wantAppNames []string, wantAll bool) {
 	t.Helper()
 	if client.called != wantCalled {
 		t.Errorf("client called = %v, want %v", client.called, wantCalled)
@@ -55,6 +55,9 @@ func checkClient(t *testing.T, client *mockClient, wantCalled bool, wantAppNames
 	if wantCalled {
 		if diff := cmp.Diff(wantAppNames, client.gotInput.AppNames); diff != "" {
 			t.Errorf("app names mismatch (-want +got):\n%s", diff)
+		}
+		if client.gotInput.All != wantAll {
+			t.Errorf("All = %v, want %v", client.gotInput.All, wantAll)
 		}
 	}
 }
@@ -68,6 +71,7 @@ type runTestCase struct {
 	wantRevoker  bool
 	wantTokens   []string
 	wantAppNames []string
+	wantAll      bool
 	wantErr      bool
 }
 
@@ -100,6 +104,21 @@ func runTestCases() []runTestCase {
 			wantTokens:   []string{"ghu_x"},
 			wantClient:   true,
 			wantAppNames: []string{"test"},
+		},
+		{
+			name:        "--all: the SDK is called with All set, the revoker is not",
+			input:       &revoke.InputRevoke{All: true},
+			wantClient:  true,
+			wantAll:     true,
+			wantRevoker: false,
+		},
+		{
+			name:        "--all with raw tokens: both are called, the SDK with All set",
+			input:       &revoke.InputRevoke{All: true, Tokens: []string{"ghu_x"}},
+			wantRevoker: true,
+			wantTokens:  []string{"ghu_x"},
+			wantClient:  true,
+			wantAll:     true,
 		},
 		{
 			name:       "revoker error is propagated",
@@ -137,7 +156,7 @@ func TestController_Run(t *testing.T) {
 				t.Fatal(err)
 			}
 			checkRevoker(t, revoker, tt.wantRevoker, tt.wantTokens)
-			checkClient(t, client, tt.wantClient, tt.wantAppNames)
+			checkClient(t, client, tt.wantClient, tt.wantAppNames, tt.wantAll)
 		})
 	}
 }
