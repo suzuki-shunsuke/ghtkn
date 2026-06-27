@@ -127,17 +127,7 @@ func (r *runner) action(ctx context.Context, cmd *cli.Command, logger *slogutil.
 			return err
 		}
 	} else {
-		input.OutputFormat = args.Format
-		if args.AppName != "" {
-			inputGet.AppName = args.AppName
-		}
-		// Only the 'get' command exposes --device-flow. Pass the override only when the
-		// flag is explicitly set so it takes precedence over GHTKN_ENABLE_DEVICE_FLOW
-		// and the config; otherwise leave it nil so the SDK resolves them itself.
-		// git-credential never registers the flag, so IsSet is always false there.
-		if cmd.IsSet("device-flow") {
-			inputGet.EnableDeviceFlow = &args.DeviceFlow
-		}
+		setupGet(cmd, args, input, inputGet)
 	}
 	p, err := config.ResolvePath(inputGet.ConfigFilePath)
 	if err != nil {
@@ -150,6 +140,22 @@ func (r *runner) action(ctx context.Context, cmd *cli.Command, logger *slogutil.
 	return get.New(input).Run(ctx, logger.Logger, &get.InputRun{ //nolint:wrapcheck
 		InputGet: inputGet,
 	})
+}
+
+// setupGet applies the 'get'-only flags to the controller input and SDK request.
+// It is never called for git-credential, so the device-flow flag (which only the
+// 'get' command registers) is handled exclusively here.
+func setupGet(cmd *cli.Command, args *Args, input *get.Input, inputGet *ghtkn.InputGet) {
+	input.OutputFormat = args.Format
+	if args.AppName != "" {
+		inputGet.AppName = args.AppName
+	}
+	// Pass the device-flow override only when the flag is explicitly set so it takes
+	// precedence over GHTKN_ENABLE_DEVICE_FLOW and the config; otherwise leave it nil
+	// so the SDK resolves them itself.
+	if cmd.IsSet("device-flow") {
+		inputGet.EnableDeviceFlow = &args.DeviceFlow
+	}
 }
 
 // setMinExpiration parses the -min-expiration flag value and sets it on inputGet.
