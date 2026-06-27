@@ -65,7 +65,7 @@ USAGE:
 OPTIONS:
    --log-level string                  Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
    --config string, -c string          configuration file path [$GHTKN_CONFIG]
-   --min-expiration string, -m string  minimum expiration duration (e.g. 1h, 30m, 30s)
+   --min-expiration string, -m string  minimum expiration duration (e.g. 1h, 30m, 30s) [$GHTKN_MIN_EXPIRATION]
    --help, -h                          show help
 
 GLOBAL OPTIONS:
@@ -87,8 +87,8 @@ OPTIONS:
    --log-level string                  Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
    --config string, -c string          configuration file path [$GHTKN_CONFIG]
    --format string, -f string          output format (json) [$GHTKN_OUTPUT_FORMAT]
-   --min-expiration string, -m string  minimum expiration duration (e.g. 1h, 30m, 30s)
-   --device-flow, -d                   Allow the interactive device flow to create a new access token
+   --min-expiration string, -m string  minimum expiration duration (e.g. 1h, 30m, 30s) [$GHTKN_MIN_EXPIRATION]
+   --device-flow, -d                   Allow the interactive device flow to create a new access token [$GHTKN_ENABLE_DEVICE_FLOW]
    --help, -h                          show help
 
 GLOBAL OPTIONS:
@@ -368,10 +368,24 @@ DESCRIPTION:
 
 
 COMMANDS:
+   pwsh  Output pwsh completion script
    bash  Output bash completion script
    zsh   Output zsh completion script
    fish  Output fish completion script
-   pwsh  Output pwsh completion script
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### completion pwsh
+
+```console
+$ completion pwsh --help
+NAME:
+   ghtkn completion pwsh - Output pwsh completion script
+
+USAGE:
+   ghtkn completion pwsh [options]
 
 OPTIONS:
    --help, -h  show help
@@ -414,20 +428,6 @@ NAME:
 
 USAGE:
    ghtkn completion fish [options]
-
-OPTIONS:
-   --help, -h  show help
-```
-
-### completion pwsh
-
-```console
-$ completion pwsh --help
-NAME:
-   ghtkn completion pwsh - Output pwsh completion script
-
-USAGE:
-   ghtkn completion pwsh [options]
 
 OPTIONS:
    --help, -h  show help
