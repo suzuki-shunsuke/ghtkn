@@ -71,8 +71,7 @@ func action(ctx context.Context, logger *slogutil.Logger, args *Args) error {
 	// GHTKN_MIN_EXPIRATION and the config's min_expiration, and forces a min expiration
 	// larger than the token TTL. Passing it as an explicit override (non-nil pointer)
 	// makes it take precedence over the environment variable and config.
-	minExpiration := alwaysRenewMinExpiration
-	inputGet.MinExpiration = &minExpiration
+	inputGet.MinExpiration = new(alwaysRenewMinExpiration)
 	inputGet.ConfigFilePath = args.Config
 	if args.AppName != "" {
 		inputGet.AppName = args.AppName
