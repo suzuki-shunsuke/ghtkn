@@ -9,6 +9,14 @@ This is useful in environments where the OS keyring is hard to use, such as cont
 - `text`: Store tokens as plaintext files
 - `agent`: Store tokens encrypted via the ghtkn agent
 
+You can also set it in the configuration file via `backend.type`.
+`GHTKN_BACKEND` takes precedence over the configuration file.
+
+```yaml
+backend:
+  type: agent # text, keyring
+```
+
 ## Which backend should you use?
 
 On desktop environments where the OS keyring is available, using the default OS keyring is the most secure and recommended option, so you usually don't need to worry about backends.

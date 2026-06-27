@@ -402,6 +402,13 @@ This is useful in environments where the OS keyring is hard to use, such as cont
 - `text`: Store tokens as plaintext files
 - `agent`: Store tokens encrypted via the ghtkn agent
 
+You can also set it in the configuration file.
+
+```yaml
+backend:
+  type: agent # text, keyring
+```
+
 For more details, see the [backend documentation](docs/backend.md).
 
 ## Disabling Browser Open
