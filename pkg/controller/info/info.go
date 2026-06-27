@@ -12,7 +12,6 @@ type Output struct {
 	Arch       string            `json:"arch"`
 	Version    string            `json:"version"`
 	Envs       map[string]string `json:"envs"`
-	Backend    string            `json:"backend"`
 	App        string            `json:"app"`
 	ConfigPath string            `json:"config_path"`
 }
@@ -21,8 +20,8 @@ type Output struct {
 // The caller resolves and passes configPath, so the controller reads only the
 // environment variables it reports, via the injected getEnv.
 // Token-bearing variables (GH_TOKEN, GITHUB_TOKEN, GHTKN_GITHUB_TOKEN) are
-// redacted, and empty variables are omitted. Backend defaults to "keyring" when
-// GHTKN_BACKEND is unset. appName, when non-empty, overrides GHTKN_APP.
+// redacted, and empty variables are omitted. appName, when non-empty, overrides
+// GHTKN_APP.
 func (c *Controller) Info(configPath, appName, version string) error {
 	output := &Output{
 		OS:         runtime.GOOS,
@@ -69,12 +68,6 @@ func (c *Controller) Info(configPath, appName, version string) error {
 		}
 	}
 	output.Envs = envs
-
-	backend := c.getEnv("GHTKN_BACKEND")
-	if backend == "" {
-		backend = "keyring"
-	}
-	output.Backend = backend
 
 	output.App = c.getEnv("GHTKN_APP")
 	if appName != "" {

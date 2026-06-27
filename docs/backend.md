@@ -1,9 +1,19 @@
 # Backend
 
 By default ghtkn stores access tokens in the OS keyring.
-You can change where they are stored with the `GHTKN_BACKEND` environment variable.
+You can change where they are stored with the `GHTKN_BACKEND` environment variable or the configuration file `.backend.type`.
+
+```sh
+export GHTKN_BACKEND=text
+```
+
+```yaml
+backend:
+  type: agent # text, keyring
+```
+
 This is useful in environments where the OS keyring is hard to use, such as containers and microVMs.
-`GHTKN_BACKEND` supports the following values:
+The following values are supported:
 
 - `keyring`: OS keyring (default)
 - `text`: Store tokens as plaintext files

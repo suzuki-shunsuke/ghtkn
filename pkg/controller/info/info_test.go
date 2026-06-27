@@ -37,13 +37,12 @@ func TestController_Info(t *testing.T) { //nolint:funlen
 				Arch:       runtime.GOARCH,
 				Version:    "v1.0.0",
 				Envs:       map[string]string{},
-				Backend:    "keyring",
 				App:        "",
 				ConfigPath: configPath,
 			},
 		},
 		{
-			name: "GHTKN_BACKEND is reflected in Backend and Envs",
+			name: "GHTKN_BACKEND is reflected in Envs",
 			env: map[string]string{
 				"GHTKN_BACKEND": "text",
 			},
@@ -55,7 +54,6 @@ func TestController_Info(t *testing.T) { //nolint:funlen
 				Envs: map[string]string{
 					"GHTKN_BACKEND": "text",
 				},
-				Backend:    "text",
 				App:        "",
 				ConfigPath: configPath,
 			},
@@ -73,7 +71,6 @@ func TestController_Info(t *testing.T) { //nolint:funlen
 				Envs: map[string]string{
 					"GHTKN_APP": "env-app",
 				},
-				Backend:    "keyring",
 				App:        "env-app",
 				ConfigPath: configPath,
 			},
@@ -92,7 +89,6 @@ func TestController_Info(t *testing.T) { //nolint:funlen
 				Envs: map[string]string{
 					"GHTKN_APP": "env-app",
 				},
-				Backend:    "keyring",
 				App:        "arg-app",
 				ConfigPath: configPath,
 			},
@@ -114,7 +110,6 @@ func TestController_Info(t *testing.T) { //nolint:funlen
 					"GITHUB_TOKEN":       "<REDACTED>",
 					"GHTKN_GITHUB_TOKEN": "<REDACTED>",
 				},
-				Backend:    "keyring",
 				App:        "",
 				ConfigPath: configPath,
 			},
@@ -135,7 +130,6 @@ func TestController_Info(t *testing.T) { //nolint:funlen
 				Envs: map[string]string{
 					"GHTKN_BACKEND": "agent",
 				},
-				Backend:    "agent",
 				App:        "",
 				ConfigPath: configPath,
 			},
@@ -160,7 +154,6 @@ func TestController_Info(t *testing.T) { //nolint:funlen
 					"GHTKN_AGENT_SOCKET":   "/tmp/agent.sock",
 					"XDG_CACHE_HOME":       "/home/user/.cache",
 				},
-				Backend:    "keyring",
 				App:        "",
 				ConfigPath: configPath,
 			},
