@@ -75,7 +75,7 @@ ghtkn get
 
 A user access token starting with `ghu_` is outputted.
 
-5. Run `gh issue create` using the access token
+6. Run `gh issue create` using the access token
 
 ```sh
 REPO=suzuki-shunsuke/ghtkn # Please change this to your public repository
