@@ -11,7 +11,7 @@ USAGE:
    ghtkn [global options] [command [command options]]
 
 VERSION:
-   0.2.8
+   0.3.0
 
 COMMANDS:
    init            Create ghtkn.yaml if it doesn't exist
@@ -65,7 +65,7 @@ USAGE:
 OPTIONS:
    --log-level string                  Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
    --config string, -c string          configuration file path [$GHTKN_CONFIG]
-   --min-expiration string, -m string  minimum expiration duration (e.g. 1h, 30m, 30s) [$GHTKN_MIN_EXPIRATION]
+   --min-expiration string, -m string  minimum expiration duration (e.g. 1h, 30m, 30s)
    --help, -h                          show help
 
 GLOBAL OPTIONS:
@@ -87,8 +87,8 @@ OPTIONS:
    --log-level string                  Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
    --config string, -c string          configuration file path [$GHTKN_CONFIG]
    --format string, -f string          output format (json) [$GHTKN_OUTPUT_FORMAT]
-   --min-expiration string, -m string  minimum expiration duration (e.g. 1h, 30m, 30s) [$GHTKN_MIN_EXPIRATION]
-   --device-flow, -d                   Allow the interactive device flow to create a new access token [$GHTKN_ENABLE_DEVICE_FLOW]
+   --min-expiration string, -m string  minimum expiration duration (e.g. 1h, 30m, 30s)
+   --device-flow, -d                   Allow the interactive device flow to create a new access token
    --help, -h                          show help
 
 GLOBAL OPTIONS:
@@ -291,9 +291,12 @@ DESCRIPTION:
    Each argument is classified by its prefix: arguments starting with a GitHub token prefix (ghp_, github_pat_, gho_, ghu_, ghr_) are revoked directly as raw access tokens, and all other arguments are treated as app names whose stored tokens are revoked and removed from the backend.
    When no argument is given, the token stored for GHTKN_APP (or the default app) is revoked.
 
+   With --all, the stored tokens of every app in the config are revoked. This is meant for incident response: when the environment running ghtkn is compromised, all stored tokens can be revoked at once. App name arguments are ignored when --all is set, but raw access tokens are still revoked as usual.
+
 OPTIONS:
    --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
    --config string, -c string  configuration file path [$GHTKN_CONFIG]
+   --all                       Revoke the stored tokens of every app in the config
    --help, -h                  show help
 
 GLOBAL OPTIONS:
@@ -368,10 +371,24 @@ DESCRIPTION:
 
 
 COMMANDS:
+   bash  Output bash completion script
    zsh   Output zsh completion script
    fish  Output fish completion script
    pwsh  Output pwsh completion script
-   bash  Output bash completion script
+
+OPTIONS:
+   --help, -h  show help
+```
+
+### completion bash
+
+```console
+$ completion bash --help
+NAME:
+   ghtkn completion bash - Output bash completion script
+
+USAGE:
+   ghtkn completion bash [options]
 
 OPTIONS:
    --help, -h  show help
@@ -414,20 +431,6 @@ NAME:
 
 USAGE:
    ghtkn completion pwsh [options]
-
-OPTIONS:
-   --help, -h  show help
-```
-
-### completion bash
-
-```console
-$ completion bash --help
-NAME:
-   ghtkn completion bash - Output bash completion script
-
-USAGE:
-   ghtkn completion bash [options]
 
 OPTIONS:
    --help, -h  show help
