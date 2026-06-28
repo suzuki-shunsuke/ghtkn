@@ -132,8 +132,8 @@ func (r *runner) action(ctx context.Context, cmd *cli.Command, logger *slogutil.
 			inputGet.AppName = args.AppName
 		}
 		// Only the 'get' command exposes --device-flow. Pass the override only when the
-		// flag is explicitly set so it takes precedence over GHTKN_ENABLE_DEVICE_FLOW
-		// and the config; otherwise leave it nil so the SDK resolves them itself.
+		// flag is explicitly set so it takes precedence over GHTKN_ENABLE_DEVICE_FLOW;
+		// otherwise leave it nil so the SDK resolves it (disabled by default).
 		// git-credential never registers the flag, so IsSet is always false there.
 		if cmd.IsSet("device-flow") {
 			inputGet.EnableDeviceFlow = &args.DeviceFlow
