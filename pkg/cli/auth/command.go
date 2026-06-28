@@ -16,6 +16,7 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/clipboard"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
@@ -31,7 +32,8 @@ const alwaysRenewMinExpiration = 9 * time.Hour
 type Args struct {
 	*flag.GlobalFlags
 
-	AppName string // positional argument
+	AppName   string // positional argument
+	Clipboard bool
 }
 
 // New creates a new auth command instance with the provided logger.
@@ -43,12 +45,13 @@ func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
 	return &cli.Command{
 		Name:  "auth",
 		Usage: "Authenticate to GitHub and cache an access token without outputting it",
-		Action: func(ctx context.Context, _ *cli.Command) error {
-			return action(ctx, logger, args)
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			return action(ctx, cmd, logger, args)
 		},
 		Flags: []cli.Flag{
 			flag.LogLevel(&args.LogLevel),
 			flag.Config(&args.Config),
+			flag.Clipboard(&args.Clipboard),
 		},
 		Arguments: []cli.Argument{
 			&cli.StringArg{
@@ -62,7 +65,7 @@ func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
 // action authenticates to GitHub and caches an access token without printing it.
 // It reuses the get controller with Silent enabled, and always allows the device
 // flow so authentication works even when GHTKN_ENABLE_DEVICE_FLOW is false.
-func action(ctx context.Context, logger *slogutil.Logger, args *Args) error {
+func action(ctx context.Context, cmd *cli.Command, logger *slogutil.Logger, args *Args) error {
 	if err := logger.SetLevel(args.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
@@ -84,6 +87,15 @@ func action(ctx context.Context, logger *slogutil.Logger, args *Args) error {
 	input, err := get.NewInput()
 	if err != nil {
 		return fmt.Errorf("create the controller input: %w", err)
+	}
+	// Always provide the clipboard implementation; whether to actually copy is
+	// resolved by the SDK from the flag override below, GHTKN_CLIPBOARD, and the
+	// config's clipboard.enable.
+	input.Client.SetCopyOnetimeCodeToClipboard(clipboard.New())
+	// Pass the clipboard override only when -clipboard is explicitly set (including
+	// -clipboard=false) so it takes precedence over the env var and config.
+	if cmd.IsSet("clipboard") {
+		inputGet.Clipboard = &args.Clipboard
 	}
 	p, err := config.ResolvePath(inputGet.ConfigFilePath)
 	if err != nil {

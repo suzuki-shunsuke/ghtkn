@@ -31,6 +31,15 @@
       "additionalProperties": false,
       "type": "object"
     },
+    "Clipboard": {
+      "properties": {
+        "enable": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "Config": {
       "properties": {
         "apps": {
@@ -50,6 +59,9 @@
         },
         "backend": {
           "$ref": "#/$defs/Backend"
+        },
+        "clipboard": {
+          "$ref": "#/$defs/Clipboard"
         }
       },
       "additionalProperties": false,

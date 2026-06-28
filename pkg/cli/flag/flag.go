@@ -82,3 +82,18 @@ func DeviceFlow(dest *bool) *cli.BoolFlag {
 		Destination: dest,
 	}
 }
+
+// Clipboard returns the -clipboard (-p) flag, which copies the device flow one-time
+// code to the system clipboard. The flag, when explicitly set, overrides both the
+// GHTKN_CLIPBOARD environment variable and the config's clipboard.enable (both read
+// by the SDK); it defaults to disabled.
+// Alias: -p
+func Clipboard(dest *bool) *cli.BoolFlag {
+	return &cli.BoolFlag{
+		Name:        "clipboard",
+		Aliases:     []string{"p"},
+		Usage:       "Copy the device flow one-time code to the clipboard",
+		Value:       false,
+		Destination: dest,
+	}
+}

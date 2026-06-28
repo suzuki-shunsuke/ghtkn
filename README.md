@@ -367,8 +367,27 @@ If you want `ghtkn get` to start the device flow automatically (the behavior bef
 > An attacker could initiate the device flow, copy the one-time code to your clipboard, trick you into submitting it, and compromise your access token.
 > As of v0.3.0 the automatic device flow is disabled by default, which mitigates this; if you use this tip, keep it disabled and always start the device flow explicitly with `ghtkn auth`.
 
-This is a tip for automatically copying a one-time code to the clipboard.
-Feel free to change the function name and customize the code to your liking.
+`ghtkn auth` can copy the one-time code to the system clipboard for you.
+This is only available on `ghtkn auth`, the explicit, interactive authentication command - not on `ghtkn get` or `ghtkn git-credential`, which must not start the device flow on your behalf.
+It is disabled by default; enable it with the `-clipboard` (`-p`) flag, the `GHTKN_CLIPBOARD` environment variable, or the `clipboard.enable` config field.
+
+```sh
+ghtkn auth -p
+```
+
+```sh
+export GHTKN_CLIPBOARD=true
+```
+
+```yaml
+clipboard:
+  enable: true
+```
+
+### Shell-based alternative
+
+If you prefer not to enable the built-in feature, you can extract the code from stderr and
+pipe it to the clipboard yourself. Feel free to change the function name and customize it.
 
 For macOS:
 
