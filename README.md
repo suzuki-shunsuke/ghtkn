@@ -54,26 +54,28 @@ apps:
 > [!NOTE]  
 > The GitHub App Client ID is not a secret, so there's generally no problem writing it in plain text in local configuration files.
 
-4. Run `ghtkn get` and create a user access token
+4. Run `ghtkn auth` for authentication
 
 ```sh
-ghtkn get
+ghtkn auth
 ```
 
 https://github.com/login/device will open in your browser, so enter the code displayed in the terminal and approve it.
-Then a user access token starting with `ghu_` is outputted.
-You can close the opened tab.
 
 With Device Flow, access tokens cannot be generated in non-interactive environments like CI.
 ghtkn is primarily intended for local development.
 
-If you run the same command immediately, it will now run without the authorization flow because ghtkn stores access tokens into the backend and reuse them.
+You can close the opened tab.
+
+5. Run `ghtkn get` to get a user access token
 
 ```sh
 ghtkn get
 ```
 
-5. Run `gh issue create` using the access token
+A user access token starting with `ghu_` is outputted.
+
+6. Run `gh issue create` using the access token
 
 ```sh
 REPO=suzuki-shunsuke/ghtkn # Please change this to your public repository
@@ -340,26 +342,21 @@ This could be useful if you want to test how `ghtkn` behaves.
 
 `ghtkn auth` command authenticates to GitHub and caches an access token without printing it to stdout.
 It always runs the device flow to regenerate the token, regardless of any cached token.
-Unlike `ghtkn get`, the device flow is always allowed even when `GHTKN_ENABLE_DEVICE_FLOW=false` or `device_flow.enable: false` in the configuration file.
+Unlike `ghtkn get`, the device flow is always allowed even though it is disabled by default (and even when `GHTKN_ENABLE_DEVICE_FLOW=false`).
 Also unlike `ghtkn get`, it does not accept `-min-expiration (-m)`, nor read `GHTKN_MIN_EXPIRATION` or `min_expiration` in the configuration file.
 
-## Disabling Device Flow
+## Disabling Automatic Device Flow
+
+> [!IMPORTANT]
+> As of v0.3.0, the automatic device flow is disabled by default.
+> We plan to remove the `GHTKN_ENABLE_DEVICE_FLOW=true` / `ghtkn get -d` opt-in entirely at v0.4.0.
+> For details, see https://github.com/suzuki-shunsuke/ghtkn/issues/474
 
 `ghtkn` obtains a GitHub App User access token via the OAuth Device Flow, which is interactive: it prints a one-time (user) code and waits for the user.
 A coding agent (or any background / non-interactive process) cannot complete this, so it would block until a device code expires.
-The device flow is enabled by default.
-By setting `GHTKN_ENABLE_DEVICE_FLOW` to `false`, `ghtkn` will fail fast with an actionable error instead of blocking.
+The automatic device flow is disabled by default, so `ghtkn get` and `git-credential` fail fast with an actionable error instead of blocking. Run `ghtkn auth` explicitly in your own interactive terminal to authenticate.
 
-You can also disable it in the configuration file.
-
-```yaml
-device_flow:
-  enable: false
-```
-
-```sh
-ghtkn get -d
-```
+If you want `ghtkn get` to start the device flow automatically (the behavior before v0.3.0), enable it explicitly with `GHTKN_ENABLE_DEVICE_FLOW=true` or `ghtkn get -d`.
 
 ## :bulb: Copying a one-time code to clipboard automatically
 
@@ -368,7 +365,7 @@ ghtkn get -d
 > [!WARNING]
 > Some applications, such as coding agents, cmux, and Warp, can start the device flow via ghtkn automatically. However, it is dangerous to use a one-time code when you didn't execute ghtkn explicitly, as this could be a phishing attack.
 > An attacker could initiate the device flow, copy the one-time code to your clipboard, trick you into submitting it, and compromise your access token.
-> To prevent this, if you use this tip, we recommend setting `GHTKN_ENABLE_DEVICE_FLOW` to `false` and always starting the device flow explicitly.
+> As of v0.3.0 the automatic device flow is disabled by default, which mitigates this; if you use this tip, keep it disabled and always start the device flow explicitly with `ghtkn auth`.
 
 This is a tip for automatically copying a one-time code to the clipboard.
 Feel free to change the function name and customize the code to your liking.
@@ -659,26 +656,14 @@ In that case, you need to:
 1. Run `ghtkn auth [app for process A]` manually to renew the access token
 1. Re-run the process `A`
 
-As of ghtkn v0.2.5, you can prevent this kind of issue by setting `GHTKN_ENABLE_DEVICE_FLOW` to false.
-
-```sh
-export GHTKN_ENABLE_DEVICE_FLOW=false
-```
-
-When the token expires, you need to run `ghtkn auth` to renew it.
+As of ghtkn v0.3.0, the automatic device flow is disabled by default, so this kind of issue no longer happens. When the token expires, you need to run `ghtkn auth` to renew it.
 
 ### A browser opens when using tools like cmux and warp
 
 When using [cmux](https://github.com/manaflow-ai/cmux) and [warp](https://github.com/warpdotdev/warp), ghtkn may open a browser on its own.
 Worse, the one-time code isn't shown anywhere, so you can't complete the device flow and have to close the browser tab.
 
-As of ghtkn v0.2.5, you can prevent this kind of issue by setting `GHTKN_ENABLE_DEVICE_FLOW` to false.
-
-```sh
-export GHTKN_ENABLE_DEVICE_FLOW=false
-```
-
-When the token expires, you need to run `ghtkn auth` to renew it.
+As of ghtkn v0.3.0, the automatic device flow is disabled by default, so this kind of issue no longer happens. When the token expires, you need to run `ghtkn auth` to renew it.
 
 ## Limitations
 

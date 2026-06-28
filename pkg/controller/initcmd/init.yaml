@@ -7,8 +7,6 @@
 # skip_account_picker: false # Default is true
 # open_browser:
 #   enable: false # Default is true
-# device_flow:
-#   enable: false # Default is true
 apps:
   - name: suzuki-shunsuke/write # The name to identify the app
     client_id: xxx # Your GitHub App Client ID
