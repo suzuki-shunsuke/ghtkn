@@ -371,7 +371,6 @@ DESCRIPTION:
 
 
 COMMANDS:
-
    bash  Output bash completion script
    zsh   Output zsh completion script
    fish  Output fish completion script
