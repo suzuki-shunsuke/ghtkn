@@ -11,7 +11,7 @@ USAGE:
    ghtkn [global options] [command [command options]]
 
 VERSION:
-   0.3.0
+   0.3.1
 
 COMMANDS:
    init            Create ghtkn.yaml if it doesn't exist
@@ -109,6 +109,7 @@ USAGE:
 OPTIONS:
    --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
    --config string, -c string  configuration file path [$GHTKN_CONFIG]
+   --clipboard, -p             Copy the device flow one-time code to the clipboard
    --help, -h                  show help
 
 GLOBAL OPTIONS:
