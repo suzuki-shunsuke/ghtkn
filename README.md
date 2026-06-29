@@ -20,7 +20,7 @@ ghtkn generates **8-hour User Access Tokens** from GitHub Apps using Device Flow
 - **User-attributed actions** - Operations are performed as you, not as an app
 - **Automatic token management** - Integrates with the backend (the default is OS keyring) for secure storage and reuse
 
-ghtkn (pronounced `GH-Token`) allows you to manage multiple GitHub Apps through configuration files and securely store tokens using OS keyring (Windows Credential Manager, macOS Keychain, or GNOME Keyring) or another backend.
+ghtkn (pronounced `G-H Token`) allows you to manage multiple GitHub Apps through configuration files and securely store tokens using OS keyring (Windows Credential Manager, macOS Keychain, or GNOME Keyring) or another backend.
 
 ## :rocket: Getting Started
 
