@@ -46,6 +46,16 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 	return &cli.Command{
 		Name:  "info",
 		Usage: "Output information about the environment which is useful for troubleshooting",
+		Description: `Output environment information useful for troubleshooting.
+
+It prints, as JSON, the OS, architecture, ghtkn version, relevant GHTKN_* and
+related environment variables (with token values redacted), the selected backend,
+the target app, and the resolved configuration file path. It does not authenticate
+or modify any state.
+
+$ ghtkn info
+$ ghtkn info my-app
+$ ghtkn info | jq .envs`,
 		Action: func(ctx context.Context, _ *cli.Command) error {
 			return r.action(ctx, logger, args)
 		},

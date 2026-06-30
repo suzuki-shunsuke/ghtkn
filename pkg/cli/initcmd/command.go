@@ -33,6 +33,15 @@ func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
 	return &cli.Command{
 		Name:  "init",
 		Usage: "Create ghtkn.yaml if it doesn't exist",
+		Description: `Create a ghtkn configuration file if it does not exist.
+
+It writes a template ghtkn.yaml with an example app entry and commented-out optional
+settings. If the file already exists it is left untouched. The path is taken from the
+config-file-path argument, then the -config flag, then the default location for the OS.
+After creating it, edit the file to set your GitHub App's client_id.
+
+$ ghtkn init
+$ ghtkn init /path/to/ghtkn.yaml`,
 		Action: func(ctx context.Context, _ *cli.Command) error {
 			return action(ctx, logger, args)
 		},
