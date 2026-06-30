@@ -1,7 +1,7 @@
 # ghtkn (GH-Token)
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/suzuki-shunsuke/ghtkn)
-[![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn/main/LICENSE) | [Install](skills/ghtkn-install/reference.md) | [Usage](USAGE.md)
+[![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn/main/LICENSE) | [Install](skills/ghtkn-install/reference.md) | [Usage](USAGE.md) | [Agent Skills](#installing-agent-skills)
 
 **Stop risking token leaks - Use secure, short-lived GitHub tokens for local development**
 
