@@ -160,6 +160,6 @@ The skills can be installed with skill installers such as [`gh skill install`](h
 
 ## Go SDK
 
-You can enable your CLI application to create GitHub User Access Tokens using [ghtkn Go SDK](pkg.go.dev/github.com/suzuki-shunsuke/ghtkn-go-sdk).
+You can enable your CLI application to create GitHub User Access Tokens using [ghtkn Go SDK](https://pkg.go.dev/github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn).
 ghtkn itself uses this.
 If SDK doesn't work well, please check if the version is latest.
