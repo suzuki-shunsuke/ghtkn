@@ -42,12 +42,7 @@ OS keyring is unavailable (containers, VMs, minimal Linux, etc.). Select it with
 GHTKN_BACKEND=agent or backend.type: agent in the config.
 
 The agent starts locked; unlock it with a passphrase to make cached tokens available.
-Tokens are encrypted at rest with AES-256-GCM.
-
-$ ghtkn agent start    # Start the agent (locked) in the foreground
-$ ghtkn agent unlock   # Enter the passphrase to unlock it
-$ ghtkn agent status   # Show whether it is running
-$ ghtkn agent stop     # Stop it`,
+Tokens are encrypted at rest with AES-256-GCM.`,
 		Commands: []*cli.Command{
 			r.startCommand(),
 			r.stopCommand(),
