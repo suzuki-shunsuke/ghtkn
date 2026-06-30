@@ -142,11 +142,17 @@ chmod +x ~/.local/bin/gh
 
 It's useful to wrap `gh` using shell script as gh always requires GitHub access tokens.
 
+## Installing Agent Skills
+
+[gh skill install](https://cli.github.com/manual/gh_skill_install):
+
+```sh
+gh skill install suzuki-shunsuke/ghtkn --all
+```
+
 ## Documentation and skills
 
 Detailed documentation is split by topic. Each topic lives in a skill directory under [`skills/`](skills) and contains an agent-facing `SKILL.md` and a shared reference document (`reference.md`). The reference documents below are the single source of truth, shared between this README and the skills, so there's no duplicated maintenance.
-
-The skills can be installed with skill installers such as [`gh skill install`](https://cli.github.com/manual/gh_skill_install) or [`npx skills`](https://github.com/vercel-labs/skills), e.g. `gh skill install suzuki-shunsuke/ghtkn ghtkn-backend`.
 
 - [Install](skills/ghtkn-install/reference.md) - install the ghtkn CLI and verify release assets.
 - [Git Credential Helper](skills/ghtkn-git-credential-helper/reference.md) - use ghtkn as a Git credential helper and switch apps by repository owner.
