@@ -11,7 +11,18 @@ USAGE:
    ghtkn [global options] [command [command options]]
 
 VERSION:
-   0.3.2
+   0.3.3
+
+DESCRIPTION:
+   Create GitHub App User Access Tokens for secure local development.
+
+   ghtkn issues short-lived GitHub App User Access Tokens via the OAuth device flow
+   and caches them in a backend (OS keyring, the ghtkn agent, or a plain text file).
+   Use it to authenticate the gh CLI, Git, and other tools without long-lived
+   Personal Access Tokens.
+
+   See each subcommand's help with 'ghtkn help <command>'.
+   See https://github.com/suzuki-shunsuke/ghtkn for details.
 
 COMMANDS:
    init            Create ghtkn.yaml if it doesn't exist
@@ -42,6 +53,17 @@ NAME:
 USAGE:
    ghtkn init [options] config-file-path 
 
+DESCRIPTION:
+   Create a ghtkn configuration file if it does not exist.
+
+   It writes a template ghtkn.yaml with an example app entry and commented-out optional
+   settings. If the file already exists it is left untouched. The path is taken from the
+   config-file-path argument, then the -config flag, then the default location for the OS.
+   After creating it, edit the file to set your GitHub App's client_id.
+
+   $ ghtkn init
+   $ ghtkn init /path/to/ghtkn.yaml
+
 OPTIONS:
    --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
    --config string, -c string  configuration file path [$GHTKN_CONFIG]
@@ -61,6 +83,20 @@ NAME:
 
 USAGE:
    ghtkn git-credential [options] subcommand 
+
+DESCRIPTION:
+   Act as a Git credential helper that supplies GitHub App User Access Tokens.
+
+   Git invokes this command following its credential helper protocol. Only the 'get'
+   operation is handled; it outputs a token for the requested host in Git's credential
+   format so that Git pushes and pulls authenticate with a ghtkn token automatically.
+   The app is selected by apps[].git_owner (with credential.useHttpPath true) or by
+   GHTKN_GIT_APP.
+
+   Configure it in Git (an empty helper first disables other helpers):
+
+   $ git config --global credential.helper ''
+   $ git config --global --add credential.helper '!ghtkn git-credential'
 
 OPTIONS:
    --log-level string                  Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
@@ -82,6 +118,24 @@ NAME:
 
 USAGE:
    ghtkn get [options] app-name 
+
+DESCRIPTION:
+   Output a GitHub App User Access Token to stdout.
+
+   It returns the token cached in the backend (keyring, agent, or text) when one is
+   available and still valid. Otherwise, if the device flow is enabled, it creates a
+   new token interactively via GitHub's OAuth device flow. The device flow is disabled
+   by default; enable it with the -device-flow flag or GHTKN_ENABLE_DEVICE_FLOW=true.
+
+   If an app name is given, the token is issued for that app; otherwise GHTKN_APP or
+   the default app in the config is used. Use -min-expiration to force regeneration
+   when the cached token expires within the given duration.
+
+   $ ghtkn get
+   $ ghtkn get my-app
+   $ ghtkn get -f json my-app
+   $ ghtkn get -m 1h my-app
+   $ GH_TOKEN=$(ghtkn get) gh issue list
 
 OPTIONS:
    --log-level string                  Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
@@ -106,6 +160,20 @@ NAME:
 USAGE:
    ghtkn auth [options] app-name 
 
+DESCRIPTION:
+   Authenticate to GitHub and cache an access token without printing it.
+
+   Unlike 'ghtkn get', this always runs the OAuth device flow and regenerates the
+   token regardless of any cached token, so running it proactively refreshes the
+   cached token before it expires. The device flow is always allowed here, even when
+   GHTKN_ENABLE_DEVICE_FLOW is false, because authentication is interactive. It does
+   not accept -min-expiration. Use -clipboard to copy the one-time code to the
+   clipboard. If an app name is omitted, GHTKN_APP or the default app is used.
+
+   $ ghtkn auth
+   $ ghtkn auth my-app
+   $ ghtkn auth -p
+
 OPTIONS:
    --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
    --config string, -c string  configuration file path [$GHTKN_CONFIG]
@@ -126,6 +194,17 @@ NAME:
 
 USAGE:
    ghtkn agent [command [command options]]
+
+DESCRIPTION:
+   Manage the ghtkn agent.
+
+   The agent is a long-running process that caches GitHub App access tokens and serves
+   them to clients over a Unix domain socket. It is intended for environments where the
+   OS keyring is unavailable (containers, VMs, minimal Linux, etc.). Select it with
+   GHTKN_BACKEND=agent or backend.type: agent in the config.
+
+   The agent starts locked; unlock it with a passphrase to make cached tokens available.
+   Tokens are encrypted at rest with AES-256-GCM.
 
 COMMANDS:
    start   Start the ghtkn agent in the foreground (locked)
@@ -314,6 +393,18 @@ NAME:
 
 USAGE:
    ghtkn info [options] app-name 
+
+DESCRIPTION:
+   Output environment information useful for troubleshooting.
+
+   It prints, as JSON, the OS, architecture, ghtkn version, relevant GHTKN_* and
+   related environment variables (with token values redacted), the selected backend,
+   the target app, and the resolved configuration file path. It does not authenticate
+   or modify any state.
+
+   $ ghtkn info
+   $ ghtkn info my-app
+   $ ghtkn info | jq .envs
 
 OPTIONS:
    --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
