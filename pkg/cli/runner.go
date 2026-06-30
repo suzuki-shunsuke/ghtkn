@@ -30,6 +30,18 @@ func Run(ctx context.Context, logger *slogutil.Logger, env *urfave.Env) error {
 	return urfave.Command(env, &cli.Command{ //nolint:wrapcheck
 		Name:  "ghtkn",
 		Usage: "Create GitHub App User Access Tokens for secure local development. https://github.com/suzuki-shunsuke/ghtkn",
+		Description: `Create GitHub App User Access Tokens for secure local development.
+
+ghtkn issues short-lived GitHub App User Access Tokens via the OAuth device flow
+and caches them in a backend (OS keyring, the ghtkn agent, or a plain text file).
+Use it to authenticate the gh CLI, Git, and other tools without long-lived
+Personal Access Tokens.
+
+See each subcommand's help with 'ghtkn help <command>'.
+See https://github.com/suzuki-shunsuke/ghtkn for details.
+
+$ ghtkn init                 # Create a config file
+$ ghtkn get                  # Output a token`,
 		Flags: []cli.Flag{
 			flag.LogLevel(&gFlags.LogLevel),
 			flag.Config(&gFlags.Config),

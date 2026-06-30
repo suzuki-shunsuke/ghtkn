@@ -21,6 +21,37 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+const getDescription = `Output a GitHub App User Access Token to stdout.
+
+It returns the token cached in the backend (keyring, agent, or text) when one is
+available and still valid. Otherwise, if the device flow is enabled, it creates a
+new token interactively via GitHub's OAuth device flow. The device flow is disabled
+by default; enable it with the -device-flow flag or GHTKN_ENABLE_DEVICE_FLOW=true.
+
+If an app name is given, the token is issued for that app; otherwise GHTKN_APP or
+the default app in the config is used. Use -min-expiration to force regeneration
+when the cached token expires within the given duration.
+
+$ ghtkn get
+$ ghtkn get my-app
+$ ghtkn get -f json my-app
+$ ghtkn get -m 1h my-app
+$ GH_TOKEN=$(ghtkn get) gh issue list`
+
+//nolint:gosec // This is the command's help text, not a hardcoded credential.
+const gitCredentialDescription = `Act as a Git credential helper that supplies GitHub App User Access Tokens.
+
+Git invokes this command following its credential helper protocol. Only the 'get'
+operation is handled; it outputs a token for the requested host in Git's credential
+format so that Git pushes and pulls authenticate with a ghtkn token automatically.
+The app is selected by apps[].git_owner (with credential.useHttpPath true) or by
+GHTKN_GIT_APP.
+
+Configure it in Git (an empty helper first disables other helpers):
+
+$ git config --global credential.helper ''
+$ git config --global --add credential.helper '!ghtkn git-credential'`
+
 // Args holds the flag and argument values for the get and git-credential commands.
 type Args struct {
 	*flag.GlobalFlags
@@ -62,8 +93,9 @@ type runner struct {
 func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 	if r.isGitCredential {
 		return &cli.Command{
-			Name:  "git-credential",
-			Usage: "Git Credential Helper",
+			Name:        "git-credential",
+			Usage:       "Git Credential Helper",
+			Description: gitCredentialDescription,
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				return r.action(ctx, cmd, logger, args)
 			},
@@ -81,8 +113,9 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 		}
 	}
 	return &cli.Command{
-		Name:  "get",
-		Usage: "Output a GitHub App User Access Token to stdout",
+		Name:        "get",
+		Usage:       "Output a GitHub App User Access Token to stdout",
+		Description: getDescription,
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			return r.action(ctx, cmd, logger, args)
 		},

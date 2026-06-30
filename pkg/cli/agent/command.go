@@ -34,6 +34,20 @@ func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
 	return &cli.Command{
 		Name:  "agent",
 		Usage: "Manage the ghtkn agent that caches access tokens and serves them over a Unix socket",
+		Description: `Manage the ghtkn agent.
+
+The agent is a long-running process that caches GitHub App access tokens and serves
+them to clients over a Unix domain socket. It is intended for environments where the
+OS keyring is unavailable (containers, VMs, minimal Linux, etc.). Select it with
+GHTKN_BACKEND=agent or backend.type: agent in the config.
+
+The agent starts locked; unlock it with a passphrase to make cached tokens available.
+Tokens are encrypted at rest with AES-256-GCM.
+
+$ ghtkn agent start    # Start the agent (locked) in the foreground
+$ ghtkn agent unlock   # Enter the passphrase to unlock it
+$ ghtkn agent status   # Show whether it is running
+$ ghtkn agent stop     # Stop it`,
 		Commands: []*cli.Command{
 			r.startCommand(),
 			r.stopCommand(),

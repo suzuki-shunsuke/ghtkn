@@ -45,6 +45,18 @@ func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
 	return &cli.Command{
 		Name:  "auth",
 		Usage: "Authenticate to GitHub and cache an access token without outputting it",
+		Description: `Authenticate to GitHub and cache an access token without printing it.
+
+Unlike 'ghtkn get', this always runs the OAuth device flow and regenerates the
+token regardless of any cached token, so running it proactively refreshes the
+cached token before it expires. The device flow is always allowed here, even when
+GHTKN_ENABLE_DEVICE_FLOW is false, because authentication is interactive. It does
+not accept -min-expiration. Use -clipboard to copy the one-time code to the
+clipboard. If an app name is omitted, GHTKN_APP or the default app is used.
+
+$ ghtkn auth
+$ ghtkn auth my-app
+$ ghtkn auth -p`,
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			return action(ctx, cmd, logger, args)
 		},
