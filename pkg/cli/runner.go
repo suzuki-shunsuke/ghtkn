@@ -10,6 +10,7 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/auth"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/get"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/info"
@@ -51,6 +52,7 @@ See https://github.com/suzuki-shunsuke/ghtkn for details.`,
 			agent.New(logger, gFlags),
 			revoke.New(logger, gFlags),
 			info.New(logger, env, gFlags),
+			docs.New(logger, gFlags),
 		},
 	}).Run(ctx, env.Args)
 }
