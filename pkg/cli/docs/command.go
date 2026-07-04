@@ -4,7 +4,6 @@ import (
 	"io"
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs/list"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs/search"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs/show"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
@@ -32,10 +31,9 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 	return &cli.Command{
 		Name:        "docs",
 		Usage:       "Output document",
-		Description: `List, output, and search documents. This command is useful for coding agent to read document and solve problems.`,
+		Description: `List and output documents. This command is useful for coding agent to read document and solve problems.`,
 		Commands: []*cli.Command{
 			show.New(logger, args.GlobalFlags),
-			search.New(logger, args.GlobalFlags),
 			list.New(logger, args.GlobalFlags),
 		},
 	}

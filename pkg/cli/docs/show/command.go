@@ -37,7 +37,7 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 		Usage: "Output document",
 		Description: `Output document. This is useful for coding agent to read the document and solve problems.
 This command needs a document id.
-To see the id, list documents with "ghtkn docs list" or search documents with query by "ghtkn docs search"`,
+To see the id, list documents with "ghtkn docs list"`,
 		Action: func(ctx context.Context, _ *cli.Command) error {
 			return r.action(ctx, logger, args)
 		},
