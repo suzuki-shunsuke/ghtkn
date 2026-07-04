@@ -9,6 +9,11 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn/skills"
 )
 
+type Results struct {
+	Results []*docs.Result `json:"results"`
+	Help    string         `json:"help"`
+}
+
 func (c *Controller) List() error {
 	results := []*docs.Result{}
 	if err := fs.WalkDir(skills.FS, ".", func(path string, d fs.DirEntry, err error) error {
@@ -33,7 +38,10 @@ func (c *Controller) List() error {
 	}
 	encoder := json.NewEncoder(c.stdout)
 	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(results); err != nil {
+	if err := encoder.Encode(&Results{
+		Results: results,
+		Help:    "Run `ghtkn docs show {name}` to see the details of each document.",
+	}); err != nil {
 		return fmt.Errorf("encode documents as JSON: %w", err)
 	}
 	return nil
