@@ -29,7 +29,7 @@ type runner struct{}
 func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 	return &cli.Command{
 		Name:        "list",
-		Usage:       "List documents",
+		Usage:       "List document names and descriptions",
 		Description: ``,
 		Action: func(ctx context.Context, _ *cli.Command) error {
 			return r.action(ctx, logger, args)

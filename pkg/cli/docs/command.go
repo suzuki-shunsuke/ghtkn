@@ -26,7 +26,7 @@ type runner struct{}
 func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 	return &cli.Command{
 		Name:        "docs",
-		Usage:       "Output document",
+		Usage:       "Output document for coding agent",
 		Description: `List and output documents. This command is useful for coding agent to read document and solve problems.`,
 		Commands: []*cli.Command{
 			show.New(logger, args.GlobalFlags),

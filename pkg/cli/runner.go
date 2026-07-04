@@ -58,7 +58,7 @@ See https://github.com/suzuki-shunsuke/ghtkn for details.`,
 	})
 	if err := cmd.Run(ctx, env.Args); err != nil {
 		return slogerr.With(err, "help", //nolint:wrapcheck
-			"Run `ghtkn docs list` to see documentation and `ghtkn docs show <id>` to read it; this may help resolve the error.")
+			"Run `ghtkn docs list` to see documentation and `ghtkn docs show <name>` to read it; this may help resolve the error.")
 	}
 	return nil
 }

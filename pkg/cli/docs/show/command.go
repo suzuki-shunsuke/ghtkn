@@ -31,10 +31,10 @@ type runner struct{}
 func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 	return &cli.Command{
 		Name:  "show",
-		Usage: "Output document",
+		Usage: "Output the content of a given document",
 		Description: `Output document. This is useful for coding agent to read the document and solve problems.
-This command needs a document id.
-To see the id, list documents with "ghtkn docs list"`,
+This command needs a document name.
+To see the name, list documents with "ghtkn docs list"`,
 		Action: func(ctx context.Context, _ *cli.Command) error {
 			return r.action(ctx, logger, args)
 		},
