@@ -1,8 +1,6 @@
 package docs
 
 import (
-	"io"
-
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs/list"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs/show"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
@@ -23,9 +21,7 @@ func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
 	return r.Command(logger, args)
 }
 
-type runner struct {
-	stdin io.Reader
-}
+type runner struct{}
 
 func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
 	return &cli.Command{

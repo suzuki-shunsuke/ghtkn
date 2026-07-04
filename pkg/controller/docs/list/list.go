@@ -2,6 +2,7 @@ package list
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/fs"
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/docs"
@@ -19,21 +20,21 @@ func (c *Controller) List() error {
 		}
 		b, err := skills.FS.ReadFile(path)
 		if err != nil {
-			return err
+			return fmt.Errorf("read a SKILL.md file: %w", err)
 		}
 		result := &docs.Result{}
 		if err := docs.Parse(b, result); err != nil {
-			return err
+			return fmt.Errorf("parse a SKILL.md frontmatter: %w", err)
 		}
 		results = append(results, result)
 		return nil
 	}); err != nil {
-		return err
+		return fmt.Errorf("walk the skills directory: %w", err)
 	}
 	encoder := json.NewEncoder(c.stdout)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(results); err != nil {
-		return err
+		return fmt.Errorf("encode documents as JSON: %w", err)
 	}
 	return nil
 }
