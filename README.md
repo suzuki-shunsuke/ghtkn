@@ -1,4 +1,4 @@
-# ghtkn (GH-Token)
+# ghtkn (G-H Token)
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/suzuki-shunsuke/ghtkn)
 [![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn/main/LICENSE) | [Install](skills/ghtkn-install/reference.md) | [Usage](USAGE.md) | [Agent Skills](#installing-agent-skills)
