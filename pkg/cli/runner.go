@@ -10,11 +10,13 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/auth"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/get"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/info"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/initcmd"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/revoke"
+	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
@@ -27,7 +29,7 @@ import (
 // Returns an error if command parsing or execution fails.
 func Run(ctx context.Context, logger *slogutil.Logger, env *urfave.Env) error {
 	gFlags := &flag.GlobalFlags{}
-	return urfave.Command(env, &cli.Command{ //nolint:wrapcheck
+	cmd := urfave.Command(env, &cli.Command{
 		Name:  "ghtkn",
 		Usage: "Create GitHub App User Access Tokens for secure local development. https://github.com/suzuki-shunsuke/ghtkn",
 		Description: `Create GitHub App User Access Tokens for secure local development.
@@ -51,6 +53,12 @@ See https://github.com/suzuki-shunsuke/ghtkn for details.`,
 			agent.New(logger, gFlags),
 			revoke.New(logger, gFlags),
 			info.New(logger, env, gFlags),
+			docs.New(logger, gFlags),
 		},
-	}).Run(ctx, env.Args)
+	})
+	if err := cmd.Run(ctx, env.Args); err != nil {
+		return slogerr.With(err, "help", //nolint:wrapcheck
+			"Run `ghtkn docs list` to see documentation and `ghtkn docs show <name>` to read it; this may help resolve the error.")
+	}
+	return nil
 }
