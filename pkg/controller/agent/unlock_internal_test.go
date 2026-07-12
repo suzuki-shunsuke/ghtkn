@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
@@ -62,6 +64,29 @@ func TestController_handle_unlock_enableRefresh(t *testing.T) {
 	}
 	if !c.refreshEnabled() {
 		t.Fatal("a re-unlock without the flag must not disable refresh")
+	}
+}
+
+// TestController_handle_unlock_capsRefreshTokenTTL verifies the server clamps a
+// refresh-token TTL larger than the six-month maximum. The CLI rejects such a value up
+// front; this is the server-side backstop for any other client.
+func TestController_handle_unlock_capsRefreshTokenTTL(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	c := New()
+	c.keyFile = filepath.Join(t.TempDir(), "key")
+	c.tokenDir = t.TempDir()
+
+	// 200 days, over the six-month (180-day) cap. refresh_token_ttl is nanoseconds.
+	overCap := (200 * 24 * time.Hour).Nanoseconds()
+	req := fmt.Sprintf(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","enable_refresh_token":true,"refresh_token_ttl":%d}`, overCap)
+	unlock, _ := c.handle(ctx, strings.NewReader(req+"\n"))
+	if !unlock.OK {
+		t.Fatalf("unlock failed: %+v", unlock)
+	}
+	if c.refreshTokenTTL != maxRefreshTokenTTL {
+		t.Fatalf("refreshTokenTTL = %v, want capped to %v", c.refreshTokenTTL, maxRefreshTokenTTL)
 	}
 }
 

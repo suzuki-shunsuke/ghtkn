@@ -44,10 +44,7 @@ func (c *Controller) handleUnlock(ctx context.Context, req *agentapi.Request) *a
 	c.store = store
 	// Bind refresh enablement and its TTL to this passphrase-authenticated unlock.
 	c.enableRefreshToken = req.EnableRefreshToken
-	c.refreshTokenTTL = req.RefreshTokenTTL
-	if c.refreshTokenTTL <= 0 {
-		c.refreshTokenTTL = defaultRefreshTokenTTL
-	}
+	c.refreshTokenTTL = c.resolveRefreshTokenTTL(req.RefreshTokenTTL)
 	if c.logger != nil {
 		if created {
 			c.logger.Info("generated a new agent key", "path", c.keyFile)
@@ -106,7 +103,7 @@ func (c *Controller) stripRefreshTokens(st *tokenstore.Store) {
 }
 
 // stripRefreshToken returns raw with its refresh token and refresh-token expiration
-// cleared, and whether anything changed. An unparseable token, or one that already has
+// cleared, and whether anything changed. An unparsable token, or one that already has
 // no refresh token, yields (nil, false).
 func stripRefreshToken(raw json.RawMessage) (json.RawMessage, bool) {
 	token := &pubapi.AccessToken{}

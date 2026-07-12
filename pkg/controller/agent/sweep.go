@@ -14,11 +14,35 @@ const (
 	// discards it, when the unlock request does not specify one. One week balances
 	// convenience against how long an unused refresh token lingers.
 	defaultRefreshTokenTTL = 7 * 24 * time.Hour
+	// maxRefreshTokenTTL caps --refresh-token-ttl: a stored token is useless once its
+	// refresh token expires (GitHub issues refresh tokens that live about six months),
+	// so a larger TTL is clamped to this. A month is counted as 30 days. The CLI rejects
+	// larger values up front (see pkg/cli/agent); this is the server-side backstop for
+	// any other client, so keep the two in sync.
+	maxRefreshTokenTTL = 6 * 30 * 24 * time.Hour
 	// refreshTokenSweepInterval is how often the sweep runs while the agent is unlocked.
 	// Checking every stored token's expiration daily is cheap relative to the risk of an
 	// unused refresh token lingering.
 	refreshTokenSweepInterval = 24 * time.Hour
 )
+
+// resolveRefreshTokenTTL clamps a requested refresh-token TTL to a sane range: a
+// non-positive value falls back to the default, and a value above the six-month maximum
+// is capped. The CLI rejects an over-large TTL up front, so the cap is a server-side
+// backstop for any other client rather than a normal path.
+func (c *Controller) resolveRefreshTokenTTL(ttl time.Duration) time.Duration {
+	switch {
+	case ttl <= 0:
+		return defaultRefreshTokenTTL
+	case ttl > maxRefreshTokenTTL:
+		if c.logger != nil {
+			c.logger.Warn("refresh-token-ttl exceeds the maximum; capping it", "requested", ttl, "max", maxRefreshTokenTTL)
+		}
+		return maxRefreshTokenTTL
+	default:
+		return ttl
+	}
+}
 
 // startRefreshTokenSweep launches the background job that discards tokens unused for
 // longer than ttl. It runs once immediately and then every refreshTokenSweepInterval
@@ -82,7 +106,7 @@ func (c *Controller) sweepExpiredTokens(st *tokenstore.Store, ttl time.Duration)
 }
 
 // tokenExpiredBefore reports whether the token's access-token expiration is before
-// cutoff. An unparseable token, or one without an expiration, is treated as not expired
+// cutoff. An unparsable token, or one without an expiration, is treated as not expired
 // so a decode glitch never deletes data.
 func tokenExpiredBefore(raw json.RawMessage, cutoff time.Time) bool {
 	// Only the expiration is needed; do not materialize the tokens as Go strings.

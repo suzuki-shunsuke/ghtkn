@@ -12,7 +12,6 @@ package agent
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent"
@@ -151,6 +150,8 @@ passphrase on purpose: it cannot be enabled without unlocking the agent.
 
 With refresh enabled, the agent periodically discards tokens left unused for longer
 than --refresh-token-ttl (default 1 week) so an unused refresh token does not linger.
+The TTL takes a number with a d (day), w (week), or m (30-day month) suffix, e.g.
+7d, 4w, 2m, and must be less than 6 months.
 
 $ ghtkn agent unlock`,
 		Flags: []cli.Flag{
@@ -158,10 +159,10 @@ $ ghtkn agent unlock`,
 				Name:  "enable-refresh",
 				Usage: "Enable refreshing expiring access tokens with stored refresh tokens",
 			},
-			&cli.DurationFlag{
+			&cli.StringFlag{
 				Name:  "refresh-token-ttl",
-				Usage: "How long a stored token may sit unused before the agent discards it (only with --enable-refresh)",
-				Value: 7 * 24 * time.Hour,
+				Usage: "How long a stored token may sit unused before the agent discards it, e.g. 7d/4w/2m (only with --enable-refresh)",
+				Value: "1w",
 			},
 		},
 		Action: r.unlock,
@@ -174,7 +175,11 @@ func (r *runner) unlock(ctx context.Context, cmd *cli.Command) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
-	return unlock.New().Run(ctx, r.logger.Logger, cmd.Bool("enable-refresh"), cmd.Duration("refresh-token-ttl")) //nolint:wrapcheck
+	ttl, err := parseRefreshTokenTTL(cmd.String("refresh-token-ttl"))
+	if err != nil {
+		return err
+	}
+	return unlock.New().Run(ctx, r.logger.Logger, cmd.Bool("enable-refresh"), ttl) //nolint:wrapcheck
 }
 
 // resetCommand returns the CLI command definition for the 'agent reset' subcommand.
