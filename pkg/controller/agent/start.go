@@ -59,7 +59,7 @@ func (c *Controller) Start(ctx context.Context, logger *slog.Logger) error {
 		listener.Close()
 	}()
 
-	if err := c.serve(listener, logger); err != nil {
+	if err := c.serve(ctx, listener, logger); err != nil {
 		return fmt.Errorf("serve the agent socket: %w", err)
 	}
 

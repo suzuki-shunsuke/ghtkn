@@ -15,7 +15,11 @@ import (
 // agent over the socket, loading (or creating) the data key. It is the client half
 // of the locked-start workflow: 'ghtkn agent start' runs locked in the background,
 // and 'ghtkn agent unlock' supplies the passphrase interactively.
-func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
+//
+// enableRefreshToken binds refresh-token enablement to this passphrase-authenticated
+// unlock. The current refresh state is logged so the user can notice if it was enabled
+// without their intent (e.g. by an injected flag).
+func (c *Controller) Run(ctx context.Context, logger *slog.Logger, enableRefreshToken bool) error {
 	path, err := agentapi.SocketPath(os.Getenv, runtime.GOOS)
 	if err != nil {
 		return err //nolint:wrapcheck
@@ -29,8 +33,14 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 		return fmt.Errorf("query the agent status: %s", status.Error)
 	}
 	if !status.Locked {
-		logger.Info("ghtkn agent is already unlocked")
+		logger.Info("ghtkn agent is already unlocked", "refresh_token_enabled", status.RefreshTokenEnabled)
 		return nil
+	}
+
+	// Surface the intent before the passphrase is entered, so the user can abort (e.g.
+	// Ctrl-C) if they did not mean to enable refresh tokens.
+	if enableRefreshToken {
+		logger.Info("refresh tokens will be enabled for this agent")
 	}
 
 	// status.Initialized reports whether a key file already exists. On first use
@@ -47,8 +57,9 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	}()
 
 	resp, err := agentapi.Send(ctx, path, &agentapi.Request{
-		Command:    agentapi.CommandUnlock,
-		Passphrase: string(pass),
+		Command:            agentapi.CommandUnlock,
+		Passphrase:         string(pass),
+		EnableRefreshToken: enableRefreshToken,
 	})
 	if err != nil {
 		return err //nolint:wrapcheck
@@ -57,6 +68,6 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 		return fmt.Errorf("unlock the agent: %s", resp.Error)
 	}
 
-	logger.Info("ghtkn agent unlocked")
+	logger.Info("ghtkn agent unlocked", "refresh_token_enabled", resp.RefreshTokenEnabled)
 	return nil
 }

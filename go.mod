@@ -1,8 +1,10 @@
 module github.com/suzuki-shunsuke/ghtkn
 
-go 1.26.4
+go 1.26.5
 
-// replace github.com/suzuki-shunsuke/ghtkn-go-sdk v0.4.1 => ../ghtkn-go-sdk
+replace github.com/suzuki-shunsuke/ghtkn-go-sdk v0.4.1 => ../ghtkn-go-sdk
+
+replace github.com/suzuki-shunsuke/go-github-device-flow v0.0.1 => ../go-github-device-flow
 
 require (
 	github.com/google/go-cmp v0.7.0
@@ -10,6 +12,7 @@ require (
 	github.com/spf13/afero v1.15.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
 	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.4.1
+	github.com/suzuki-shunsuke/go-github-device-flow v0.0.1
 	github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.1
 	github.com/suzuki-shunsuke/slog-error v0.2.2
 	github.com/suzuki-shunsuke/slog-util v0.3.2

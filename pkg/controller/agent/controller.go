@@ -16,10 +16,19 @@ package agent
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"sync"
+	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
+	"github.com/suzuki-shunsuke/go-github-device-flow/deviceflow"
+	"github.com/suzuki-shunsuke/go-revoke-github-access-token/revoke"
 )
+
+// revoker revokes raw GitHub access tokens via GitHub's credential revocation API.
+type revoker interface {
+	Revoke(ctx context.Context, tokens []string) error
+}
 
 // Controller runs the ghtkn agent server.
 type Controller struct {
@@ -35,10 +44,41 @@ type Controller struct {
 	// keyFile and tokenDir are the server's on-disk locations, set in Start.
 	keyFile  string
 	tokenDir string
+
+	// statusMu guards status.
+	statusMu sync.Mutex
+	// status tracks the device flows in progress, keyed by client ID. An entry holds
+	// the one-time code info so any client polling GET can display it. An entry means
+	// a flow is running; it is deleted when the flow finishes (success or failure).
+	status map[string]*deviceFlowState
+	// client runs the GitHub device flow (device-code request and access-token poll).
+	client *deviceflow.Client
+	// revoker revokes stored tokens via GitHub's credential revocation API.
+	revoker revoker
+	// now returns the current time; overridable in tests for the expiration check.
+	now func() time.Time
+	// enableRefreshToken lets an expiring access token be refreshed with a stored
+	// refresh token instead of re-running the device flow. It is part of the unlocked
+	// state (guarded by mu): set from the passphrase-authenticated UNLOCK and read per
+	// GET, never from the environment.
+	enableRefreshToken bool
+}
+
+// refreshEnabled reports whether refreshing expiring access tokens with stored refresh
+// tokens is enabled. It is set at unlock time.
+func (c *Controller) refreshEnabled() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.enableRefreshToken
 }
 
 // New creates a new agent Controller. The server starts locked (no token store);
 // it is unlocked later via the UNLOCK command.
 func New() *Controller {
-	return &Controller{}
+	return &Controller{
+		status:  map[string]*deviceFlowState{},
+		client:  deviceflow.New(&deviceflow.Input{HTTPClient: http.DefaultClient}),
+		revoker: revoke.New(nil),
+		now:     time.Now,
+	}
 }

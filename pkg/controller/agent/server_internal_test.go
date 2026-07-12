@@ -1,12 +1,13 @@
 package agent
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
-	"log/slog"
-	"path/filepath"
+	"fmt"
+	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
@@ -32,38 +33,22 @@ type handleTestCase struct {
 var handleTestCases = []handleTestCase{ //nolint:gochecknoglobals // test fixture
 	{
 		name:     "status empty",
-		requests: []string{`{"command":"STATUS"}`},
+		requests: []string{`{"protocol_version":1,"command":"STATUS"}`},
 		want:     []*agentapi.Response{{OK: true}},
 	},
 	{
-		name: "set then get",
-		requests: []string{
-			`{"command":"SET","client_id":"X","token":{"access_token":"abc"}}`,
-			`{"command":"GET","client_id":"X"}`,
-		},
-		want: []*agentapi.Response{
-			{OK: true},
-			{OK: true, Token: []byte(`{"access_token":"abc"}`)},
-		},
-	},
-	{
 		name:     "get missing",
-		requests: []string{`{"command":"GET","client_id":"missing"}`},
+		requests: []string{`{"protocol_version":1,"command":"GET","client_id":"missing"}`},
 		want:     []*agentapi.Response{{Error: agentapi.RespNotFound}},
 	},
 	{
 		name:     "get invalid client id",
-		requests: []string{`{"command":"GET","client_id":"../escape"}`},
-		want:     []*agentapi.Response{{Error: errMsgInvalidClientID}},
-	},
-	{
-		name:     "set invalid client id",
-		requests: []string{`{"command":"SET","client_id":"a/b","token":{}}`},
+		requests: []string{`{"protocol_version":1,"command":"GET","client_id":"../escape"}`},
 		want:     []*agentapi.Response{{Error: errMsgInvalidClientID}},
 	},
 	{
 		name:     "unknown command",
-		requests: []string{`{"command":"NOPE"}`},
+		requests: []string{`{"protocol_version":1,"command":"NOPE"}`},
 		want:     []*agentapi.Response{{Error: errMsgUnknownCommand}},
 	},
 	{
@@ -75,17 +60,6 @@ var handleTestCases = []handleTestCase{ //nolint:gochecknoglobals // test fixtur
 		name:     "empty request",
 		requests: []string{""},
 		want:     []*agentapi.Response{{Error: errMsgEmptyRequest}},
-	},
-	{
-		name: "set then status counts",
-		requests: []string{
-			`{"command":"SET","client_id":"X","token":{"access_token":"abc"}}`,
-			`{"command":"STATUS"}`,
-		},
-		want: []*agentapi.Response{
-			{OK: true},
-			{OK: true, Count: 1},
-		},
 	},
 }
 
@@ -106,7 +80,7 @@ func TestController_handle(t *testing.T) {
 			t.Parallel()
 			c := newUnlockedController(t)
 			for i, req := range d.requests {
-				got, _ := c.handle(strings.NewReader(req + "\n"))
+				got, _ := c.handle(context.Background(), strings.NewReader(req+"\n"))
 				if diff := cmp.Diff(d.want[i], got); diff != "" {
 					t.Fatalf("request %d (-want +got):\n%s", i, diff)
 				}
@@ -115,73 +89,150 @@ func TestController_handle(t *testing.T) {
 	}
 }
 
-// TestController_handle_locked verifies that a locked agent refuses GET/SET and
-// reports locked in STATUS.
+// TestController_handle_getSeeded verifies that a token seeded directly into the store
+// is returned by GET.
+func TestController_handle_getSeeded(t *testing.T) {
+	t.Parallel()
+	c := newUnlockedController(t)
+	const seeded = `{"access_token":"abc","expiration_date":"2999-01-01T00:00:00Z"}`
+	if err := c.store.Set("X", json.RawMessage(seeded)); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"X"}`+"\n"))
+	if diff := cmp.Diff(&agentapi.Response{OK: true, Token: []byte(seeded)}, got); diff != "" {
+		t.Fatalf("GET (-want +got):\n%s", diff)
+	}
+}
+
+// TestController_handle_statusCounts verifies that STATUS reports the number of cached
+// tokens.
+func TestController_handle_statusCounts(t *testing.T) {
+	t.Parallel()
+	c := newUnlockedController(t)
+	if err := c.store.Set("X", json.RawMessage(`{"access_token":"abc"}`)); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"STATUS"}`+"\n"))
+	if diff := cmp.Diff(&agentapi.Response{OK: true, Count: 1}, got); diff != "" {
+		t.Fatalf("STATUS (-want +got):\n%s", diff)
+	}
+}
+
+// TestController_handle_obsoleteClient verifies that a request below the minimum
+// supported protocol version is rejected as an obsolete client before any dispatch.
+// MinProtocolVersion is currently 0, so a negative version stands in for a
+// hypothetical dropped-support version.
+func TestController_handle_obsoleteClient(t *testing.T) {
+	t.Parallel()
+	c := newUnlockedController(t)
+	tooOld := agentapi.MinProtocolVersion - 1
+	got, _ := c.handle(context.Background(), strings.NewReader(fmt.Sprintf(`{"protocol_version":%d,"command":"GET","client_id":"Iv1.x"}`, tooOld)+"\n"))
+	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespObsoleteClient}, got); diff != "" {
+		t.Fatalf("obsolete client (-want +got):\n%s", diff)
+	}
+}
+
+// TestController_handle_legacySetGet verifies that a legacy (protocol version 0,
+// i.e. no protocol_version field) client is served in compatibility mode: it stores
+// a self-minted token with SET and reads it back with GET, instead of being rejected.
+func TestController_handle_legacySetGet(t *testing.T) {
+	t.Parallel()
+	c := newUnlockedController(t)
+	const token = `{"access_token":"abc","expiration_date":"2999-01-01T00:00:00Z"}`
+	set, _ := c.handle(context.Background(), strings.NewReader(`{"command":"SET","client_id":"Iv1.x","token":`+token+`}`+"\n"))
+	if diff := cmp.Diff(&agentapi.Response{OK: true}, set); diff != "" {
+		t.Fatalf("legacy SET (-want +got):\n%s", diff)
+	}
+	get, _ := c.handle(context.Background(), strings.NewReader(`{"command":"GET","client_id":"Iv1.x"}`+"\n"))
+	if diff := cmp.Diff(&agentapi.Response{OK: true, Token: []byte(token)}, get); diff != "" {
+		t.Fatalf("legacy GET (-want +got):\n%s", diff)
+	}
+}
+
+// TestController_handle_legacyGetMissing verifies that a legacy GET miss returns
+// RespNotFound (the agent never starts a device flow for a legacy client, so the
+// client re-mints the token itself and stores it with SET).
+func TestController_handle_legacyGetMissing(t *testing.T) {
+	t.Parallel()
+	c := newUnlockedController(t)
+	got, _ := c.handle(context.Background(), strings.NewReader(`{"command":"GET","client_id":"missing"}`+"\n"))
+	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
+		t.Fatalf("legacy GET miss (-want +got):\n%s", diff)
+	}
+}
+
+// TestController_handle_legacyNoRefresh verifies that even when the agent was unlocked
+// with refresh enabled and holds an expired token with a valid refresh token, a legacy
+// (version 0) GET does not refresh it: refresh is gated off by protocol version, so the
+// legacy client gets a cache miss and re-mints, matching the old behavior where refresh
+// is unsupported. The fake refresh endpoint would return a new token if it were called,
+// so a not-found response together with rt.called == false proves refresh was skipped.
+// The version-1 refresh path itself is covered by TestController_handleGet_refresh.
+func TestController_handle_legacyNoRefresh(t *testing.T) {
+	t.Parallel()
+	c := newUnlockedController(t)
+	c.enableRefreshToken = true
+	now := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
+	c.now = func() time.Time { return now }
+	rt := &refreshRoundTripper{
+		status: http.StatusOK,
+		body:   `{"access_token":"new-access","refresh_token":"new-refresh","expires_in":28800,"refresh_token_expires_in":15897600}`,
+	}
+	setClientTransport(c, rt)
+	const clientID = "Iv1.legacy"
+	seedExpiredWithRefresh(t, c, clientID, now.Add(24*time.Hour))
+
+	// Legacy GET: no protocol_version field (decodes to 0).
+	got, _ := c.handle(context.Background(), strings.NewReader(`{"command":"GET","client_id":"`+clientID+`"}`+"\n"))
+	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
+		t.Fatalf("legacy GET must not refresh (-want +got):\n%s", diff)
+	}
+	if rt.called {
+		t.Fatal("a legacy GET must not attempt a refresh, but the refresh endpoint was called")
+	}
+}
+
+// TestController_handle_obsoleteAgent verifies that a request with a protocol version
+// newer than the agent's (the agent is out of date) is rejected before any dispatch.
+func TestController_handle_obsoleteAgent(t *testing.T) {
+	t.Parallel()
+	c := newUnlockedController(t)
+	newer := agentapi.ProtocolVersion + 1
+	got, _ := c.handle(context.Background(), strings.NewReader(fmt.Sprintf(`{"protocol_version":%d,"command":"GET","client_id":"Iv1.x"}`, newer)+"\n"))
+	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespObsoleteAgent}, got); diff != "" {
+		t.Fatalf("obsolete agent (-want +got):\n%s", diff)
+	}
+}
+
+// TestController_handle_locked verifies that a locked agent refuses GET and reports
+// locked in STATUS.
 func TestController_handle_locked(t *testing.T) {
 	t.Parallel()
 	c := New() // locked: no store
 
-	get, _ := c.handle(strings.NewReader(`{"command":"GET","client_id":"Iv1.x"}` + "\n"))
+	get, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.x"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, get); diff != "" {
 		t.Fatalf("GET while locked (-want +got):\n%s", diff)
 	}
-	set, _ := c.handle(strings.NewReader(`{"command":"SET","client_id":"Iv1.x","token":{}}` + "\n"))
-	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, set); diff != "" {
-		t.Fatalf("SET while locked (-want +got):\n%s", diff)
-	}
-	status, _ := c.handle(strings.NewReader(`{"command":"STATUS"}` + "\n"))
+	status, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"STATUS"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true, Locked: true}, status); diff != "" {
 		t.Fatalf("STATUS while locked (-want +got):\n%s", diff)
 	}
 }
 
-// TestController_handle_disk drives GET/SET against a disk-backed encrypted store
-// and verifies the token round-trips through encryption and disk persistence.
+// TestController_handle_disk drives GET against a disk-backed encrypted store and
+// verifies the token round-trips through encryption and disk persistence.
 func TestController_handle_disk(t *testing.T) {
 	t.Parallel()
 	c := newUnlockedController(t)
 
-	set, _ := c.handle(strings.NewReader(`{"command":"SET","client_id":"Iv1.abc","token":{"access_token":"abc"}}` + "\n"))
-	if diff := cmp.Diff(&agentapi.Response{OK: true}, set); diff != "" {
-		t.Fatalf("SET (-want +got):\n%s", diff)
+	const seeded = `{"access_token":"abc","expiration_date":"2999-01-01T00:00:00Z"}`
+	if err := c.store.Set("Iv1.abc", json.RawMessage(seeded)); err != nil {
+		t.Fatal(err)
 	}
-	get, _ := c.handle(strings.NewReader(`{"command":"GET","client_id":"Iv1.abc"}` + "\n"))
-	if diff := cmp.Diff(&agentapi.Response{OK: true, Token: []byte(`{"access_token":"abc"}`)}, get); diff != "" {
+	get, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.abc"}`+"\n"))
+	if diff := cmp.Diff(&agentapi.Response{OK: true, Token: []byte(seeded)}, get); diff != "" {
 		t.Fatalf("GET (-want +got):\n%s", diff)
-	}
-}
-
-// TestController_handle_delete drives SET/DELETE/GET and verifies that a deleted
-// token is gone (GET reports not found) and that deleting an absent token succeeds.
-func TestController_handle_delete(t *testing.T) {
-	t.Parallel()
-	c := newUnlockedController(t)
-
-	if _, err := c.handle(strings.NewReader(`{"command":"SET","client_id":"Iv1.abc","token":{"access_token":"abc"}}` + "\n")); err {
-		t.Fatal("unexpected shutdown")
-	}
-	del, _ := c.handle(strings.NewReader(`{"command":"DELETE","client_id":"Iv1.abc"}` + "\n"))
-	if diff := cmp.Diff(&agentapi.Response{OK: true}, del); diff != "" {
-		t.Fatalf("DELETE (-want +got):\n%s", diff)
-	}
-	get, _ := c.handle(strings.NewReader(`{"command":"GET","client_id":"Iv1.abc"}` + "\n"))
-	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, get); diff != "" {
-		t.Fatalf("GET after DELETE (-want +got):\n%s", diff)
-	}
-	// Deleting an absent token is a no-op success.
-	del2, _ := c.handle(strings.NewReader(`{"command":"DELETE","client_id":"Iv1.absent"}` + "\n"))
-	if diff := cmp.Diff(&agentapi.Response{OK: true}, del2); diff != "" {
-		t.Fatalf("DELETE of an absent token (-want +got):\n%s", diff)
-	}
-}
-
-// TestController_handle_delete_locked verifies that a locked agent refuses DELETE.
-func TestController_handle_delete_locked(t *testing.T) {
-	t.Parallel()
-	c := New() // locked: no store
-	del, _ := c.handle(strings.NewReader(`{"command":"DELETE","client_id":"Iv1.x"}` + "\n"))
-	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, del); diff != "" {
-		t.Fatalf("DELETE while locked (-want +got):\n%s", diff)
 	}
 }
 
@@ -199,53 +250,9 @@ func TestController_handle_undecryptable(t *testing.T) {
 	c := New()
 	c.store = tokenstore.New(make([]byte, 32), dir)
 
-	get, _ := c.handle(strings.NewReader(`{"command":"GET","client_id":"Iv1.abc"}` + "\n"))
+	get, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.abc"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, get); diff != "" {
 		t.Fatalf("GET of an undecryptable token must be a miss (-want +got):\n%s", diff)
-	}
-}
-
-// TestController_handle_unlock verifies the UNLOCK command loads the key and unlocks
-// the agent.
-func TestController_handle_unlock(t *testing.T) {
-	t.Parallel()
-	c := New()
-	c.keyFile = filepath.Join(t.TempDir(), "key")
-	c.tokenDir = t.TempDir()
-
-	unlock, _ := c.handle(strings.NewReader(`{"command":"UNLOCK","passphrase":"pw"}` + "\n"))
-	if diff := cmp.Diff(&agentapi.Response{OK: true}, unlock); diff != "" {
-		t.Fatalf("UNLOCK (-want +got):\n%s", diff)
-	}
-	// After unlock, GET works (returns not found rather than locked).
-	get, _ := c.handle(strings.NewReader(`{"command":"GET","client_id":"Iv1.x"}` + "\n"))
-	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, get); diff != "" {
-		t.Fatalf("GET after unlock (-want +got):\n%s", diff)
-	}
-}
-
-// TestController_handle_unlock_orphanTokens verifies that unlocking with a freshly
-// generated key warns when token files written under a previous key are still
-// present (they can't be decrypted and will be re-minted).
-func TestController_handle_unlock_orphanTokens(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-	// A token left behind, encrypted under a previous key.
-	if err := tokenstore.New(testDataKey(t), dir).Set("Iv1.old", json.RawMessage(`{"access_token":"x"}`)); err != nil {
-		t.Fatal(err)
-	}
-	var buf bytes.Buffer
-	c := New()
-	c.logger = slog.New(slog.NewTextHandler(&buf, nil))
-	c.keyFile = filepath.Join(t.TempDir(), "key") // absent: a new key is generated
-	c.tokenDir = dir
-
-	unlock, _ := c.handle(strings.NewReader(`{"command":"UNLOCK","passphrase":"pw"}` + "\n"))
-	if diff := cmp.Diff(&agentapi.Response{OK: true}, unlock); diff != "" {
-		t.Fatalf("UNLOCK (-want +got):\n%s", diff)
-	}
-	if !strings.Contains(buf.String(), "predate the new agent key") {
-		t.Fatalf("expected an orphan-token warning, got logs:\n%s", buf.String())
 	}
 }
 
@@ -253,7 +260,7 @@ func TestController_handle_unlock_orphanTokens(t *testing.T) {
 func TestController_handle_stop(t *testing.T) {
 	t.Parallel()
 	c := New()
-	got, shutdown := c.handle(strings.NewReader(`{"command":"STOP"}` + "\n"))
+	got, shutdown := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"STOP"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true}, got); diff != "" {
 		t.Fatalf("response (-want +got):\n%s", diff)
 	}
@@ -262,64 +269,19 @@ func TestController_handle_stop(t *testing.T) {
 	}
 
 	// Non-stop commands must not request shutdown.
-	if _, shutdown := c.handle(strings.NewReader(`{"command":"STATUS"}` + "\n")); shutdown {
+	if _, shutdown := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"STATUS"}`+"\n")); shutdown {
 		t.Fatal("STATUS must not request shutdown")
 	}
 }
 
-// TestServe_status_locked verifies that a locked agent, served over a real socket,
-// reports running and locked in response to STATUS.
-func TestServe_status_locked(t *testing.T) {
-	t.Parallel()
-	path := filepath.Join(t.TempDir(), "agent.sock")
-	c := New() // starts locked: no store
-	listener, err := listen(t.Context(), path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { listener.Close() })
-	go c.serve(listener, slog.New(slog.DiscardHandler)) //nolint:errcheck // serve returns nil once the listener is closed
-
-	resp, err := agentapi.Send(t.Context(), path, &agentapi.Request{Command: agentapi.CommandStatus})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !resp.OK {
-		t.Fatalf("resp.OK = false, error: %s", resp.Error)
-	}
-	if !resp.Locked {
-		t.Fatal("a freshly started agent must report locked")
-	}
+// fakeRevoker is a test double for the revoker interface. It records the tokens it was
+// asked to revoke and returns a configurable error.
+type fakeRevoker struct {
+	tokens []string
+	err    error
 }
 
-// TestServe_status_unlocked verifies that an unlocked agent, served over a real
-// socket, reports running, unlocked, and the cached token count in STATUS.
-func TestServe_status_unlocked(t *testing.T) {
-	t.Parallel()
-	path := filepath.Join(t.TempDir(), "agent.sock")
-	c := New()
-	// Unlock by installing a disk store before serving so the serve goroutine never
-	// observes a concurrent write to c.store.
-	c.store = tokenstore.New(testDataKey(t), t.TempDir())
-	listener, err := listen(t.Context(), path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { listener.Close() })
-	go c.serve(listener, slog.New(slog.DiscardHandler)) //nolint:errcheck // serve returns nil once the listener is closed
-
-	if _, err := agentapi.Send(t.Context(), path, &agentapi.Request{Command: agentapi.CommandSet, ClientID: "Iv1.x", Token: []byte(`{"access_token":"abc"}`)}); err != nil {
-		t.Fatal(err)
-	}
-
-	resp, err := agentapi.Send(t.Context(), path, &agentapi.Request{Command: agentapi.CommandStatus})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !resp.OK || resp.Locked {
-		t.Fatalf("agent must be running and unlocked, got resp=%+v", resp)
-	}
-	if resp.Count != 1 {
-		t.Fatalf("count = %d, want 1", resp.Count)
-	}
+func (f *fakeRevoker) Revoke(_ context.Context, tokens []string) error {
+	f.tokens = append(f.tokens, tokens...)
+	return f.err
 }

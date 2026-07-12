@@ -144,18 +144,28 @@ The agent starts locked. This command prompts for the passphrase on the terminal
 and sends it to the agent over the socket so it can decrypt cached tokens. On first
 use it asks for a new passphrase twice to confirm it.
 
+Pass --enable-refresh to let the agent refresh an expiring access token with a
+stored refresh token instead of re-running the device flow. This is bound to the
+passphrase on purpose: it cannot be enabled without unlocking the agent.
+
 $ ghtkn agent unlock`,
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "enable-refresh",
+				Usage: "Enable refreshing expiring access tokens with stored refresh tokens",
+			},
+		},
 		Action: r.unlock,
 	}
 }
 
 // unlock executes the 'agent unlock' command logic.
 // It configures the log level and unlocks the running agent.
-func (r *runner) unlock(ctx context.Context, _ *cli.Command) error {
+func (r *runner) unlock(ctx context.Context, cmd *cli.Command) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
-	return unlock.New().Run(ctx, r.logger.Logger) //nolint:wrapcheck
+	return unlock.New().Run(ctx, r.logger.Logger, cmd.Bool("enable-refresh")) //nolint:wrapcheck
 }
 
 // resetCommand returns the CLI command definition for the 'agent reset' subcommand.

@@ -29,7 +29,7 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	case resp.Locked:
 		logger.Info("ghtkn agent is running but locked", "socket", path)
 	default:
-		logger.Info("ghtkn agent is running and unlocked", "cached_tokens", resp.Count, "socket", path)
+		logger.Info("ghtkn agent is running and unlocked", "cached_tokens", resp.Count, "refresh_token_enabled", resp.RefreshTokenEnabled, "socket", path)
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package agent
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,7 +13,6 @@ import (
 	"os"
 
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keyfile"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
@@ -26,13 +26,16 @@ const (
 	errMsgInvalidClientID = "invalid client id"
 	errMsgGet             = "get the token"
 	errMsgSet             = "set the token"
+	errMsgStartDeviceFlow = "start the device flow"
 	errMsgDelete          = "delete the token"
 	errMsgUnlock          = "unlock the agent"
 )
 
 // serve accepts connections until the listener is closed and handles each one.
-// It returns nil when the listener is closed (e.g. on shutdown).
-func (c *Controller) serve(listener net.Listener, logger *slog.Logger) error {
+// It returns nil when the listener is closed (e.g. on shutdown). ctx is the server's
+// context; it is passed to handlers so a device flow started to satisfy a GET keeps
+// running after the request connection closes and stops on server shutdown.
+func (c *Controller) serve(ctx context.Context, listener net.Listener, logger *slog.Logger) error {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -41,7 +44,7 @@ func (c *Controller) serve(listener net.Listener, logger *slog.Logger) error {
 			}
 			return err //nolint:wrapcheck
 		}
-		go c.handleConn(conn, logger)
+		go c.handleConn(ctx, conn, logger)
 	}
 }
 
@@ -49,9 +52,9 @@ func (c *Controller) serve(listener net.Listener, logger *slog.Logger) error {
 // and closes the connection. Each connection serves exactly one request.
 // When the request asks the agent to stop, the shutdown is triggered only after
 // the response has been written so the client always receives the acknowledgment.
-func (c *Controller) handleConn(conn net.Conn, logger *slog.Logger) {
+func (c *Controller) handleConn(ctx context.Context, conn net.Conn, logger *slog.Logger) {
 	defer conn.Close()
-	resp, shutdown := c.handle(conn)
+	resp, shutdown := c.handle(ctx, conn)
 	b, err := json.Marshal(resp)
 	if err != nil {
 		logger.Error("marshal the agent response", "error", err)
@@ -67,7 +70,7 @@ func (c *Controller) handleConn(conn net.Conn, logger *slog.Logger) {
 
 // handle reads and processes one request, returning the response to send and
 // whether the agent should shut down afterwards.
-func (c *Controller) handle(r io.Reader) (*agentapi.Response, bool) {
+func (c *Controller) handle(ctx context.Context, r io.Reader) (*agentapi.Response, bool) {
 	line, err := bufio.NewReader(r).ReadBytes('\n')
 	// ReadBytes returns io.EOF together with the data when there is no trailing
 	// newline, so a non-empty line is still valid in that case.
@@ -82,17 +85,37 @@ func (c *Controller) handle(r io.Reader) (*agentapi.Response, bool) {
 	if err := json.Unmarshal(line, req); err != nil {
 		return &agentapi.Response{Error: errMsgInvalidRequest}, false
 	}
-	return c.dispatch(req)
+	// The agent serves any version in [MinProtocolVersion, ProtocolVersion], handling
+	// an older but still-supported client with that older version's behavior (see
+	// dispatch) so old clients keep working after the agent is upgraded. A client
+	// below the minimum is too old to serve, and one above this agent's version means
+	// this agent itself is out of date; both fail fast with a clear "upgrade" message.
+	switch {
+	case req.ProtocolVersion < agentapi.MinProtocolVersion:
+		return &agentapi.Response{Error: agentapi.RespObsoleteClient}, false
+	case req.ProtocolVersion > agentapi.ProtocolVersion:
+		return &agentapi.Response{Error: agentapi.RespObsoleteAgent}, false
+	}
+	return c.dispatch(ctx, req)
 }
 
 // dispatch routes a request to the matching handler.
 // The second return value reports whether the agent should shut down.
-func (c *Controller) dispatch(req *agentapi.Request) (*agentapi.Response, bool) {
+//
+// A legacy client (protocol version below ProtocolVersionServerLifecycle) predates
+// the server taking over the token lifecycle: it mints tokens itself and stores them
+// with SET, and the agent must not run the device flow or refresh for it. Such a
+// client never sets StartDeviceFlow (the field did not exist), so GET never starts a
+// flow on its own; refresh is disabled explicitly here.
+func (c *Controller) dispatch(ctx context.Context, req *agentapi.Request) (*agentapi.Response, bool) {
+	legacy := req.ProtocolVersion < agentapi.ProtocolVersionServerLifecycle
 	switch req.Command {
 	case agentapi.CommandGet:
-		return c.handleGet(req), false
+		return c.handleGet(ctx, req, c.refreshEnabled() && !legacy), false
 	case agentapi.CommandSet:
 		return c.handleSet(req), false
+	case agentapi.CommandRevoke:
+		return c.handleRevoke(ctx, req), false
 	case agentapi.CommandDelete:
 		return c.handleDelete(req), false
 	case agentapi.CommandStatus:
@@ -106,106 +129,25 @@ func (c *Controller) dispatch(req *agentapi.Request) (*agentapi.Response, bool) 
 	}
 }
 
-// handleGet returns the cached token for the request's client ID.
-func (c *Controller) handleGet(req *agentapi.Request) *agentapi.Response {
-	st := c.tokenStore()
-	if st == nil {
-		return &agentapi.Response{Error: agentapi.RespLocked}
-	}
-	token, ok, err := st.Get(req.ClientID)
+// readStoredToken reads the stored token for clientID and classifies store errors. It
+// returns the raw token and whether one is present, plus a non-nil response to send
+// back on a hard error. An undecryptable token (e.g. after a key rotation) is reported
+// as a miss (ok false, resp nil) so the caller re-mints it instead of failing with an
+// opaque error.
+func (c *Controller) readStoredToken(st *tokenstore.Store, clientID string) (json.RawMessage, bool, *agentapi.Response) {
+	token, ok, err := st.Get(clientID)
 	switch {
 	case errors.Is(err, tokenstore.ErrInvalidClientID):
-		return &agentapi.Response{Error: errMsgInvalidClientID}
+		return nil, false, &agentapi.Response{Error: errMsgInvalidClientID}
 	case errors.Is(err, tokenstore.ErrDecryptToken):
-		// A token persisted under a previous data key (e.g. after a key
-		// rotation) can't be decrypted. Treat it as a cache miss so the client
-		// re-mints the token via the device flow and overwrites the stale file,
-		// instead of failing permanently with an opaque error.
 		if c.logger != nil {
-			slogerr.WithError(c.logger, err).Warn("discard an undecryptable cached token; it will be re-minted", "client_id", req.ClientID)
+			slogerr.WithError(c.logger, err).Warn("discard an undecryptable cached token", "client_id", clientID)
 		}
-		return &agentapi.Response{Error: agentapi.RespNotFound}
+		return nil, false, nil
 	case err != nil:
-		return &agentapi.Response{Error: fmt.Sprintf("%s: %s", errMsgGet, err)}
-	case !ok:
-		return &agentapi.Response{Error: agentapi.RespNotFound}
+		return nil, false, &agentapi.Response{Error: fmt.Sprintf("%s: %s", errMsgGet, err)}
 	}
-	return &agentapi.Response{OK: true, Token: token}
-}
-
-// handleSet stores the request's token under its client ID.
-func (c *Controller) handleSet(req *agentapi.Request) *agentapi.Response {
-	st := c.tokenStore()
-	if st == nil {
-		return &agentapi.Response{Error: agentapi.RespLocked}
-	}
-	if err := st.Set(req.ClientID, req.Token); err != nil {
-		if errors.Is(err, tokenstore.ErrInvalidClientID) {
-			return &agentapi.Response{Error: errMsgInvalidClientID}
-		}
-		return &agentapi.Response{Error: errMsgSet}
-	}
-	return &agentapi.Response{OK: true}
-}
-
-// handleDelete removes the token cached under the request's client ID. Deleting a
-// client ID with no cached token succeeds (it is a no-op), so the revoke flow does
-// not have to special-case a missing token.
-func (c *Controller) handleDelete(req *agentapi.Request) *agentapi.Response {
-	st := c.tokenStore()
-	if st == nil {
-		return &agentapi.Response{Error: agentapi.RespLocked}
-	}
-	if err := st.Delete(req.ClientID); err != nil {
-		if errors.Is(err, tokenstore.ErrInvalidClientID) {
-			return &agentapi.Response{Error: errMsgInvalidClientID}
-		}
-		return &agentapi.Response{Error: fmt.Sprintf("%s: %s", errMsgDelete, err)}
-	}
-	return &agentapi.Response{OK: true}
-}
-
-// handleStatus reports whether the agent is locked, how many tokens are cached
-// (when unlocked), and whether an agent key already exists on disk.
-func (c *Controller) handleStatus() *agentapi.Response {
-	st := c.tokenStore()
-	resp := &agentapi.Response{OK: true, Locked: st == nil, Initialized: c.keyExists()}
-	if st != nil {
-		resp.Count = st.Len()
-	}
-	return resp
-}
-
-// handleUnlock loads (or creates) the data key from the request passphrase and
-// switches the agent to an unlocked, disk-backed store. It is idempotent: unlocking
-// an already-unlocked agent succeeds without re-reading the key.
-func (c *Controller) handleUnlock(req *agentapi.Request) *agentapi.Response {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.store != nil {
-		return &agentapi.Response{OK: true}
-	}
-	dataKey, created, err := keyfile.LoadOrCreateDataKey(c.keyFile, []byte(req.Passphrase))
-	if err != nil {
-		if errors.Is(err, keyfile.ErrIncorrectPassphrase) {
-			return &agentapi.Response{Error: keyfile.ErrIncorrectPassphrase.Error()}
-		}
-		return &agentapi.Response{Error: errMsgUnlock}
-	}
-	c.store = tokenstore.New(dataKey, c.tokenDir)
-	if c.logger != nil {
-		if created {
-			c.logger.Info("generated a new agent key", "path", c.keyFile)
-			// A new key can't decrypt token files written under a previous key
-			// (e.g. when the key file was deleted while the tokens remained), so
-			// warn that those cached tokens are orphaned and will be re-minted.
-			if n := c.store.Len(); n > 0 {
-				c.logger.Warn("found cached token files that predate the new agent key; they can't be decrypted and will be re-minted on the next get", "path", c.tokenDir, "count", n)
-			}
-		}
-		c.logger.Info("agent unlocked")
-	}
-	return &agentapi.Response{OK: true}
+	return token, ok, nil
 }
 
 // tokenStore returns the current token store, or nil when the agent is locked.
