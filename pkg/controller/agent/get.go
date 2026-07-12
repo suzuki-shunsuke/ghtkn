@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
@@ -16,7 +15,11 @@ import (
 // minExpiration from now. An unparsable token is treated as invalid so it is
 // re-minted rather than served.
 func (c *Controller) tokenValid(raw json.RawMessage, minExpiration time.Duration) bool {
-	token := &pubapi.AccessToken{}
+	// Parse only the expiration; reading it must not materialize the access/refresh
+	// token as a Go string.
+	token := &struct {
+		ExpirationDate time.Time `json:"expiration_date"`
+	}{}
 	if err := json.Unmarshal(raw, token); err != nil {
 		return false
 	}
@@ -88,13 +91,19 @@ func incidentWarning(clientID string) string {
 // never leave the agent: they stay in the encrypted store and are used only for
 // server-side refresh.
 func tokenResponse(raw json.RawMessage) *agentapi.Response {
+	// Keep the access token and expiration as raw JSON bytes so the access token is
+	// never materialized as a Go string here; only the two client-facing fields are
+	// copied, so the refresh token stays server-side.
 	token := &struct {
-		AccessToken    string    `json:"access_token"`
-		ExpirationDate time.Time `json:"expiration_date"`
+		AccessToken    json.RawMessage `json:"access_token"`
+		ExpirationDate json.RawMessage `json:"expiration_date"`
 	}{}
 	if err := json.Unmarshal(raw, token); err != nil {
 		return &agentapi.Response{Error: fmt.Sprintf("%s: %s", errMsgGet, err)}
 	}
+	// The extracted access-token bytes are copied into the marshaled response below;
+	// zero this intermediate copy once done.
+	defer scrub(token.AccessToken)
 	//nolint:gosec // G117: serializing only the access token; the refresh token is kept server-side.
 	b, err := json.Marshal(token)
 	if err != nil {
@@ -180,7 +189,12 @@ func (c *Controller) cachedToken(ctx context.Context, st *tokenstore.Store, req 
 // validRefreshToken returns the stored refresh token if it is present and still valid
 // (per the controller clock), or "" otherwise.
 func (c *Controller) validRefreshToken(raw json.RawMessage) string {
-	token := &pubapi.AccessToken{}
+	// Parse only the refresh token and its expiration; the access token is not read
+	// here, so it is never materialized as a Go string.
+	token := &struct {
+		RefreshToken               string    `json:"refresh_token"`
+		RefreshTokenExpirationDate time.Time `json:"refresh_token_expiration_date"`
+	}{}
 	if err := json.Unmarshal(raw, token); err != nil {
 		return ""
 	}

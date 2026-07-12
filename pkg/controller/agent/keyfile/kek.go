@@ -23,3 +23,11 @@ const (
 func deriveKEK(passphrase, salt []byte) []byte {
 	return argon2.IDKey(passphrase, salt, argon2Time, argon2Memory, argon2Threads, dataKeyLen)
 }
+
+// zero overwrites b with zeros. It is used to scrub the derived KEK after it has
+// wrapped or unwrapped the data key, so the passphrase-derived key does not linger.
+func zero(b []byte) {
+	for i := range b {
+		b[i] = 0
+	}
+}

@@ -60,9 +60,14 @@ func (c *Controller) handleConn(ctx context.Context, conn net.Conn, logger *slog
 		logger.Error("marshal the agent response", "error", err)
 		return
 	}
-	if _, err := conn.Write(append(b, '\n')); err != nil {
+	b = append(b, '\n')
+	if _, err := conn.Write(b); err != nil {
 		logger.Error("write the agent response", "error", err)
 	}
+	// The marshaled response may carry an access token (GET). Zero it and the stored
+	// token bytes once written so the plaintext does not linger in memory.
+	scrub(b)
+	scrub(resp.Token)
 	if shutdown && c.shutdown != nil {
 		c.shutdown()
 	}
@@ -72,6 +77,10 @@ func (c *Controller) handleConn(ctx context.Context, conn net.Conn, logger *slog
 // whether the agent should shut down afterwards.
 func (c *Controller) handle(ctx context.Context, r io.Reader) (*agentapi.Response, bool) {
 	line, err := bufio.NewReader(r).ReadBytes('\n')
+	// An UNLOCK request line carries the passphrase; zero the request bytes once the
+	// request has been dispatched so the plaintext does not linger. req.Passphrase is a
+	// separate copy (see SecretBytes.UnmarshalJSON) and is scrubbed by handleUnlock.
+	defer scrub(line)
 	// ReadBytes returns io.EOF together with the data when there is no trailing
 	// newline, so a non-empty line is still valid in that case.
 	if err != nil && !errors.Is(err, io.EOF) {

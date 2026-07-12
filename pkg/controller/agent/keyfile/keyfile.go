@@ -56,7 +56,9 @@ func CreateDataKey(path string, passphrase []byte) ([]byte, error) {
 	if _, err := rand.Read(salt); err != nil {
 		return nil, fmt.Errorf("generate a salt: %w", err)
 	}
-	wrapped, err := crypt.Seal(deriveKEK(passphrase, salt), dataKey)
+	kek := deriveKEK(passphrase, salt)
+	defer zero(kek) // the KEK is only needed to wrap the data key; do not keep it in memory
+	wrapped, err := crypt.Seal(kek, dataKey)
 	if err != nil {
 		return nil, fmt.Errorf("wrap the data key: %w", err)
 	}
@@ -81,7 +83,9 @@ func unwrapDataKey(blob, passphrase []byte) ([]byte, error) {
 	}
 	salt := blob[1:keyFileHeaderSize]
 	wrapped := blob[keyFileHeaderSize:]
-	dataKey, err := crypt.Open(deriveKEK(passphrase, salt), wrapped)
+	kek := deriveKEK(passphrase, salt)
+	defer zero(kek) // the KEK is only needed to unwrap the data key; do not keep it in memory
+	dataKey, err := crypt.Open(kek, wrapped)
 	if err != nil {
 		if errors.Is(err, crypt.ErrDecrypt) {
 			return nil, ErrIncorrectPassphrase

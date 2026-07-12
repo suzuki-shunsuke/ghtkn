@@ -59,9 +59,11 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger, enableRefresh
 		}
 	}()
 
+	// Pass the passphrase bytes directly (not as a string) so the deferred scrub above
+	// zeroes the copy the request carries.
 	resp, err := agentapi.Send(ctx, path, &agentapi.Request{
 		Command:            agentapi.CommandUnlock,
-		Passphrase:         string(pass),
+		Passphrase:         pass,
 		EnableRefreshToken: enableRefreshToken,
 		RefreshTokenTTL:    refreshTokenTTL,
 	})

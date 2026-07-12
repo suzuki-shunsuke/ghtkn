@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"time"
 
-	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
@@ -86,7 +85,10 @@ func (c *Controller) sweepExpiredTokens(st *tokenstore.Store, ttl time.Duration)
 // cutoff. An unparseable token, or one without an expiration, is treated as not expired
 // so a decode glitch never deletes data.
 func tokenExpiredBefore(raw json.RawMessage, cutoff time.Time) bool {
-	token := &pubapi.AccessToken{}
+	// Only the expiration is needed; do not materialize the tokens as Go strings.
+	token := &struct {
+		ExpirationDate time.Time `json:"expiration_date"`
+	}{}
 	if err := json.Unmarshal(raw, token); err != nil {
 		return false
 	}

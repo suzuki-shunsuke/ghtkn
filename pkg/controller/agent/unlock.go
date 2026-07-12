@@ -31,7 +31,9 @@ func (c *Controller) handleUnlock(ctx context.Context, req *agentapi.Request) *a
 		// state so a re-unlock still shows it.
 		return &agentapi.Response{OK: true, RefreshTokenEnabled: c.enableRefreshToken}
 	}
-	dataKey, created, err := keyfile.LoadOrCreateDataKey(c.keyFile, []byte(req.Passphrase))
+	// The passphrase is only needed to derive the data key; zero it afterwards.
+	defer scrub(req.Passphrase)
+	dataKey, created, err := keyfile.LoadOrCreateDataKey(c.keyFile, req.Passphrase)
 	if err != nil {
 		if errors.Is(err, keyfile.ErrIncorrectPassphrase) {
 			return &agentapi.Response{Error: keyfile.ErrIncorrectPassphrase.Error()}
