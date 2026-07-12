@@ -121,7 +121,7 @@ func (c *Controller) dispatch(ctx context.Context, req *agentapi.Request) (*agen
 	case agentapi.CommandStatus:
 		return c.handleStatus(), false
 	case agentapi.CommandUnlock:
-		return c.handleUnlock(req), false
+		return c.handleUnlock(ctx, req), false
 	case agentapi.CommandStop:
 		return &agentapi.Response{OK: true}, true
 	default:

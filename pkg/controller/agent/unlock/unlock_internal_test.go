@@ -46,7 +46,7 @@ func TestController_Run_enableRefresh(t *testing.T) {
 	}()
 
 	c := &Controller{readPassphrase: func(string) ([]byte, error) { return []byte("pw"), nil }}
-	if err := c.Run(t.Context(), slog.New(slog.DiscardHandler), true); err != nil {
+	if err := c.Run(t.Context(), slog.New(slog.DiscardHandler), true, 0); err != nil {
 		t.Fatal(err)
 	}
 

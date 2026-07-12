@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
+	"time"
 
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tty"
@@ -18,8 +19,10 @@ import (
 //
 // enableRefreshToken binds refresh-token enablement to this passphrase-authenticated
 // unlock. The current refresh state is logged so the user can notice if it was enabled
-// without their intent (e.g. by an injected flag).
-func (c *Controller) Run(ctx context.Context, logger *slog.Logger, enableRefreshToken bool) error {
+// without their intent (e.g. by an injected flag). refreshTokenTTL is how long a stored
+// token may sit unused before the agent discards it; it applies only when refresh is
+// enabled.
+func (c *Controller) Run(ctx context.Context, logger *slog.Logger, enableRefreshToken bool, refreshTokenTTL time.Duration) error {
 	path, err := agentapi.SocketPath(os.Getenv, runtime.GOOS)
 	if err != nil {
 		return err //nolint:wrapcheck
@@ -60,6 +63,7 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger, enableRefresh
 		Command:            agentapi.CommandUnlock,
 		Passphrase:         string(pass),
 		EnableRefreshToken: enableRefreshToken,
+		RefreshTokenTTL:    refreshTokenTTL,
 	})
 	if err != nil {
 		return err //nolint:wrapcheck

@@ -89,3 +89,51 @@ func TestController_handle_unlock_orphanTokens(t *testing.T) {
 		t.Fatalf("expected an orphan-token warning, got logs:\n%s", buf.String())
 	}
 }
+
+// TestController_handle_unlock_stripsRefreshWhenDisabled verifies that unlocking with
+// refresh disabled drops any stored refresh token (left by a previous refresh-enabled
+// run) while keeping the access token.
+func TestController_handle_unlock_stripsRefreshWhenDisabled(t *testing.T) {
+	t.Parallel()
+	keyFile := filepath.Join(t.TempDir(), "key")
+	tokenDir := t.TempDir()
+
+	// First unlock with refresh enabled, then seed a token carrying a refresh token.
+	c1 := New()
+	c1.keyFile = keyFile
+	c1.tokenDir = tokenDir
+	if resp, _ := c1.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","enable_refresh_token":true}`+"\n")); !resp.OK {
+		t.Fatalf("first unlock failed: %+v", resp)
+	}
+	const seeded = `{"access_token":"ghu_a","expiration_date":"2999-01-01T00:00:00Z","refresh_token":"ghr_a","refresh_token_expiration_date":"2999-06-01T00:00:00Z"}`
+	if err := c1.store.Set("Iv1.x", json.RawMessage(seeded)); err != nil {
+		t.Fatal(err)
+	}
+
+	// Restart: a new controller unlocks over the same key/dir with refresh disabled.
+	c2 := New()
+	c2.keyFile = keyFile
+	c2.tokenDir = tokenDir
+	unlock, _ := c2.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))
+	if unlock.RefreshTokenEnabled {
+		t.Fatalf("refresh must be disabled, got %+v", unlock)
+	}
+
+	raw, ok, err := c2.store.Get("Iv1.x")
+	if err != nil || !ok {
+		t.Fatalf("read the stripped token: ok=%v err=%v", ok, err)
+	}
+	var at struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+	}
+	if err := json.Unmarshal(raw, &at); err != nil {
+		t.Fatal(err)
+	}
+	if at.RefreshToken != "" {
+		t.Fatalf("the refresh token must be stripped, got %q", at.RefreshToken)
+	}
+	if at.AccessToken != "ghu_a" {
+		t.Fatalf("the access token must be preserved, got %q", at.AccessToken)
+	}
+}

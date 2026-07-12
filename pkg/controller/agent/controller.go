@@ -62,6 +62,10 @@ type Controller struct {
 	// state (guarded by mu): set from the passphrase-authenticated UNLOCK and read per
 	// GET, never from the environment.
 	enableRefreshToken bool
+	// refreshTokenTTL is how long a stored token may sit unused before the periodic
+	// sweep discards it (see sweep.go). It is part of the unlocked state (guarded by mu),
+	// set from UNLOCK, and only used when enableRefreshToken is set.
+	refreshTokenTTL time.Duration
 }
 
 // refreshEnabled reports whether refreshing expiring access tokens with stored refresh

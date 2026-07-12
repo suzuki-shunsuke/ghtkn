@@ -294,7 +294,8 @@ func TestController_handleGet_refreshDisabled(t *testing.T) {
 }
 
 // TestController_handleGet_refreshHTTPError verifies that a failing refresh request falls
-// back to a not-found miss without corrupting the stored token.
+// back to a not-found miss without corrupting the stored token, and that because the
+// refresh token was still valid, the response carries a security warning for the user.
 func TestController_handleGet_refreshHTTPError(t *testing.T) {
 	t.Parallel()
 	c := newUnlockedController(t)
@@ -306,8 +307,11 @@ func TestController_handleGet_refreshHTTPError(t *testing.T) {
 	seedExpiredWithRefresh(t, c, clientID, now.Add(24*time.Hour))
 
 	got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
-	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
-		t.Fatalf("refresh HTTP error (-want +got):\n%s", diff)
+	if got.Error != agentapi.RespNotFound {
+		t.Fatalf("refresh HTTP error must be a not-found miss, got error %q", got.Error)
+	}
+	if got.Warning == "" {
+		t.Fatal("a still-valid refresh token that failed to refresh must set an incident Warning")
 	}
 	if !rt.called {
 		t.Fatal("the refresh endpoint should have been called")
