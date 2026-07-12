@@ -149,6 +149,24 @@ func TestController_handle_legacySetGet(t *testing.T) {
 	}
 }
 
+// TestController_handle_setRejectedForCurrentClient verifies that SET is refused for a
+// non-legacy (protocol version 1) client: the server owns the token lifecycle, so a
+// client must not be able to overwrite the stored token with a self-pushed one.
+func TestController_handle_setRejectedForCurrentClient(t *testing.T) {
+	t.Parallel()
+	c := newUnlockedController(t)
+	const token = `{"access_token":"abc","expiration_date":"2999-01-01T00:00:00Z"}`
+	set, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"SET","client_id":"Iv1.x","token":`+token+`}`+"\n"))
+	if diff := cmp.Diff(&agentapi.Response{Error: errMsgSetNotAllowed}, set); diff != "" {
+		t.Fatalf("current-client SET (-want +got):\n%s", diff)
+	}
+	// Nothing was stored: a subsequent GET is a miss.
+	get, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.x"}`+"\n"))
+	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, get); diff != "" {
+		t.Fatalf("GET after rejected SET (-want +got):\n%s", diff)
+	}
+}
+
 // TestController_handle_legacyGetMissing verifies that a legacy GET miss returns
 // RespNotFound (the agent never starts a device flow for a legacy client, so the
 // client re-mints the token itself and stores it with SET).

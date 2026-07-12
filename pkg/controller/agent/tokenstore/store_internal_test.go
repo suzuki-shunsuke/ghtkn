@@ -211,6 +211,46 @@ func TestStore_getReturnsCallerOwnedBuffer(t *testing.T) {
 	}
 }
 
+// TestStore_memoryModeOwnsBuffers verifies that in memory-only mode (New(nil, "")) the
+// store neither aliases the caller's Set buffer nor hands out its own on Get: scrubbing
+// the buffer passed to Set, and scrubbing a buffer returned by Get, both leave the stored
+// token intact. Disk mode gets this for free (Set re-encrypts, Get re-decrypts), so this
+// exercises the memory-mode copy branch specifically.
+func TestStore_memoryModeOwnsBuffers(t *testing.T) {
+	t.Parallel()
+	s := New(nil, "")
+	const want = `{"access_token":"ghu_secret","expiration_date":"2999-01-01T00:00:00Z"}`
+
+	// Set must copy: scrubbing the caller's buffer must not corrupt the stored token.
+	token := json.RawMessage(want)
+	if err := s.Set("Iv1.abc", token); err != nil {
+		t.Fatal(err)
+	}
+	for i := range token {
+		token[i] = 0
+	}
+
+	// Get must copy: scrubbing a returned buffer must not corrupt the stored token.
+	got, ok, err := s.Get("Iv1.abc")
+	if err != nil || !ok {
+		t.Fatalf("Get: ok=%v err=%v", ok, err)
+	}
+	if string(got) != want {
+		t.Fatalf("scrubbing the Set buffer corrupted the store: got %q", got)
+	}
+	for i := range got {
+		got[i] = 0
+	}
+
+	again, ok, err := s.Get("Iv1.abc")
+	if err != nil || !ok {
+		t.Fatalf("second Get: ok=%v err=%v", ok, err)
+	}
+	if string(again) != want {
+		t.Fatalf("scrubbing a returned token corrupted the store: got %q", again)
+	}
+}
+
 // TestStore_ClientIDs verifies that ClientIDs lists every stored token, ignoring
 // temporary files and invalid names.
 func TestStore_ClientIDs(t *testing.T) {

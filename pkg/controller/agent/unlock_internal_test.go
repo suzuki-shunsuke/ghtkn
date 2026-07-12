@@ -44,7 +44,9 @@ func TestController_handle_unlock_enableRefresh(t *testing.T) {
 	c.keyFile = filepath.Join(t.TempDir(), "key")
 	c.tokenDir = t.TempDir()
 
-	unlock, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","enable_refresh_token":true}`+"\n"))
+	// Use a cancellable context: enabling refresh starts the sweep goroutine, which must
+	// stop when the test ends.
+	unlock, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","enable_refresh_token":true}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true, RefreshTokenEnabled: true}, unlock); diff != "" {
 		t.Fatalf("UNLOCK --enable-refresh (-want +got):\n%s", diff)
 	}
@@ -127,7 +129,9 @@ func TestController_handle_unlock_stripsRefreshWhenDisabled(t *testing.T) {
 	c1 := New()
 	c1.keyFile = keyFile
 	c1.tokenDir = tokenDir
-	if resp, _ := c1.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","enable_refresh_token":true}`+"\n")); !resp.OK {
+	// Use a cancellable context: a refresh-enabled unlock starts the sweep goroutine,
+	// which must stop when the test ends.
+	if resp, _ := c1.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","enable_refresh_token":true}`+"\n")); !resp.OK {
 		t.Fatalf("first unlock failed: %+v", resp)
 	}
 	const seeded = `{"access_token":"ghu_a","expiration_date":"2999-01-01T00:00:00Z","refresh_token":"ghr_a","refresh_token_expiration_date":"2999-06-01T00:00:00Z"}`

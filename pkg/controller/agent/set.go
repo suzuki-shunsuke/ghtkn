@@ -13,7 +13,14 @@ import (
 // clients never send SET because the server owns the token lifecycle. The stored
 // payload is exactly what the client sent, so no refresh token is ever attached this
 // way.
-func (c *Controller) handleSet(req *agentapi.Request) *agentapi.Response {
+//
+// SET is rejected for a non-legacy client: for a current client the server owns the
+// lifecycle, so accepting a client-pushed token would let it overwrite the
+// server-managed one.
+func (c *Controller) handleSet(req *agentapi.Request, legacy bool) *agentapi.Response {
+	if !legacy {
+		return &agentapi.Response{Error: errMsgSetNotAllowed}
+	}
 	st := c.tokenStore()
 	if st == nil {
 		return &agentapi.Response{Error: agentapi.RespLocked}

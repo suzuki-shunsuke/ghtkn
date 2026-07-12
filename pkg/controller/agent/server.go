@@ -26,6 +26,7 @@ const (
 	errMsgInvalidClientID = "invalid client id"
 	errMsgGet             = "get the token"
 	errMsgSet             = "set the token"
+	errMsgSetNotAllowed   = "set is not allowed for this protocol version; the agent owns the token lifecycle"
 	errMsgStartDeviceFlow = "start the device flow"
 	errMsgDelete          = "delete the token"
 	errMsgUnlock          = "unlock the agent"
@@ -94,6 +95,10 @@ func (c *Controller) handle(ctx context.Context, r io.Reader) (*agentapi.Respons
 	if err := json.Unmarshal(line, req); err != nil {
 		return &agentapi.Response{Error: errMsgInvalidRequest}, false
 	}
+	// A SET request (legacy client) carries a client-minted token; json.Unmarshal copied
+	// it out of line into its own buffer, so scrub it once dispatch is done. handleSet's
+	// Store.Set takes its own copy, so this does not corrupt the stored token.
+	defer scrub(req.Token)
 	// The agent serves any version in [MinProtocolVersion, ProtocolVersion], handling
 	// an older but still-supported client with that older version's behavior (see
 	// dispatch) so old clients keep working after the agent is upgraded. A client
@@ -122,7 +127,7 @@ func (c *Controller) dispatch(ctx context.Context, req *agentapi.Request) (*agen
 	case agentapi.CommandGet:
 		return c.handleGet(ctx, req, c.refreshEnabled() && !legacy), false
 	case agentapi.CommandSet:
-		return c.handleSet(req), false
+		return c.handleSet(req, legacy), false
 	case agentapi.CommandRevoke:
 		return c.handleRevoke(ctx, req), false
 	case agentapi.CommandDelete:

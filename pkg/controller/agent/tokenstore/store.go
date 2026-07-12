@@ -112,7 +112,8 @@ func (s *Store) Set(clientID string, token json.RawMessage) error {
 	defer s.mu.Unlock()
 
 	if s.dir == "" {
-		s.tokens[clientID] = token
+		// Copy so the caller may scrub its buffer without corrupting the stored token.
+		s.tokens[clientID] = append(json.RawMessage(nil), token...)
 		return nil
 	}
 

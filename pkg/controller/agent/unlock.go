@@ -23,6 +23,9 @@ import (
 // refresh token left over from a previous refresh-enabled run can no longer leak. ctx is
 // the server context; the sweep it starts runs until the agent shuts down.
 func (c *Controller) handleUnlock(ctx context.Context, req *agentapi.Request) *agentapi.Response {
+	// The passphrase is only needed to derive the data key; zero it afterwards. Scrub on
+	// entry so it is zeroed even on the already-unlocked early return below.
+	defer scrub(req.Passphrase)
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.store != nil {
@@ -31,8 +34,6 @@ func (c *Controller) handleUnlock(ctx context.Context, req *agentapi.Request) *a
 		// state so a re-unlock still shows it.
 		return &agentapi.Response{OK: true, RefreshTokenEnabled: c.enableRefreshToken}
 	}
-	// The passphrase is only needed to derive the data key; zero it afterwards.
-	defer scrub(req.Passphrase)
 	dataKey, created, err := keyfile.LoadOrCreateDataKey(c.keyFile, req.Passphrase)
 	if err != nil {
 		if errors.Is(err, keyfile.ErrIncorrectPassphrase) {

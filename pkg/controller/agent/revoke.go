@@ -53,7 +53,11 @@ func (c *Controller) collectRevocableTokens(st *tokenstore.Store, clientIDs []st
 			continue // nothing stored for this client: nothing to revoke.
 		}
 		token := &pubapi.AccessToken{}
-		if err := json.Unmarshal(raw, token); err != nil {
+		err := json.Unmarshal(raw, token)
+		// The decrypted plaintext (access + refresh token) is no longer needed once
+		// parsed; the extracted string fields below are what get revoked.
+		scrub(raw)
+		if err != nil {
 			revokeFailed = append(revokeFailed, clientID)
 			continue
 		}

@@ -57,16 +57,27 @@ func (c *Controller) startDeviceFlow(ctx context.Context, logger *slog.Logger, c
 		expiresIn:       deviceCodeResp.ExpiresIn,
 	}
 
+	// Claim the in-progress slot atomically. If a concurrent start already claimed it,
+	// adopt that flow: return its (already displayed) one-time code and start no second
+	// poller. Our own device code is simply left to expire unused. This keeps a single
+	// poller per client ID even when two GETs race to start, so only one flow stores the
+	// minted token and there are no competing pollers.
+	c.statusMu.Lock()
+	if existing, ok := c.status[clientID]; ok {
+		c.statusMu.Unlock()
+		return existing, nil
+	}
+	c.status[clientID] = state
+	c.statusMu.Unlock()
+
 	if st := c.tokenStore(); st != nil {
-		// Best-effort: drop the stale token so a failed flow can't resurrect it.
+		// Best-effort: drop the stale token so a failed flow can't resurrect it. Only the
+		// winner of the slot does this, so a concurrent adopter never deletes a token the
+		// winner's poller may have just stored.
 		if err := st.Delete(clientID); err != nil {
 			slogerr.WithError(logger, err).Warn("delete the stale token before the device flow", "client_id", clientID)
 		}
 	}
-
-	c.statusMu.Lock()
-	c.status[clientID] = state
-	c.statusMu.Unlock()
 
 	go func() {
 		defer c.clearDeviceFlow(clientID)
@@ -85,6 +96,7 @@ func (c *Controller) startDeviceFlow(ctx context.Context, logger *slog.Logger, c
 			slogerr.WithError(logger, err).Error("encode the minted access token", "client_id", clientID)
 			return
 		}
+		defer scrub(raw)
 		// Store the token before clearing the in-progress marker (deferred) so a poll
 		// never sees "not in progress" before the token is readable.
 		if err := st.Set(clientID, raw); err != nil {
