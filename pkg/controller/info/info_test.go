@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/info"
 )
 
@@ -25,6 +26,7 @@ func TestController_Info(t *testing.T) { //nolint:funlen
 		env     map[string]string
 		appName string
 		version string
+		cfg     *config.Config
 		want    *info.Output
 	}{
 		{
@@ -158,6 +160,49 @@ func TestController_Info(t *testing.T) { //nolint:funlen
 				ConfigPath: configPath,
 			},
 		},
+		{
+			name: "HOME is omitted but other path vars are reported",
+			env: map[string]string{
+				"HOME":            "/home/alice",
+				"XDG_CONFIG_HOME": "/home/alice/.config",
+			},
+			version: "v1.0.0",
+			want: &info.Output{
+				OS:      runtime.GOOS,
+				Arch:    runtime.GOARCH,
+				Version: "v1.0.0",
+				Envs: map[string]string{
+					// HOME is intentionally absent; XDG_CONFIG_HOME is reported.
+					"XDG_CONFIG_HOME": "/home/alice/.config",
+				},
+				App:        "",
+				ConfigPath: configPath,
+			},
+		},
+		{
+			name:    "effective config is reported with the apps list omitted",
+			env:     map[string]string{},
+			version: "v1.0.0",
+			cfg: &config.Config{
+				Apps:          []*config.App{{Name: "example", ClientID: "Iv1.example"}},
+				Backend:       &config.Backend{Type: "agent"},
+				MinExpiration: "1h",
+			},
+			want: &info.Output{
+				OS:      runtime.GOOS,
+				Arch:    runtime.GOARCH,
+				Version: "v1.0.0",
+				Envs:    map[string]string{},
+				// No GHTKN_APP/argument, so the reported app is the default (first) app.
+				App:        "example",
+				ConfigPath: configPath,
+				// apps must not appear: the round-trip through JSON drops it.
+				Config: &info.ConfigView{Config: &config.Config{
+					Backend:       &config.Backend{Type: "agent"},
+					MinExpiration: "1h",
+				}},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -167,7 +212,7 @@ func TestController_Info(t *testing.T) { //nolint:funlen
 			buf := &bytes.Buffer{}
 			ctrl := info.New(buf, fakeEnv(tt.env))
 
-			if err := ctrl.Info(configPath, tt.appName, tt.version); err != nil {
+			if err := ctrl.Info(configPath, tt.appName, tt.version, tt.cfg); err != nil {
 				t.Fatalf("Info() returned an unexpected error: %v", err)
 			}
 

@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/info"
@@ -86,5 +87,13 @@ func (r *runner) action(_ context.Context, logger *slogutil.Logger, args *Args) 
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
-	return info.New(os.Stdout, os.Getenv).Info(configPath, args.AppName, args.Version) //nolint:wrapcheck
+	// Resolve the effective config (config file plus environment overrides) so info can
+	// report the settings that actually take effect. It is best-effort: a config that
+	// can't be loaded must not fail the troubleshooting command, so warn and omit it.
+	cfg, err := ghtkn.LoadConfig()
+	if err != nil {
+		logger.Warn("load the config for the info output; omitting the config section", "error", err)
+		cfg = nil
+	}
+	return info.New(os.Stdout, os.Getenv).Info(configPath, args.AppName, args.Version, cfg) //nolint:wrapcheck
 }
