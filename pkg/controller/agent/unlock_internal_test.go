@@ -87,8 +87,8 @@ func TestController_handle_unlock_capsRefreshTokenTTL(t *testing.T) {
 	if !unlock.OK {
 		t.Fatalf("unlock failed: %+v", unlock)
 	}
-	if c.refreshTokenTTL != maxRefreshTokenTTL {
-		t.Fatalf("refreshTokenTTL = %v, want capped to %v", c.refreshTokenTTL, maxRefreshTokenTTL)
+	if c.refreshTokenTTL != MaxRefreshTokenTTL {
+		t.Fatalf("refreshTokenTTL = %v, want capped to %v", c.refreshTokenTTL, MaxRefreshTokenTTL)
 	}
 }
 

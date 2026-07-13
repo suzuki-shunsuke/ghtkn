@@ -14,12 +14,13 @@ const (
 	// discards it, when the unlock request does not specify one. One week balances
 	// convenience against how long an unused refresh token lingers.
 	defaultRefreshTokenTTL = 7 * 24 * time.Hour
-	// maxRefreshTokenTTL caps --refresh-token-ttl: a stored token is useless once its
+	// MaxRefreshTokenTTL caps --refresh-token-ttl: a stored token is useless once its
 	// refresh token expires (GitHub issues refresh tokens that live about six months),
-	// so a larger TTL is clamped to this. A month is counted as 30 days. The CLI rejects
-	// larger values up front (see pkg/cli/agent); this is the server-side backstop for
-	// any other client, so keep the two in sync.
-	maxRefreshTokenTTL = 6 * 30 * 24 * time.Hour
+	// so a larger TTL is clamped to this. A month is counted as 30 days. This is the
+	// single source of truth for the upper bound: the server clamps to it (see
+	// resolveRefreshTokenTTL) and the CLI rejects larger values up front by referencing
+	// this same constant (see pkg/cli/agent).
+	MaxRefreshTokenTTL = 6 * 30 * 24 * time.Hour
 	// refreshTokenSweepInterval is how often the sweep runs while the agent is unlocked.
 	// Checking every stored token's expiration daily is cheap relative to the risk of an
 	// unused refresh token lingering.
@@ -34,11 +35,11 @@ func (c *Controller) resolveRefreshTokenTTL(ttl time.Duration) time.Duration {
 	switch {
 	case ttl <= 0:
 		return defaultRefreshTokenTTL
-	case ttl > maxRefreshTokenTTL:
+	case ttl > MaxRefreshTokenTTL:
 		if c.logger != nil {
-			c.logger.Warn("refresh-token-ttl exceeds the maximum; capping it", "requested", ttl, "max", maxRefreshTokenTTL)
+			c.logger.Warn("refresh-token-ttl exceeds the maximum; capping it", "requested", ttl, "max", MaxRefreshTokenTTL)
 		}
-		return maxRefreshTokenTTL
+		return MaxRefreshTokenTTL
 	default:
 		return ttl
 	}

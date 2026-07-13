@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent"
 )
 
 // Units for the d/w/m TTL suffixes. A month is counted as 30 days.
@@ -12,10 +14,6 @@ const (
 	day   = 24 * time.Hour
 	week  = 7 * day
 	month = 30 * day
-	// maxRefreshTokenTTL is the upper bound for --refresh-token-ttl. A stored token is
-	// useless once its refresh token expires (GitHub issues refresh tokens that live
-	// about six months), so a longer TTL is rejected.
-	maxRefreshTokenTTL = 6 * month
 )
 
 // ttlUnit maps a d/w/m suffix (units time.ParseDuration does not understand but that are
@@ -46,7 +44,7 @@ func parseRefreshTokenTTL(s string) (time.Duration, error) {
 	if d < 0 {
 		return 0, fmt.Errorf("refresh-token-ttl must not be negative: %q", s)
 	}
-	if d >= maxRefreshTokenTTL {
+	if d >= agent.MaxRefreshTokenTTL {
 		return 0, fmt.Errorf("refresh-token-ttl must be less than 6 months: %q", s)
 	}
 	return d, nil
