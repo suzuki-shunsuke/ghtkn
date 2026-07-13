@@ -181,7 +181,7 @@ func (c *Controller) cachedToken(ctx context.Context, st *tokenstore.Store, req 
 		return tokenResponse(token), ""
 	}
 	if enableRefreshToken {
-		return c.refreshAccessToken(ctx, st, req.ClientID, token)
+		return c.refreshAccessToken(ctx, st, req.ClientID, token, req.MinExpiration)
 	}
 	return nil, ""
 }
@@ -217,7 +217,12 @@ func (c *Controller) validRefreshToken(raw json.RawMessage) string {
 // within its expiration yet the refresh fails, that is a possible incident (the refresh
 // token may have leaked or been revoked), so the warning is set even though the response
 // falls back to the device flow.
-func (c *Controller) refreshAccessToken(ctx context.Context, st *tokenstore.Store, clientID string, raw json.RawMessage) (*agentapi.Response, string) {
+//
+// A rotating refresh token is single-use, so a concurrent GET for the same client that
+// consumed it first makes this refresh fail even though nothing is wrong. Before raising
+// the incident warning, refreshAccessToken re-reads the stored token to see whether a
+// sibling already refreshed it; if so it serves that token and stays silent.
+func (c *Controller) refreshAccessToken(ctx context.Context, st *tokenstore.Store, clientID string, raw json.RawMessage, minExpiration time.Duration) (*agentapi.Response, string) {
 	refreshToken := c.validRefreshToken(raw)
 	if refreshToken == "" {
 		return nil, ""
@@ -226,8 +231,17 @@ func (c *Controller) refreshAccessToken(ctx context.Context, st *tokenstore.Stor
 	//nolint:bodyclose // RefreshToken reads and closes the response body internally; it returns the decoded value.
 	newToken, _, _, err := c.client.RefreshToken(ctx, clientID, refreshToken)
 	if err != nil {
-		// The refresh token was still valid but the refresh failed: warn the user of a
-		// possible leak/revocation, then fall back to the device flow.
+		// The refresh may have failed only because a concurrent GET for the same client
+		// consumed this rotating refresh token first and stored a fresh one. If a sibling
+		// already refreshed it, serve that instead of raising a false incident warning.
+		// (This narrows but does not fully close the window: a sibling that succeeded on
+		// GitHub but has not yet stored its token is not visible here. Fully closing it
+		// needs per-client serialization.)
+		if resp := c.refreshedByPeer(st, clientID, minExpiration); resp != nil {
+			return resp, ""
+		}
+		// The refresh token was still valid but the refresh failed and no sibling refreshed
+		// it: warn the user of a possible leak/revocation, then fall back to the device flow.
 		if c.logger != nil {
 			slogerr.WithError(c.logger, err).Error("a still-valid refresh token failed to refresh; possible incident", "client_id", clientID)
 		}
@@ -250,4 +264,21 @@ func (c *Controller) refreshAccessToken(ctx context.Context, st *tokenstore.Stor
 		}
 	}
 	return tokenResponse(fresh), ""
+}
+
+// refreshedByPeer re-reads the stored token after a failed refresh and returns a token
+// response when it now satisfies minExpiration, i.e. a concurrent GET for the same client
+// already refreshed it (rotating refresh tokens are single-use, so a sibling consuming
+// this one first is the most likely cause of the failure). It returns nil when no usable
+// refreshed token is present, so the caller falls back to the incident warning.
+func (c *Controller) refreshedByPeer(st *tokenstore.Store, clientID string, minExpiration time.Duration) *agentapi.Response {
+	token, ok, resp := c.readStoredToken(st, clientID)
+	if resp != nil || !ok {
+		return nil
+	}
+	defer scrub(token)
+	if !c.tokenValid(token, minExpiration) {
+		return nil
+	}
+	return tokenResponse(token)
 }

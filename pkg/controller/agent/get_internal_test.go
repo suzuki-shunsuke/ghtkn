@@ -38,6 +38,12 @@ func setClientTransport(c *Controller, rt http.RoundTripper) {
 	c.client = deviceflow.New(&deviceflow.Input{HTTPClient: &http.Client{Transport: rt}})
 }
 
+// roundTripFunc adapts a function to http.RoundTripper so a test can run a side effect on
+// the refresh call (e.g. simulate a concurrent GET storing a fresh token).
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
 // TestController_handleGet_pendingFlow verifies that a GET for a client with a device
 // flow already in progress reports progress and echoes the one-time code, without
 // touching the network.
@@ -319,5 +325,48 @@ func TestController_handleGet_refreshHTTPError(t *testing.T) {
 	// The old token is left in place (not corrupted) on a refresh failure.
 	if _, ok, err := c.store.Get(clientID); err != nil || !ok {
 		t.Fatalf("stored token after failed refresh: ok=%v err=%v", ok, err)
+	}
+}
+
+// TestController_handleGet_refreshPeerAlreadyRefreshed verifies that when a refresh fails
+// but a concurrent GET for the same client has already stored a fresh token (the likely
+// cause with single-use rotating refresh tokens), the request serves that token silently
+// instead of raising a false incident warning.
+func TestController_handleGet_refreshPeerAlreadyRefreshed(t *testing.T) {
+	t.Parallel()
+	c := newUnlockedController(t)
+	now := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
+	c.now = func() time.Time { return now }
+	const clientID = "Iv1.peerrefresh"
+	seedExpiredWithRefresh(t, c, clientID, now.Add(24*time.Hour))
+
+	// The refresh call fails, but as a side effect it stores a fresh, valid token, standing
+	// in for a sibling GET that consumed the rotating refresh token first.
+	fresh := fmt.Sprintf(`{"access_token":"peer-access","expiration_date":"%s","refresh_token":"peer-refresh","refresh_token_expiration_date":"%s"}`,
+		now.Add(8*time.Hour).Format(time.RFC3339), now.Add(24*time.Hour).Format(time.RFC3339))
+	var called bool
+	setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
+		called = true
+		if err := c.store.Set(clientID, json.RawMessage(fresh)); err != nil {
+			t.Errorf("seed the peer-refreshed token: %v", err)
+		}
+		return &http.Response{StatusCode: http.StatusInternalServerError, Body: io.NopCloser(strings.NewReader("{}")), Header: make(http.Header)}, nil
+	}))
+
+	got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+	if !called {
+		t.Fatal("the refresh endpoint should have been called")
+	}
+	// The peer's fresh access token is served with no incident warning.
+	//nolint:gosec // G117: serializing a token in a test to build the expected bytes.
+	wantResp, err := json.Marshal(&struct {
+		AccessToken    string    `json:"access_token"`
+		ExpirationDate time.Time `json:"expiration_date"`
+	}{AccessToken: "peer-access", ExpirationDate: now.Add(8 * time.Hour)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff(&agentapi.Response{OK: true, Token: wantResp}, got); diff != "" {
+		t.Fatalf("peer-refreshed GET (-want +got):\n%s", diff)
 	}
 }
