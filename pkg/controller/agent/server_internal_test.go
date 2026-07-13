@@ -1,10 +1,15 @@
 package agent
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
+	"net"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -302,4 +307,46 @@ type fakeRevoker struct {
 func (f *fakeRevoker) Revoke(_ context.Context, tokens []string) error {
 	f.tokens = append(f.tokens, tokens...)
 	return f.err
+}
+
+// TestServe_oversized verifies that a request larger than maxRequestBytes with no newline
+// is capped and answered with an error, rather than buffered without limit or left to hang.
+// The name is kept short so the socket path stays under the OS sun_path limit.
+func TestServe_oversized(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "agent.sock")
+	c := New()
+	listener, err := listen(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { listener.Close() })
+	go c.serve(t.Context(), listener, slog.New(slog.DiscardHandler)) //nolint:errcheck // serve returns nil once the listener is closed
+
+	var d net.Dialer
+	conn, err := d.DialContext(t.Context(), "unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { conn.Close() })
+
+	// More than maxRequestBytes and no newline. The server stops reading at the cap, so a
+	// short write is expected; write in a goroutine so this test never blocks on it.
+	oversized := bytes.Repeat([]byte("a"), maxRequestBytes+4096)
+	go conn.Write(oversized) //nolint:errcheck
+
+	if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	line, err := bufio.NewReader(conn).ReadBytes('\n')
+	if err != nil {
+		t.Fatalf("read the response: %v", err)
+	}
+	resp := &agentapi.Response{}
+	if err := json.Unmarshal(bytes.TrimSpace(line), resp); err != nil {
+		t.Fatalf("unmarshal the response %q: %v", line, err)
+	}
+	if resp.Error == "" {
+		t.Fatalf("an oversized request must be rejected with an error, got %+v", resp)
+	}
 }

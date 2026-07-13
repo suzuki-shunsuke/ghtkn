@@ -11,10 +11,28 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"time"
 
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
+)
+
+// Bounds on a single connection so a stalled or oversized local request cannot park a
+// handler goroutine (and its file descriptor) forever or force unbounded buffering. The
+// socket is restricted to the current user, so these guard against a buggy client rather
+// than a remote attacker.
+const (
+	// readRequestTimeout bounds how long a connection may take to send its one request
+	// line. A client builds the whole request and writes it at once, so this is generous.
+	readRequestTimeout = 10 * time.Second
+	// writeResponseTimeout bounds how long writing the response may block, so a client
+	// that stops reading cannot wedge the handler.
+	writeResponseTimeout = 10 * time.Second
+	// maxRequestBytes caps the request line so a connection that never sends a newline
+	// cannot force the read buffer to grow without limit. It is far above any legitimate
+	// request (the largest carries an UNLOCK passphrase or a client-minted token).
+	maxRequestBytes = 64 * 1024
 )
 
 // Error messages returned to clients in the response.
@@ -55,20 +73,32 @@ func (c *Controller) serve(ctx context.Context, listener net.Listener, logger *s
 // the response has been written so the client always receives the acknowledgment.
 func (c *Controller) handleConn(ctx context.Context, conn net.Conn, logger *slog.Logger) {
 	defer conn.Close()
-	resp, shutdown := c.handle(ctx, conn)
+	// Bound the read: a client that connects but never sends a full request line must not
+	// park this goroutine forever, and it must not force the buffer to grow without limit.
+	if err := conn.SetReadDeadline(time.Now().Add(readRequestTimeout)); err != nil {
+		logger.Error("set the read deadline", "error", err)
+		return
+	}
+	resp, shutdown := c.handle(ctx, io.LimitReader(conn, maxRequestBytes))
+	// The response may carry an access token (GET); zero it and the marshaled bytes once no
+	// longer needed so the plaintext does not linger in memory. Deferred so every path below
+	// scrubs, including an early return on a write-deadline error.
+	defer scrub(resp.Token)
 	b, err := json.Marshal(resp)
 	if err != nil {
 		logger.Error("marshal the agent response", "error", err)
 		return
 	}
 	b = append(b, '\n')
+	defer scrub(b)
+	// Bound the write similarly, so a client that stops reading cannot wedge the handler.
+	if err := conn.SetWriteDeadline(time.Now().Add(writeResponseTimeout)); err != nil {
+		logger.Error("set the write deadline", "error", err)
+		return
+	}
 	if _, err := conn.Write(b); err != nil {
 		logger.Error("write the agent response", "error", err)
 	}
-	// The marshaled response may carry an access token (GET). Zero it and the stored
-	// token bytes once written so the plaintext does not linger in memory.
-	scrub(b)
-	scrub(resp.Token)
 	if shutdown && c.shutdown != nil {
 		c.shutdown()
 	}
