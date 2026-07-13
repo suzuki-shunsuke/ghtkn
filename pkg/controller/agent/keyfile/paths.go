@@ -17,15 +17,15 @@ const goosWindows = "windows"
 // config dir.
 func dataDir(getEnv func(string) string, goos string) (string, error) {
 	if goos == goosWindows {
-		if d := getEnv("LocalAppData"); d != "" {
+		if d := getEnv(env.LocalAppData); d != "" {
 			return d, nil
 		}
 		return "", errors.New("LocalAppData is required to use the agent backend on Windows")
 	}
-	if d := getEnv("XDG_DATA_HOME"); d != "" {
+	if d := getEnv(env.XDGDataHome); d != "" {
 		return d, nil
 	}
-	if home := getEnv("HOME"); home != "" {
+	if home := getEnv(env.Home); home != "" {
 		return filepath.Join(home, ".local", "share"), nil
 	}
 	return "", errors.New("XDG_DATA_HOME or HOME is required to use the agent backend")
