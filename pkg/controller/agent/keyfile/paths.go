@@ -3,6 +3,8 @@ package keyfile
 import (
 	"errors"
 	"path/filepath"
+
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 )
 
 // goosWindows is the runtime.GOOS value for Windows.
@@ -32,7 +34,7 @@ func dataDir(getEnv func(string) string, goos string) (string, error) {
 // KeyPath resolves the path of the wrapped data key file.
 // GHTKN_AGENT_KEY takes precedence; otherwise it is ${data dir}/ghtkn/key.
 func KeyPath(getEnv func(string) string, goos string) (string, error) {
-	if path := getEnv("GHTKN_AGENT_KEY"); path != "" {
+	if path := getEnv(env.AgentKey); path != "" {
 		return path, nil
 	}
 	dir, err := dataDir(getEnv, goos)

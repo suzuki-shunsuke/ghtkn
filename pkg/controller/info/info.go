@@ -4,7 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime"
+
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 )
+
+// redacted replaces the value of credential-bearing environment variables in the output.
+const redacted = "<REDACTED>"
 
 // Output is the troubleshooting information printed by the info command as JSON.
 type Output struct {
@@ -30,46 +35,35 @@ func (c *Controller) Info(configPath, appName, version string) error {
 		ConfigPath: configPath,
 	}
 
-	envNames := []string{
-		"GHTKN_AGENT_KEY",
-		"GHTKN_AGENT_SOCKET",
-		"GHTKN_APP",
-		"GHTKN_BACKEND",
-		"GHTKN_CONFIG",
-		"GHTKN_ENABLE",
-		"GHTKN_ENABLE_DEVICE_FLOW",
-		"GHTKN_LOG_LEVEL",
-		"GHTKN_MIN_EXPIRATION",
-		"GHTKN_OPEN_BROWSER",
-		"GHTKN_TEXT_BACKEND_DIR",
-		"XDG_CACHE_HOME",
-		"XDG_CONFIG_HOME",
-		"XDG_RUNTIME_DIR",
-	}
-
-	// read envs
-	envs := make(map[string]string, len(envNames))
-	for _, name := range envNames {
+	envs := map[string]string{}
+	// Every GHTKN_* variable, taken from the single registry so this dump can never
+	// drift from the set ghtkn actually reads. GHTKN_GITHUB_TOKEN is a credential, so
+	// it is redacted.
+	for _, name := range env.All {
 		value := c.getEnv(name)
-		if value != "" {
+		if value == "" {
+			continue
+		}
+		if name == env.GitHubToken {
+			value = redacted
+		}
+		envs[name] = value
+	}
+	// Non-GHTKN variables ghtkn also honors: the XDG directories (shown) and the
+	// ambient GitHub token variables (redacted).
+	for _, name := range []string{"XDG_CACHE_HOME", "XDG_CONFIG_HOME", "XDG_RUNTIME_DIR"} {
+		if value := c.getEnv(name); value != "" {
 			envs[name] = value
 		}
 	}
-
-	tokenEnvNames := []string{
-		"GH_TOKEN",
-		"GITHUB_TOKEN",
-		"GHTKN_GITHUB_TOKEN",
-	}
-	for _, name := range tokenEnvNames {
-		value := c.getEnv(name)
-		if value != "" {
-			envs[name] = "<REDACTED>"
+	for _, name := range []string{"GH_TOKEN", "GITHUB_TOKEN"} {
+		if c.getEnv(name) != "" {
+			envs[name] = redacted
 		}
 	}
 	output.Envs = envs
 
-	output.App = c.getEnv("GHTKN_APP")
+	output.App = c.getEnv(env.App)
 	if appName != "" {
 		output.App = appName
 	}

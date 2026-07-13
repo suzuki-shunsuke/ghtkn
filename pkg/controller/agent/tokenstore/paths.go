@@ -3,6 +3,8 @@ package tokenstore
 import (
 	"errors"
 	"path/filepath"
+
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 )
 
 // goosWindows is the runtime.GOOS value for Windows.
@@ -30,7 +32,7 @@ func cacheDir(getEnv func(string) string, goos string) (string, error) {
 // TokenDir resolves the directory that stores encrypted token files.
 // GHTKN_AGENT_TOKEN_DIR takes precedence; otherwise it is ${cache dir}/ghtkn/agent.
 func TokenDir(getEnv func(string) string, goos string) (string, error) {
-	if dir := getEnv("GHTKN_AGENT_TOKEN_DIR"); dir != "" {
+	if dir := getEnv(env.AgentTokenDir); dir != "" {
 		return dir, nil
 	}
 	dir, err := cacheDir(getEnv, goos)
