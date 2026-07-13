@@ -25,6 +25,15 @@ import (
 	"github.com/suzuki-shunsuke/go-revoke-github-access-token/revoke"
 )
 
+// githubHTTPTimeout bounds a single HTTP request to GitHub (device-code request, token
+// refresh, and credential revocation, plus each individual device-flow poll request). Go's
+// default transport bounds only dial and TLS handshake, so a peer that accepts the
+// connection but never sends response headers would otherwise block the handler goroutine
+// forever. GitHub normally responds in well under a second, so this is a generous backstop.
+// It bounds each request, not the whole device-flow poll loop, which legitimately runs for
+// the device code's lifetime.
+const githubHTTPTimeout = 30 * time.Second
+
 // revoker revokes raw GitHub access tokens via GitHub's credential revocation API.
 type revoker interface {
 	Revoke(ctx context.Context, tokens []string) error
@@ -79,10 +88,13 @@ func (c *Controller) refreshEnabled() bool {
 // New creates a new agent Controller. The server starts locked (no token store);
 // it is unlocked later via the UNLOCK command.
 func New() *Controller {
+	// One HTTP client, shared by the device-flow and revoke clients, with a per-request
+	// timeout so no GitHub call can block a handler goroutine indefinitely.
+	httpClient := &http.Client{Timeout: githubHTTPTimeout}
 	return &Controller{
 		status:  map[string]*deviceFlowState{},
-		client:  deviceflow.New(&deviceflow.Input{HTTPClient: http.DefaultClient}),
-		revoker: revoke.New(nil),
+		client:  deviceflow.New(&deviceflow.Input{HTTPClient: httpClient}),
+		revoker: revoke.New(httpClient),
 		now:     time.Now,
 	}
 }
