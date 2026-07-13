@@ -13,12 +13,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/reset"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/status"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/stop"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/unlock"
+	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/urfave/cli/v3"
 )
@@ -59,6 +61,30 @@ type runner struct {
 	flags  *flag.GlobalFlags
 }
 
+// warnIfBackendNotAgent logs a warning when the resolved storage backend is not the
+// agent. Running any 'ghtkn agent' subcommand implies the user means to use the agent
+// backend; if it is not selected, 'ghtkn get'/'auth' silently use another backend (the
+// OS keyring by default) and never touch this agent. It is best-effort: a resolution
+// error is logged at debug and does not fail the command. It reflects this process's
+// environment and config, which can differ from the environment a later 'ghtkn get'/
+// 'auth' runs in.
+func (r *runner) warnIfBackendNotAgent() {
+	cfg, err := ghtkn.LoadConfig()
+	if err != nil {
+		slogerr.WithError(r.logger.Logger, err).Debug("resolve the backend for the agent-usage check")
+		return
+	}
+	backend := "keyring"
+	if cfg.Backend != nil && cfg.Backend.Type != "" {
+		backend = cfg.Backend.Type
+	}
+	if backend != "agent" {
+		r.logger.Warn(`the configured backend is not "agent", so ghtkn get/auth will not use the ghtkn agent. `+
+			`Set GHTKN_BACKEND=agent or backend.type: agent to use it.`,
+			"backend", backend)
+	}
+}
+
 // startCommand returns the CLI command definition for the 'agent start' subcommand.
 // It configures the command name, usage description, and action handler.
 func (r *runner) startCommand() *cli.Command {
@@ -83,6 +109,7 @@ func (r *runner) start(ctx context.Context, _ *cli.Command) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
+	r.warnIfBackendNotAgent()
 	return agent.New().Start(ctx, r.logger.Logger) //nolint:wrapcheck
 }
 
@@ -106,6 +133,7 @@ func (r *runner) stop(ctx context.Context, _ *cli.Command) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
+	r.warnIfBackendNotAgent()
 	return stop.New().Run(ctx, r.logger.Logger) //nolint:wrapcheck
 }
 
@@ -130,6 +158,7 @@ func (r *runner) status(ctx context.Context, _ *cli.Command) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
+	r.warnIfBackendNotAgent()
 	return status.New().Run(ctx, r.logger.Logger) //nolint:wrapcheck
 }
 
@@ -175,6 +204,7 @@ func (r *runner) unlock(ctx context.Context, cmd *cli.Command) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
+	r.warnIfBackendNotAgent()
 	ttl, err := parseRefreshTokenTTL(cmd.String("refresh-token-ttl"))
 	if err != nil {
 		return err
@@ -205,5 +235,6 @@ func (r *runner) reset(ctx context.Context, _ *cli.Command) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
+	r.warnIfBackendNotAgent()
 	return reset.New().Run(ctx, r.logger.Logger) //nolint:wrapcheck
 }

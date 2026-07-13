@@ -4,6 +4,10 @@ go 1.26.5
 
 // replace github.com/suzuki-shunsuke/ghtkn-go-sdk v0.4.1 => ../ghtkn-go-sdk
 
+// TEMPORARY: develop against the local SDK checkout for the LoadConfig work.
+// Remove this and bump the ghtkn-go-sdk version to the release before merging.
+replace github.com/suzuki-shunsuke/ghtkn-go-sdk => ../ghtkn-go-sdk
+
 // replace github.com/suzuki-shunsuke/go-github-device-flow v0.0.1 => ../go-github-device-flow
 
 require (
