@@ -34,8 +34,8 @@ func ttlUnit(b byte) (time.Duration, bool) {
 // parseRefreshTokenTTL parses a --refresh-token-ttl value. It accepts a number with a
 // d (day), w (week), or m (30-day month) suffix, e.g. "3d", "4w", "2m", "1.5w", and
 // falls back to time.ParseDuration for other inputs (e.g. "168h"). It rejects empty,
-// negative, and out-of-range values: the TTL must not be negative and must be shorter
-// than six months. Zero is allowed and means "use the agent default".
+// negative, and out-of-range values: the TTL must not be negative and must not exceed
+// six months. Zero is allowed and means "use the agent default".
 func parseRefreshTokenTTL(s string) (time.Duration, error) {
 	d, err := parseDurationValue(s)
 	if err != nil {
@@ -44,8 +44,8 @@ func parseRefreshTokenTTL(s string) (time.Duration, error) {
 	if d < 0 {
 		return 0, fmt.Errorf("refresh-token-ttl must not be negative: %q", s)
 	}
-	if d >= agent.MaxRefreshTokenTTL {
-		return 0, fmt.Errorf("refresh-token-ttl must be less than 6 months: %q", s)
+	if d > agent.MaxRefreshTokenTTL {
+		return 0, fmt.Errorf("refresh-token-ttl must not exceed 6 months: %q", s)
 	}
 	return d, nil
 }

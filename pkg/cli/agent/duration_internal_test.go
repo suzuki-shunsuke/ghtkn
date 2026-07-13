@@ -21,8 +21,8 @@ func TestParseRefreshTokenTTL(t *testing.T) {
 		{name: "hours fallback", in: "168h", want: 168 * time.Hour},
 		{name: "zero uses server default", in: "0w", want: 0},
 		{name: "just under six months", in: "179d", want: 179 * 24 * time.Hour},
+		{name: "exactly six months accepted", in: "6m", want: 6 * 30 * 24 * time.Hour},
 
-		{name: "six months rejected", in: "6m", wantErr: true},
 		{name: "over six months", in: "7m", wantErr: true},
 		{name: "over six months in days", in: "200d", wantErr: true},
 		{name: "negative", in: "-1w", wantErr: true},
