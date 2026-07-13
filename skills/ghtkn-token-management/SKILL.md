@@ -6,7 +6,7 @@ description: Manage the ghtkn access token lifecycle - regeneration, ghtkn auth,
 ghtkn caches access tokens in the backend and regenerates them via Device Flow on expiry (8-hour validity). Key points:
 
 - `ghtkn get` returns a cached token; use `-min-expiration`/`-m` (or `GHTKN_MIN_EXPIRATION`, `min_expiration`) to force regeneration when too little validity remains.
-- `ghtkn auth` always runs the device flow and caches the token without printing it.
+- `ghtkn auth` regenerates and caches the token without printing it. It normally runs the device flow, but with the agent backend and refresh enabled it silently refreshes from the stored refresh token when one is available, and runs the device flow only otherwise.
 - The automatic device flow is disabled by default (v0.3.0+); `ghtkn get` / `git-credential` fail fast instead of blocking. Run `ghtkn auth` interactively to authenticate.
 - `ghtkn auth` can copy the one-time code to the clipboard (`-clipboard`/`-p`, `GHTKN_CLIPBOARD`, or `clipboard.enable`).
 

@@ -36,7 +36,7 @@ This could be useful if you want to test how `ghtkn` behaves.
 ## ghtkn auth
 
 `ghtkn auth` command authenticates to GitHub and caches an access token without printing it to stdout.
-It always runs the device flow to regenerate the token, regardless of any cached token.
+It regenerates the token regardless of any cached token. Regeneration normally runs the device flow, but with the agent backend and refresh enabled it silently refreshes from the stored refresh token when one is available, running the device flow only when no usable refresh token exists.
 Unlike `ghtkn get`, the device flow is always allowed even though it is disabled by default (and even when `GHTKN_ENABLE_DEVICE_FLOW=false`).
 Also unlike `ghtkn get`, it does not accept `-min-expiration (-m)`, nor read `GHTKN_MIN_EXPIRATION` or `min_expiration` in the configuration file.
 
