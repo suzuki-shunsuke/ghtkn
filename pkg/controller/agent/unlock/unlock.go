@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"runtime"
 	"time"
 
@@ -23,7 +22,7 @@ import (
 // token may sit unused before the agent discards it; it applies only when refresh is
 // enabled.
 func (c *Controller) Run(ctx context.Context, logger *slog.Logger, enableRefreshToken bool, refreshTokenTTL time.Duration) error {
-	path, err := agentapi.SocketPath(os.Getenv, runtime.GOOS)
+	path, err := agentapi.SocketPath(c.getEnv, runtime.GOOS)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
@@ -41,10 +40,10 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger, enableRefresh
 	}
 
 	// Surface the intent before the passphrase is entered, so the user can abort (e.g.
-	// Ctrl-C) if they did not mean to enable refresh tokens.
-	if enableRefreshToken {
-		logger.Info("refresh tokens will be enabled for this agent")
-	}
+	// Ctrl-C) if the refresh setting is not what they meant. When refresh is off, the
+	// agent may additionally prompt to confirm dropping stored refresh tokens after the
+	// passphrase is entered (see doUnlock).
+	logRefreshIntent(logger, enableRefreshToken)
 
 	// status.Initialized reports whether a key file already exists. On first use
 	// (not initialized) PromptPassphrase asks twice and verifies the entries match.
@@ -59,16 +58,12 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger, enableRefresh
 		}
 	}()
 
-	// Pass the passphrase bytes directly (not as a string) so the deferred scrub above
-	// zeroes the copy the request carries.
-	resp, err := agentapi.Send(ctx, path, &agentapi.Request{
-		Command:            agentapi.CommandUnlock,
-		Passphrase:         pass,
-		EnableRefreshToken: enableRefreshToken,
-		RefreshTokenTTL:    refreshTokenTTL,
-	})
+	resp, err := c.doUnlock(ctx, logger, path, pass, enableRefreshToken, refreshTokenTTL)
 	if err != nil {
-		return err //nolint:wrapcheck
+		return err
+	}
+	if resp == nil {
+		return nil // the user declined dropping the refresh tokens; the agent stays locked.
 	}
 	if !resp.OK {
 		return fmt.Errorf("unlock the agent: %s", resp.Error)
@@ -76,4 +71,62 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger, enableRefresh
 
 	logger.Info("ghtkn agent unlocked", "refresh_token_enabled", resp.RefreshTokenEnabled)
 	return nil
+}
+
+// logRefreshIntent surfaces, before the passphrase is entered, whether this unlock will
+// enable or disable refresh tokens so the user can abort a mistaken setting.
+func logRefreshIntent(logger *slog.Logger, enableRefreshToken bool) {
+	if enableRefreshToken {
+		logger.Info("refresh tokens will be enabled for this agent")
+	} else {
+		logger.Info("refresh tokens will be disabled for this agent")
+	}
+}
+
+// doUnlock sends the unlock request and, when the agent reports RefreshTokenRemovalPending
+// (unlocking without --enable-refresh while a still-valid refresh token is stored), prompts
+// the user and re-sends with the confirmation set. It returns a nil response (and nil error)
+// when the user declines, so the caller aborts and the agent stays locked. pass is passed
+// directly (not as a string) so Run's deferred scrub zeroes the copy the request carries.
+func (c *Controller) doUnlock(ctx context.Context, logger *slog.Logger, path string, pass []byte, enableRefreshToken bool, refreshTokenTTL time.Duration) (*agentapi.Response, error) {
+	resp, err := agentapi.Send(ctx, path, &agentapi.Request{
+		Command:            agentapi.CommandUnlock,
+		Passphrase:         pass,
+		EnableRefreshToken: enableRefreshToken,
+		RefreshTokenTTL:    refreshTokenTTL,
+	})
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+	if resp.RefreshTokenRemovalPending {
+		return c.confirmRefreshRemoval(ctx, logger, path, pass, enableRefreshToken, refreshTokenTTL)
+	}
+	return resp, nil
+}
+
+// confirmRefreshRemoval prompts the user (default No) to confirm dropping the stored
+// refresh tokens and, on yes, re-sends the unlock with ConfirmRefreshTokenRemoval set,
+// returning the agent's response. On no it logs the abort and returns (nil, nil) so the
+// caller stops without unlocking; the agent stays locked. pass is reused as is: its scrub
+// runs only when Run returns.
+func (c *Controller) confirmRefreshRemoval(ctx context.Context, logger *slog.Logger, path string, pass []byte, enableRefreshToken bool, refreshTokenTTL time.Duration) (*agentapi.Response, error) {
+	ok, err := c.confirm("Stored refresh tokens will be dropped (access tokens are kept; affected apps re-authenticate on next expiry). Rerun with --enable-refresh to keep them. Continue? (y/N): ")
+	if err != nil {
+		return nil, fmt.Errorf("confirm dropping stored refresh tokens: %w", err)
+	}
+	if !ok {
+		logger.Info("unlock aborted; rerun with --enable-refresh to keep the stored refresh tokens")
+		return nil, nil //nolint:nilnil // (nil, nil) signals a user-declined abort, distinct from an error.
+	}
+	resp, err := agentapi.Send(ctx, path, &agentapi.Request{
+		Command:                    agentapi.CommandUnlock,
+		Passphrase:                 pass,
+		EnableRefreshToken:         enableRefreshToken,
+		RefreshTokenTTL:            refreshTokenTTL,
+		ConfirmRefreshTokenRemoval: true,
+	})
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+	return resp, nil
 }

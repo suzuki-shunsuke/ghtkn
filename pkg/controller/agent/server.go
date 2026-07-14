@@ -48,6 +48,9 @@ const (
 	errMsgStartDeviceFlow = "start the device flow"
 	errMsgDelete          = "delete the token"
 	errMsgUnlock          = "unlock the agent"
+	// errMsgRefreshTokenRemovalPending accompanies RefreshTokenRemovalPending so an older
+	// client that does not understand the field still shows a meaningful reason.
+	errMsgRefreshTokenRemovalPending = "stored refresh tokens would be removed; confirm the removal or rerun with --enable-refresh to keep them"
 )
 
 // serve accepts connections until the listener is closed and handles each one.

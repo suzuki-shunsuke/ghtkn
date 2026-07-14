@@ -42,6 +42,18 @@ func (c *Controller) handleUnlock(ctx context.Context, req *agentapi.Request) *a
 		return &agentapi.Response{Error: errMsgUnlock}
 	}
 	store := tokenstore.New(dataKey, c.tokenDir)
+	// Refresh is being turned off while a still-valid refresh token is stored: dropping it
+	// forces the affected apps back through the device flow, so do not do it silently on a
+	// forgotten --enable-refresh. Answer with RefreshTokenRemovalPending (staying locked,
+	// nothing bound) so the client can prompt; a confirmed re-unlock carries
+	// ConfirmRefreshTokenRemoval and falls through to strip below. A first-ever unlock has
+	// no stored tokens, so this never blocks key creation.
+	if c.needsRefreshRemovalConfirmation(req, store) {
+		if c.logger != nil {
+			c.logger.Info("unlock without --enable-refresh found stored refresh tokens; awaiting confirmation to drop them")
+		}
+		return &agentapi.Response{RefreshTokenRemovalPending: true, Error: errMsgRefreshTokenRemovalPending}
+	}
 	c.store = store
 	// Bind refresh enablement and its TTL to this passphrase-authenticated unlock.
 	c.enableRefreshToken = req.EnableRefreshToken
@@ -66,6 +78,41 @@ func (c *Controller) handleUnlock(ctx context.Context, req *agentapi.Request) *a
 		c.stripRefreshTokens(store)
 	}
 	return &agentapi.Response{OK: true, RefreshTokenEnabled: c.enableRefreshToken}
+}
+
+// needsRefreshRemovalConfirmation reports whether this unlock would silently drop a
+// still-valid stored refresh token: refresh is being turned off, the user has not yet
+// confirmed the removal, and at least one stored token still carries a usable refresh
+// token. When true, handleUnlock stays locked and asks the client to confirm.
+func (c *Controller) needsRefreshRemovalConfirmation(req *agentapi.Request, store *tokenstore.Store) bool {
+	return !req.EnableRefreshToken && !req.ConfirmRefreshTokenRemoval && c.hasValidRefreshToken(store)
+}
+
+// hasValidRefreshToken reports whether any stored token carries a refresh token that is
+// still valid (present and unexpired, per validRefreshToken). It gates the removal
+// confirmation on unlock: an already-expired or absent refresh token is worthless, so
+// dropping it needs no prompt. It is best-effort — a store or per-token read error is
+// treated as "nothing valid found" so a glitch never forces a spurious prompt.
+func (c *Controller) hasValidRefreshToken(st *tokenstore.Store) bool {
+	ids, err := st.ClientIDs()
+	if err != nil {
+		if c.logger != nil {
+			slogerr.WithError(c.logger, err).Warn("list stored tokens to check for refresh tokens")
+		}
+		return false
+	}
+	for _, id := range ids {
+		raw, ok, err := st.Get(id)
+		if err != nil || !ok {
+			continue
+		}
+		valid := c.validRefreshToken(raw) != ""
+		scrub(raw)
+		if valid {
+			return true
+		}
+	}
+	return false
 }
 
 // stripRefreshTokens removes the refresh token from every stored token, keeping the

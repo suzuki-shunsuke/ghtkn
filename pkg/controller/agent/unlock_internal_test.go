@@ -117,9 +117,11 @@ func TestController_handle_unlock_orphanTokens(t *testing.T) {
 	}
 }
 
-// TestController_handle_unlock_stripsRefreshWhenDisabled verifies that unlocking with
-// refresh disabled drops any stored refresh token (left by a previous refresh-enabled
-// run) while keeping the access token.
+// TestController_handle_unlock_stripsRefreshWhenDisabled verifies that a confirmed unlock
+// with refresh disabled drops any stored refresh token (left by a previous refresh-enabled
+// run) while keeping the access token. The confirmation flag is required because a
+// still-valid refresh token would otherwise return RefreshTokenRemovalPending (see
+// TestController_handle_unlock_pendingRefreshRemoval).
 func TestController_handle_unlock_stripsRefreshWhenDisabled(t *testing.T) {
 	t.Parallel()
 	keyFile := filepath.Join(t.TempDir(), "key")
@@ -143,7 +145,7 @@ func TestController_handle_unlock_stripsRefreshWhenDisabled(t *testing.T) {
 	c2 := New()
 	c2.keyFile = keyFile
 	c2.tokenDir = tokenDir
-	unlock, _ := c2.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))
+	unlock, _ := c2.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","confirm_refresh_token_removal":true}`+"\n"))
 	if unlock.RefreshTokenEnabled {
 		t.Fatalf("refresh must be disabled, got %+v", unlock)
 	}
@@ -164,5 +166,96 @@ func TestController_handle_unlock_stripsRefreshWhenDisabled(t *testing.T) {
 	}
 	if at.AccessToken != "ghu_a" {
 		t.Fatalf("the access token must be preserved, got %q", at.AccessToken)
+	}
+}
+
+// seedRefreshToken unlocks c1 with refresh enabled over key/dir and stores a token
+// carrying a refresh token that expires at refreshExp. It returns the store (backed by the
+// passphrase-derived key) so a caller can read the token back without re-deriving the key.
+func seedRefreshToken(t *testing.T, keyFile, tokenDir, refreshExp string) *tokenstore.Store {
+	t.Helper()
+	c1 := New()
+	c1.keyFile = keyFile
+	c1.tokenDir = tokenDir
+	if resp, _ := c1.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","enable_refresh_token":true}`+"\n")); !resp.OK {
+		t.Fatalf("seed unlock failed: %+v", resp)
+	}
+	seeded := fmt.Sprintf(`{"access_token":"ghu_a","expiration_date":"2999-01-01T00:00:00Z","refresh_token":"ghr_a","refresh_token_expiration_date":%q}`, refreshExp)
+	if err := c1.store.Set("Iv1.x", json.RawMessage(seeded)); err != nil {
+		t.Fatal(err)
+	}
+	return c1.store
+}
+
+// TestController_handle_unlock_pendingRefreshRemoval verifies that a disabled unlock does
+// not silently drop a still-valid refresh token: it returns RefreshTokenRemovalPending,
+// leaves the agent locked (store not set), and keeps the refresh token intact.
+func TestController_handle_unlock_pendingRefreshRemoval(t *testing.T) {
+	t.Parallel()
+	keyFile := filepath.Join(t.TempDir(), "key")
+	tokenDir := t.TempDir()
+	store := seedRefreshToken(t, keyFile, tokenDir, "2999-06-01T00:00:00Z")
+
+	c := New()
+	c.keyFile = keyFile
+	c.tokenDir = tokenDir
+	unlock, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))
+	if diff := cmp.Diff(&agentapi.Response{RefreshTokenRemovalPending: true, Error: errMsgRefreshTokenRemovalPending}, unlock); diff != "" {
+		t.Fatalf("UNLOCK (-want +got):\n%s", diff)
+	}
+	if c.store != nil {
+		t.Fatal("the agent must stay locked while the removal is unconfirmed")
+	}
+	// The seeded refresh token is untouched: read it back through the seeding store.
+	raw, ok, err := store.Get("Iv1.x")
+	if err != nil || !ok {
+		t.Fatalf("read the seeded token: ok=%v err=%v", ok, err)
+	}
+	if !strings.Contains(string(raw), "ghr_a") {
+		t.Fatalf("the refresh token must be kept while unconfirmed, got %s", raw)
+	}
+}
+
+// TestController_handle_unlock_confirmedRefreshRemoval verifies that a disabled unlock
+// carrying the confirmation flag unlocks the agent and strips the refresh token.
+func TestController_handle_unlock_confirmedRefreshRemoval(t *testing.T) {
+	t.Parallel()
+	keyFile := filepath.Join(t.TempDir(), "key")
+	tokenDir := t.TempDir()
+	seedRefreshToken(t, keyFile, tokenDir, "2999-06-01T00:00:00Z")
+
+	c := New()
+	c.keyFile = keyFile
+	c.tokenDir = tokenDir
+	unlock, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","confirm_refresh_token_removal":true}`+"\n"))
+	if diff := cmp.Diff(&agentapi.Response{OK: true}, unlock); diff != "" {
+		t.Fatalf("UNLOCK (-want +got):\n%s", diff)
+	}
+	raw, ok, err := c.store.Get("Iv1.x")
+	if err != nil || !ok {
+		t.Fatalf("read the stripped token: ok=%v err=%v", ok, err)
+	}
+	if strings.Contains(string(raw), "ghr_a") {
+		t.Fatalf("the refresh token must be stripped after confirmation, got %s", raw)
+	}
+}
+
+// TestController_handle_unlock_noPromptWhenRefreshExpired verifies that an already-expired
+// refresh token is worthless, so a disabled unlock strips it without a confirmation prompt.
+func TestController_handle_unlock_noPromptWhenRefreshExpired(t *testing.T) {
+	t.Parallel()
+	keyFile := filepath.Join(t.TempDir(), "key")
+	tokenDir := t.TempDir()
+	seedRefreshToken(t, keyFile, tokenDir, "2000-01-01T00:00:00Z") // already expired
+
+	c := New()
+	c.keyFile = keyFile
+	c.tokenDir = tokenDir
+	unlock, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))
+	if diff := cmp.Diff(&agentapi.Response{OK: true}, unlock); diff != "" {
+		t.Fatalf("UNLOCK (-want +got):\n%s", diff)
+	}
+	if c.store == nil {
+		t.Fatal("an expired refresh token must not block the unlock")
 	}
 }
