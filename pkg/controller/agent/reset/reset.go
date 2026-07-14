@@ -22,11 +22,11 @@ import (
 // It asks for confirmation first because the operation is destructive, and requires
 // a terminal both for that confirmation and for the new passphrase.
 func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
-	keyFile, err := keyfile.KeyPath(os.Getenv, runtime.GOOS)
+	keyFile, err := keyfile.KeyPath(c.getEnv, runtime.GOOS)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
-	dir, err := tokenstore.TokenDir(os.Getenv, runtime.GOOS)
+	dir, err := tokenstore.TokenDir(c.getEnv, runtime.GOOS)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
@@ -43,7 +43,7 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	// Stop a running agent first so it does not keep using the old data key or
 	// write tokens after the files are deleted. Stop is a no-op (nil) when no agent
 	// is running.
-	if err := stop.New().Run(ctx, logger); err != nil {
+	if err := stop.NewWithEnv(c.getEnv).Run(ctx, logger); err != nil {
 		return err //nolint:wrapcheck
 	}
 	if err := deleteAgentFiles(keyFile, dir); err != nil {
