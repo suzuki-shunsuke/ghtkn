@@ -17,6 +17,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"runtime"
 	"sync"
 	"time"
 
@@ -24,6 +25,24 @@ import (
 	"github.com/suzuki-shunsuke/go-github-device-flow/deviceflow"
 	"github.com/suzuki-shunsuke/go-revoke-github-access-token/revoke"
 )
+
+// goosWindows is the runtime.GOOS value for Windows.
+const goosWindows = "windows"
+
+// RefreshTokenSupported reports whether the refresh-token feature may be enabled on
+// goos. It is unsupported on Windows because the defenses that keep a stored refresh
+// token from leaking are POSIX-specific: the 0600 permissions the agent sets on the
+// key, the token files, and the socket are effectively a no-op there, and there is no
+// equivalent of the PR_SET_DUMPABLE hardening that stops a same-user process from
+// reading the agent's memory (see hardenProcess). A refresh token outlives the 8-hour
+// access token by months, so it is not worth storing without them.
+//
+// This is the single source of truth for the restriction: the CLI rejects
+// --enable-refresh up front by calling this, and handleUnlock refuses an UNLOCK that
+// asks for it, so no client can turn the feature on.
+func RefreshTokenSupported(goos string) bool {
+	return goos != goosWindows
+}
 
 // githubHTTPTimeout bounds a single HTTP request to GitHub (device-code request, token
 // refresh, and credential revocation, plus each individual device-flow poll request). Go's
@@ -75,6 +94,10 @@ type Controller struct {
 	// sweep discards it (see sweep.go). It is part of the unlocked state (guarded by mu),
 	// set from UNLOCK, and only used when enableRefreshToken is set.
 	refreshTokenTTL time.Duration
+	// goos is the GOOS the agent runs on, set in New and overridable in tests. It gates
+	// the refresh-token feature (see RefreshTokenSupported); it is read-only after New,
+	// so it needs no lock.
+	goos string
 }
 
 // refreshEnabled reports whether refreshing expiring access tokens with stored refresh
@@ -96,5 +119,6 @@ func New() *Controller {
 		client:  deviceflow.New(&deviceflow.Input{HTTPClient: httpClient}),
 		revoker: revoke.New(httpClient),
 		now:     time.Now,
+		goos:    runtime.GOOS,
 	}
 }

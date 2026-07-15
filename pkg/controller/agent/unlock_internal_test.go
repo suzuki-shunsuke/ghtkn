@@ -69,6 +69,56 @@ func TestController_handle_unlock_enableRefresh(t *testing.T) {
 	}
 }
 
+// TestRefreshTokenSupported verifies the refresh-token feature is gated off on Windows
+// and allowed elsewhere.
+func TestRefreshTokenSupported(t *testing.T) {
+	t.Parallel()
+	for _, d := range []struct {
+		goos string
+		want bool
+	}{
+		{goos: "linux", want: true},
+		{goos: "darwin", want: true},
+		{goos: "windows", want: false},
+	} {
+		t.Run(d.goos, func(t *testing.T) {
+			t.Parallel()
+			if got := RefreshTokenSupported(d.goos); got != d.want {
+				t.Fatalf("RefreshTokenSupported(%q) = %v, want %v", d.goos, got, d.want)
+			}
+		})
+	}
+}
+
+// TestController_handle_unlock_refreshUnsupportedOS verifies the agent refuses an UNLOCK
+// that asks to enable refresh tokens on Windows, rather than silently unlocking with
+// refresh off. The CLI rejects --enable-refresh up front; this is the backstop for any
+// other client. An UNLOCK that doesn't ask for refresh still works there.
+func TestController_handle_unlock_refreshUnsupportedOS(t *testing.T) {
+	t.Parallel()
+	c := New()
+	c.keyFile = filepath.Join(t.TempDir(), "key")
+	c.tokenDir = t.TempDir()
+	c.goos = "windows"
+
+	unlock, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","enable_refresh_token":true}`+"\n"))
+	if diff := cmp.Diff(&agentapi.Response{Error: errMsgRefreshTokenUnsupportedOS}, unlock); diff != "" {
+		t.Fatalf("UNLOCK --enable-refresh on Windows (-want +got):\n%s", diff)
+	}
+	// The agent must stay locked: refusing is not a partial unlock.
+	if c.store != nil {
+		t.Fatal("the agent must stay locked when it refuses to enable refresh tokens")
+	}
+	if c.refreshEnabled() {
+		t.Fatal("refresh must not be enabled on Windows")
+	}
+	// A plain unlock still works on Windows.
+	plain, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))
+	if diff := cmp.Diff(&agentapi.Response{OK: true}, plain); diff != "" {
+		t.Fatalf("UNLOCK on Windows (-want +got):\n%s", diff)
+	}
+}
+
 // TestController_handle_unlock_capsRefreshTokenTTL verifies the server clamps a
 // refresh-token TTL larger than the six-month maximum. The CLI rejects such a value up
 // front; this is the server-side backstop for any other client.

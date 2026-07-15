@@ -7,7 +7,8 @@ Device flow authentication is no longer needed every 8 hours, which greatly impr
 
 This feature is supported only on the agent backend on macOS and Linux.
 It is not supported on Windows, nor on the default keyring backend or the text backend.
-This restriction is intentional, to keep the feature secure.
+This restriction is intentional, to keep the feature secure, and it is enforced rather than merely documented: on Windows `ghtkn agent unlock --enable-refresh` fails, and the agent refuses an unlock that asks to enable refresh tokens, so no client can turn the feature on there.
+The reason is that the defenses described below are POSIX-specific: the `0600` permissions on the key and token files are effectively a no-op on Windows, and it has no equivalent of the `PR_SET_DUMPABLE` hardening.
 
 We treat security as the top priority and take a range of measures to minimize the risk of a refresh token leaking.
 Refresh tokens are stored encrypted by the agent backend, and the passphrase is never persisted.

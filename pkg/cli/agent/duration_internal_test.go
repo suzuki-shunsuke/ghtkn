@@ -5,6 +5,38 @@ import (
 	"time"
 )
 
+// TestCheckRefreshTokenSupported verifies --enable-refresh is rejected on Windows and
+// allowed elsewhere, and that a plain unlock is never blocked.
+func TestCheckRefreshTokenSupported(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		enableRefresh bool
+		goos          string
+		wantErr       bool
+	}{
+		{name: "enable on linux", enableRefresh: true, goos: "linux"},
+		{name: "enable on darwin", enableRefresh: true, goos: "darwin"},
+		{name: "enable on windows", enableRefresh: true, goos: "windows", wantErr: true},
+		{name: "windows without the flag", enableRefresh: false, goos: "windows"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := checkRefreshTokenSupported(tt.enableRefresh, tt.goos)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("want an error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("want no error, got %v", err)
+			}
+		})
+	}
+}
+
 func TestParseRefreshTokenTTL(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

@@ -36,6 +36,17 @@ func ttlUnit(b byte) (time.Duration, bool) {
 // falls back to time.ParseDuration for other inputs (e.g. "168h"). It rejects empty,
 // negative, and out-of-range values: the TTL must not be negative and must not exceed
 // six months. Zero is allowed and means "use the agent default".
+// checkRefreshTokenSupported rejects --enable-refresh on an OS where the refresh-token
+// feature is unsupported (see agent.RefreshTokenSupported). The agent refuses such an
+// UNLOCK too; failing here means the user isn't asked for the passphrase first. goos is
+// a parameter rather than runtime.GOOS so this is testable on any OS.
+func checkRefreshTokenSupported(enableRefreshToken bool, goos string) error {
+	if enableRefreshToken && !agent.RefreshTokenSupported(goos) {
+		return errors.New("refresh tokens are not supported on Windows; rerun `ghtkn agent unlock` without --enable-refresh")
+	}
+	return nil
+}
+
 func parseRefreshTokenTTL(s string) (time.Duration, error) {
 	d, err := parseDurationValue(s)
 	if err != nil {

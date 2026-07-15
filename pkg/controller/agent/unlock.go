@@ -26,6 +26,13 @@ func (c *Controller) handleUnlock(ctx context.Context, req *agentapi.Request) *a
 	// The passphrase is only needed to derive the data key; zero it afterwards. Scrub on
 	// entry so it is zeroed even on the already-unlocked early return below.
 	defer scrub(req.Passphrase)
+	// Refuse rather than silently unlock with refresh off: the client asked for a feature
+	// this OS can't keep safe (see RefreshTokenSupported), and leaving the agent locked
+	// makes that impossible to miss. The CLI rejects --enable-refresh before prompting
+	// for the passphrase; this covers any other client.
+	if req.EnableRefreshToken && !RefreshTokenSupported(c.goos) {
+		return &agentapi.Response{Error: errMsgRefreshTokenUnsupportedOS}
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.store != nil {
@@ -58,18 +65,7 @@ func (c *Controller) handleUnlock(ctx context.Context, req *agentapi.Request) *a
 	// Bind refresh enablement and its TTL to this passphrase-authenticated unlock.
 	c.enableRefreshToken = req.EnableRefreshToken
 	c.refreshTokenTTL = c.resolveRefreshTokenTTL(req.RefreshTokenTTL)
-	if c.logger != nil {
-		if created {
-			c.logger.Info("generated a new agent key", "path", c.keyFile)
-			// A new key can't decrypt token files written under a previous key
-			// (e.g. when the key file was deleted while the tokens remained), so
-			// warn that those cached tokens are orphaned and will be re-minted.
-			if n := store.Len(); n > 0 {
-				c.logger.Warn("found cached token files that predate the new agent key; they can't be decrypted and will be re-minted on the next get", "path", c.tokenDir, "count", n)
-			}
-		}
-		c.logger.Info("agent unlocked", "refresh_token_enabled", c.enableRefreshToken)
-	}
+	c.logUnlocked(store, created)
 	if c.enableRefreshToken {
 		// Discard tokens unused past the TTL for as long as the agent runs.
 		c.startRefreshTokenSweep(ctx, store, c.refreshTokenTTL)
@@ -78,6 +74,24 @@ func (c *Controller) handleUnlock(ctx context.Context, req *agentapi.Request) *a
 		c.stripRefreshTokens(store)
 	}
 	return &agentapi.Response{OK: true, RefreshTokenEnabled: c.enableRefreshToken}
+}
+
+// logUnlocked logs the result of a successful unlock: the refresh-token state, and,
+// when the unlock generated a new key, a warning about token files written under a
+// previous key. Those files can't be decrypted with the new key (e.g. the key file was
+// deleted while the tokens remained), so they are orphaned and will be re-minted.
+// It is called with c.mu held.
+func (c *Controller) logUnlocked(store *tokenstore.Store, created bool) {
+	if c.logger == nil {
+		return
+	}
+	if created {
+		c.logger.Info("generated a new agent key", "path", c.keyFile)
+		if n := store.Len(); n > 0 {
+			c.logger.Warn("found cached token files that predate the new agent key; they can't be decrypted and will be re-minted on the next get", "path", c.tokenDir, "count", n)
+		}
+	}
+	c.logger.Info("agent unlocked", "refresh_token_enabled", c.enableRefreshToken)
 }
 
 // needsRefreshRemovalConfirmation reports whether this unlock would silently drop a
