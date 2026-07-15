@@ -4,13 +4,15 @@ import "golang.org/x/crypto/argon2"
 
 // Key sizing for the agent backend.
 //
-// The data key is a 32-byte (AES-256) key generated on first start. It is wrapped
-// with a key-encryption key (KEK) derived from the user's passphrase via Argon2id.
+// The data key is a 32-byte (AES-256) key generated on the first unlock, when the
+// user sets the passphrase. It is wrapped with a key-encryption key (KEK) derived
+// from that passphrase via Argon2id.
 const (
 	dataKeyLen = 32 // AES-256 key length in bytes
 	saltLen    = 16 // Argon2id salt length in bytes
 
-	// Argon2id cost parameters. These are paid once per `ghtkn agent start`.
+	// Argon2id cost parameters. These are paid on each `ghtkn agent unlock` that
+	// reaches the key file, i.e. normally once per agent start.
 	// 64 MiB / time=3 / parallelism=4 is a common desktop-grade default that
 	// comfortably exceeds the OWASP minimum (19 MiB, time=2).
 	argon2Time    = 3
