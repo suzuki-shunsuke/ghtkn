@@ -162,6 +162,7 @@ Detailed documentation is split by topic. Each topic lives in a skill directory 
 - [Using Multiple Apps](skills/ghtkn-multiple-apps/reference.md) - configure multiple GitHub Apps and switch between them per command, env var, or directory.
 - [Token Management](skills/ghtkn-token-management/reference.md) - token regeneration, `ghtkn auth`, the automatic device flow, and clipboard.
 - [Backend](skills/ghtkn-backend/reference.md) - where tokens are stored (`keyring`, `text`, `agent`); useful for containers and microVMs.
+- [Sandbox Configuration](skills/ghtkn-sandbox/reference.md) - settings ghtkn needs to run inside Claude Code's sandbox, per backend.
 - [Configuration](skills/ghtkn-configuration/reference.md) - configuration priority, browser open, account picker, enterprise sharing, and one-off PAT use.
 - [Design](skills/ghtkn-design/reference.md) - how ghtkn works, a comparison with other access tokens, and API rate limits.
 - [Refreshing Tokens](skills/ghtkn-refresh-token/reference.md) - automatically refresh expiring GitHub access tokens with refresh tokens.
