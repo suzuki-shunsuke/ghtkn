@@ -69,7 +69,7 @@ export GHTKN_GIT_APP=suzuki-shunsuke/git
 
 The priority of the app used for Git Credential Helper is as follows:
 
-1. `.apps[].git_owner` if git credential helper's username matches
+1. `.apps[].git_owner` if it matches the repository owner in the credential path (this requires `credential.useHttpPath true`)
 1. `GHTKN_GIT_APP`
 1. `GHTKN_APP` if `GHTKN_GIT_APP` is not set
 1. The default app

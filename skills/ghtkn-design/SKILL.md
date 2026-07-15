@@ -3,7 +3,7 @@ name: ghtkn-design
 description: Understand how ghtkn works internally and how its tokens compare to alternatives. Use to explain the token workflow, compare with GitHub CLI OAuth / fine-grained PAT / installation tokens, or discuss API rate limits.
 ---
 
-ghtkn determines the GitHub App, gets an access token from the backend, regenerates it via Device Flow when needed, and outputs it. Compared to other access tokens:
+ghtkn determines the GitHub App, gets an access token from the backend, regenerates it via Device Flow when needed, and outputs it. The Device Flow is disabled by default and never starts automatically; run `ghtkn auth` to authenticate. Compared to other access tokens:
 
 - GitHub CLI OAuth token: convenient but broad and effectively indefinite (high leak risk).
 - fine-grained PAT: long-lived and cumbersome to rotate.
