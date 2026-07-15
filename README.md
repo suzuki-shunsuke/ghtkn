@@ -1,26 +1,29 @@
 # ghtkn (G-H Token)
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/suzuki-shunsuke/ghtkn)
-[![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn/main/LICENSE) | [Install](skills/ghtkn-install/reference.md) | [Usage](USAGE.md) | [Agent Skills](#installing-agent-skills)
+[Install](skills/ghtkn-install/reference.md) | [Usage](USAGE.md) | [Agent Skills](#installing-agent-skills)
 
 **Stop risking token leaks - Use secure, short-lived GitHub tokens for local development**
 
 ## :warning: The Security Problem
 
-Are you still using Personal Access Tokens (PATs) or GitHub CLI OAuth tokens stored on your local machine? These long-lived tokens pose **significant security risks**:
+Are you still using Personal Access Tokens (PATs) or GitHub CLI OAuth tokens stored on your local machine?
+These long-lived tokens pose **significant security risks**:
+
 - **Indefinite or months-long validity** - A leaked token remains dangerous for extended periods
 - **Broad permissions** - Often configured with wide access for convenience
 - **Difficult to rotate** - Manual management leads to tokens being used far longer than they should
 
 ## :white_check_mark: The ghtkn Solution
 
-ghtkn generates **8-hour User Access Tokens** from GitHub Apps using Device Flow - a fundamentally more secure approach:
+ghtkn (pronounced `G-H Token`) generates **8-hour User Access Tokens** from GitHub Apps using Device Flow - a fundamentally more secure approach:
 - **Short-lived tokens** - Only 8 hours validity minimizes damage from any potential leak
 - **No secrets required** - Only needs a Client ID (which isn't secret), no Private Keys or Client Secrets
 - **User-attributed actions** - Operations are performed as you, not as an app
 - **Automatic token management** - Integrates with the backend (the default is OS keyring) for secure storage and reuse
+- [**Automatic token refresh** - Supports automatic token refresh](skills/ghtkn-refresh-token/reference.md)
 
-ghtkn (pronounced `G-H Token`) allows you to manage multiple GitHub Apps through configuration files and securely store tokens using OS keyring (Windows Credential Manager, macOS Keychain, or GNOME Keyring) or another backend.
+ghtkn allows you to manage multiple GitHub Apps through configuration files and securely store tokens using OS keyring (Windows Credential Manager, macOS Keychain, or GNOME Keyring) or another backend.
 
 ## :rocket: Getting Started
 
@@ -161,6 +164,7 @@ Detailed documentation is split by topic. Each topic lives in a skill directory 
 - [Backend](skills/ghtkn-backend/reference.md) - where tokens are stored (`keyring`, `text`, `agent`); useful for containers and microVMs.
 - [Configuration](skills/ghtkn-configuration/reference.md) - configuration priority, browser open, account picker, enterprise sharing, and one-off PAT use.
 - [Design](skills/ghtkn-design/reference.md) - how ghtkn works, a comparison with other access tokens, and API rate limits.
+- [Refreshing Tokens](skills/ghtkn-refresh-token/reference.md) - automatically refresh expiring GitHub access tokens with refresh tokens.
 - [How To Revoke Access Tokens](skills/ghtkn-revoke-tokens/reference.md) - invalidate leaked or compromised tokens.
 - [Troubleshooting](skills/ghtkn-troubleshooting/reference.md) - diagnosing problems and known limitations.
 
