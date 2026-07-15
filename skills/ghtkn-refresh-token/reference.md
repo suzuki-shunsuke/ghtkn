@@ -12,6 +12,7 @@ This restriction is intentional, to keep the feature secure.
 We treat security as the top priority and take a range of measures to minimize the risk of a refresh token leaking.
 Refresh tokens are stored encrypted by the agent backend, and the passphrase is never persisted.
 A refresh token is held only inside ghtkn; there is no API that exposes it externally.
+On Linux the agent also marks its process non-dumpable (`PR_SET_DUMPABLE=0`) at startup, so a same-user, non-root process cannot read its memory via `/proc/<pid>/mem` or ptrace and no core dump is written; macOS restricts this by default. This does not stop root, which is why the container/VM caveat below still applies.
 
 The agent backend was originally developed to run ghtkn in environments where the OS keyring is
 unavailable, and a normal desktop environment with a usable OS keyring was expected to use the

@@ -22,6 +22,11 @@ import (
 // handling is set up by urfave.Main (see cmd/ghtkn/main.go), so this function
 // does not register its own signal handler.
 func (c *Controller) Start(ctx context.Context, logger *slog.Logger) error {
+	// Best-effort: block same-user memory reads and core dumps of this process before it
+	// ever holds a data key or decrypted tokens (see hardenProcess; Linux-only, no-op
+	// elsewhere).
+	hardenProcess(logger)
+
 	keyFile, err := keyfile.KeyPath(os.Getenv, runtime.GOOS)
 	if err != nil {
 		return err //nolint:wrapcheck
