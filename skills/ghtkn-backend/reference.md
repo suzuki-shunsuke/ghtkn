@@ -57,7 +57,7 @@ The agent backend stores access tokens encrypted without depending on the OS key
 The encryption works as follows:
 
 - Access tokens are encrypted with AES-256-GCM.
-- The 32-byte data key used for encryption is generated randomly when the agent first starts.
+- The 32-byte data key used for encryption is generated randomly on the first `ghtkn agent unlock`, when you set the passphrase. `ghtkn agent start` doesn't create it, because deriving the key that wraps it needs the passphrase.
 - The data key is encrypted (wrapped) with a key (KEK) derived from the passphrase via Argon2id and saved to a key file. The passphrase itself and the KEK are not saved to disk; they are kept only in the agent's memory after unlocking.
 
 Start the agent with the `ghtkn agent start` command.
