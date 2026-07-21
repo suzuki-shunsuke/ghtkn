@@ -45,6 +45,14 @@ func (c *Controller) clearDeviceFlow(clientID string) {
 // the result (AwaitDeviceFlow) returns the stored token without a freshness check, so
 // the stale token must be gone: otherwise a failed flow would hand it back as if fresh.
 func (c *Controller) startDeviceFlow(ctx context.Context, logger *slog.Logger, clientID string, enableRefreshToken bool) (*deviceFlowState, error) {
+	// A flow that started while the caller was reading the store (or refreshing an
+	// expiring token) is adopted here, before asking GitHub for a device code that would
+	// then go unused. The claim below is still the authoritative check, since a flow can
+	// also start during the request; this only keeps the common case off the network.
+	if existing, ok := c.deviceFlow(clientID); ok {
+		return existing, nil
+	}
+
 	//nolint:bodyclose // GetDeviceCode reads and closes the response body internally; it returns the decoded value.
 	deviceCodeResp, _, _, err := c.client.GetDeviceCode(ctx, clientID)
 	if err != nil {
@@ -57,11 +65,11 @@ func (c *Controller) startDeviceFlow(ctx context.Context, logger *slog.Logger, c
 		expiresIn:       deviceCodeResp.ExpiresIn,
 	}
 
-	// Claim the in-progress slot atomically. If a concurrent start already claimed it,
-	// adopt that flow: return its (already displayed) one-time code and start no second
-	// poller. Our own device code is simply left to expire unused. This keeps a single
-	// poller per client ID even when two GETs race to start, so only one flow stores the
-	// minted token and there are no competing pollers.
+	// Claim the in-progress slot atomically. If a start that raced with the request above
+	// already claimed it, adopt that flow: return its (already displayed) one-time code
+	// and start no second poller. Our own device code is simply left to expire unused.
+	// This keeps a single poller per client ID even when two GETs race to start, so only
+	// one flow stores the minted token and there are no competing pollers.
 	c.statusMu.Lock()
 	if existing, ok := c.status[clientID]; ok {
 		c.statusMu.Unlock()
