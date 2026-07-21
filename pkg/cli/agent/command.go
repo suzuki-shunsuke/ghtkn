@@ -62,6 +62,16 @@ type runner struct {
 	flags  *flag.GlobalFlags
 }
 
+// unlockArgs holds the flag values for the 'agent unlock' subcommand.
+// The other subcommands have no flags of their own, so they read the global flags
+// from the runner directly.
+type unlockArgs struct {
+	*flag.GlobalFlags
+
+	EnableRefresh   bool
+	RefreshTokenTTL string
+}
+
 // warnIfBackendNotAgent logs a warning when the resolved storage backend is not the
 // agent. Running any 'ghtkn agent' subcommand implies the user means to use the agent
 // backend; if it is not selected, 'ghtkn get'/'auth' silently use another backend (the
@@ -167,6 +177,9 @@ func (r *runner) status(ctx context.Context, _ *cli.Command) error {
 
 // unlockCommand returns the CLI command definition for the 'agent unlock' subcommand.
 func (r *runner) unlockCommand() *cli.Command {
+	args := &unlockArgs{
+		GlobalFlags: r.flags,
+	}
 	return &cli.Command{
 		Name:  "unlock",
 		Usage: "Unlock the running ghtkn agent by entering the passphrase",
@@ -191,35 +204,38 @@ The TTL takes a number with a d (day), w (week), or m (30-day month) suffix, e.g
 $ ghtkn agent unlock`,
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
-				Name:  "enable-refresh",
-				Usage: "Enable refreshing expiring access tokens with stored refresh tokens",
+				Name:        "enable-refresh",
+				Usage:       "Enable refreshing expiring access tokens with stored refresh tokens",
+				Destination: &args.EnableRefresh,
 			},
 			&cli.StringFlag{
-				Name:  "refresh-token-ttl",
-				Usage: "How long a stored token may sit unused before the agent discards it, e.g. 7d/4w/2m (only with --enable-refresh)",
-				Value: "1w",
+				Name:        "refresh-token-ttl",
+				Usage:       "How long a stored token may sit unused before the agent discards it, e.g. 7d/4w/2m (only with --enable-refresh)",
+				Value:       "1w",
+				Destination: &args.RefreshTokenTTL,
 			},
 		},
-		Action: r.unlock,
+		Action: func(ctx context.Context, _ *cli.Command) error {
+			return r.unlock(ctx, args)
+		},
 	}
 }
 
 // unlock executes the 'agent unlock' command logic.
 // It configures the log level and unlocks the running agent.
-func (r *runner) unlock(ctx context.Context, cmd *cli.Command) error {
-	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
+func (r *runner) unlock(ctx context.Context, args *unlockArgs) error {
+	if err := r.logger.SetLevel(args.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
 	r.warnIfBackendNotAgent()
-	enableRefresh := cmd.Bool("enable-refresh")
-	if err := checkRefreshTokenSupported(enableRefresh, runtime.GOOS); err != nil {
+	if err := checkRefreshTokenSupported(args.EnableRefresh, runtime.GOOS); err != nil {
 		return err
 	}
-	ttl, err := parseRefreshTokenTTL(cmd.String("refresh-token-ttl"))
+	ttl, err := parseRefreshTokenTTL(args.RefreshTokenTTL)
 	if err != nil {
 		return err
 	}
-	return unlock.New().Run(ctx, r.logger.Logger, enableRefresh, ttl) //nolint:wrapcheck
+	return unlock.New().Run(ctx, r.logger.Logger, args.EnableRefresh, ttl) //nolint:wrapcheck
 }
 
 // resetCommand returns the CLI command definition for the 'agent reset' subcommand.
