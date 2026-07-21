@@ -112,7 +112,7 @@ func (c *Controller) startDeviceFlow(ctx context.Context, logger *slog.Logger, c
 // enableRefreshToken is set it also stores the refresh token and its own (longer)
 // expiration computed from RefreshTokenExpiresIn.
 func (c *Controller) encodeToken(token *deviceflow.AccessToken, enableRefreshToken bool) (json.RawMessage, error) {
-	now := c.now()
+	now := time.Now()
 	ac := &pubapi.AccessToken{
 		AccessToken:    token.AccessToken,
 		ExpirationDate: now.Add(time.Duration(token.ExpiresIn) * time.Second),

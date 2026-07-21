@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -193,26 +194,26 @@ func TestController_handle_legacyGetMissing(t *testing.T) {
 // The version-1 refresh path itself is covered by TestController_handleGet_refresh.
 func TestController_handle_legacyNoRefresh(t *testing.T) {
 	t.Parallel()
-	c := newUnlockedController(t)
-	c.enableRefreshToken = true
-	now := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
-	c.now = func() time.Time { return now }
-	rt := &refreshRoundTripper{
-		status: http.StatusOK,
-		body:   `{"access_token":"new-access","refresh_token":"new-refresh","expires_in":28800,"refresh_token_expires_in":15897600}`,
-	}
-	setClientTransport(c, rt)
-	const clientID = "Iv1.legacy"
-	seedExpiredWithRefresh(t, c, clientID, now.Add(24*time.Hour))
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedController(t)
+		c.enableRefreshToken = true
+		rt := &refreshRoundTripper{
+			status: http.StatusOK,
+			body:   `{"access_token":"new-access","refresh_token":"new-refresh","expires_in":28800,"refresh_token_expires_in":15897600}`,
+		}
+		setClientTransport(c, rt)
+		const clientID = "Iv1.legacy"
+		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
 
-	// Legacy GET: no protocol_version field (decodes to 0).
-	got, _ := c.handle(context.Background(), strings.NewReader(`{"command":"GET","client_id":"`+clientID+`"}`+"\n"))
-	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
-		t.Fatalf("legacy GET must not refresh (-want +got):\n%s", diff)
-	}
-	if rt.called {
-		t.Fatal("a legacy GET must not attempt a refresh, but the refresh endpoint was called")
-	}
+		// Legacy GET: no protocol_version field (decodes to 0).
+		got, _ := c.handle(context.Background(), strings.NewReader(`{"command":"GET","client_id":"`+clientID+`"}`+"\n"))
+		if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
+			t.Fatalf("legacy GET must not refresh (-want +got):\n%s", diff)
+		}
+		if rt.called {
+			t.Fatal("a legacy GET must not attempt a refresh, but the refresh endpoint was called")
+		}
+	})
 }
 
 // TestController_handle_obsoleteAgent verifies that a request with a protocol version

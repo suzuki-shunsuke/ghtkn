@@ -25,7 +25,7 @@ func (c *Controller) tokenValid(raw json.RawMessage, minExpiration time.Duration
 	}
 	// Valid when it does not expire within minExpiration, i.e. now+minExpiration is
 	// not after the expiration date.
-	return !c.now().Add(minExpiration).After(token.ExpirationDate)
+	return !time.Now().Add(minExpiration).After(token.ExpirationDate)
 }
 
 // pendingResponse builds the "device flow in progress" response, echoing the one-time
@@ -187,7 +187,7 @@ func (c *Controller) cachedToken(ctx context.Context, st *tokenstore.Store, req 
 }
 
 // validRefreshToken returns the stored refresh token if it is present and still valid
-// (per the controller clock), or "" otherwise.
+// (per the clock), or "" otherwise.
 func (c *Controller) validRefreshToken(raw json.RawMessage) string {
 	// Parse only the refresh token and its expiration; the access token is not read
 	// here, so it is never materialized as a Go string.
@@ -201,7 +201,7 @@ func (c *Controller) validRefreshToken(raw json.RawMessage) string {
 	if token.RefreshToken == "" || token.RefreshTokenExpirationDate.IsZero() {
 		return ""
 	}
-	if !c.now().Before(token.RefreshTokenExpirationDate) {
+	if !time.Now().Before(token.RefreshTokenExpirationDate) {
 		return "" // the refresh token has expired
 	}
 	return token.RefreshToken

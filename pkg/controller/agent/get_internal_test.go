@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -85,43 +86,48 @@ func TestController_handleGet_missNoFlow(t *testing.T) {
 }
 
 // TestController_handleGet_expired verifies that a plain GET for a token whose
-// expiration date is in the past (relative to a fixed now) is a not-found miss.
+// expiration date is in the past is a not-found miss. The controller reads the clock
+// with time.Now, so the test runs in a synctest bubble, where time.Now is the bubble's
+// fake clock and stands still for the whole test.
 func TestController_handleGet_expired(t *testing.T) {
 	t.Parallel()
-	c := newUnlockedController(t)
-	c.now = func() time.Time { return time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC) }
-	const clientID = "Iv1.expired"
-	if err := c.store.Set(clientID, json.RawMessage(`{"access_token":"abc","expiration_date":"2020-01-01T00:00:00Z"}`)); err != nil {
-		t.Fatal(err)
-	}
-	got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, false)
-	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
-		t.Fatalf("expired GET (-want +got):\n%s", diff)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedController(t)
+		const clientID = "Iv1.expired"
+		seeded := fmt.Sprintf(`{"access_token":"abc","expiration_date":"%s"}`, time.Now().Add(-time.Hour).Format(time.RFC3339))
+		if err := c.store.Set(clientID, json.RawMessage(seeded)); err != nil {
+			t.Fatal(err)
+		}
+		got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, false)
+		if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
+			t.Fatalf("expired GET (-want +got):\n%s", diff)
+		}
+	})
 }
 
 // TestController_handleGet_minExpiration verifies that MinExpiration is honored: a token
 // expiring 30m after now is returned for a 10m requirement but not for a 1h requirement.
 func TestController_handleGet_minExpiration(t *testing.T) {
 	t.Parallel()
-	c := newUnlockedController(t)
-	now := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
-	c.now = func() time.Time { return now }
-	const clientID = "Iv1.minexp"
-	seeded := fmt.Sprintf(`{"access_token":"abc","expiration_date":"%s"}`, now.Add(30*time.Minute).Format(time.RFC3339))
-	if err := c.store.Set(clientID, json.RawMessage(seeded)); err != nil {
-		t.Fatal(err)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedController(t)
+		now := time.Now()
+		const clientID = "Iv1.minexp"
+		seeded := fmt.Sprintf(`{"access_token":"abc","expiration_date":"%s"}`, now.Add(30*time.Minute).Format(time.RFC3339))
+		if err := c.store.Set(clientID, json.RawMessage(seeded)); err != nil {
+			t.Fatal(err)
+		}
 
-	within := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID, MinExpiration: 10 * time.Minute}, false)
-	if diff := cmp.Diff(&agentapi.Response{OK: true, Token: []byte(seeded)}, within); diff != "" {
-		t.Fatalf("GET with 10m MinExpiration (-want +got):\n%s", diff)
-	}
+		within := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID, MinExpiration: 10 * time.Minute}, false)
+		if diff := cmp.Diff(&agentapi.Response{OK: true, Token: []byte(seeded)}, within); diff != "" {
+			t.Fatalf("GET with 10m MinExpiration (-want +got):\n%s", diff)
+		}
 
-	beyond := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID, MinExpiration: time.Hour}, false)
-	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, beyond); diff != "" {
-		t.Fatalf("GET with 1h MinExpiration (-want +got):\n%s", diff)
-	}
+		beyond := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID, MinExpiration: time.Hour}, false)
+		if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, beyond); diff != "" {
+			t.Fatalf("GET with 1h MinExpiration (-want +got):\n%s", diff)
+		}
+	})
 }
 
 // TestController_handleGet_awaitReturnsUnfreshToken verifies that a poll waiting for a
@@ -130,19 +136,20 @@ func TestController_handleGet_minExpiration(t *testing.T) {
 // GitHub App token, stored with expiration_date = mint time) is still handed back.
 func TestController_handleGet_awaitReturnsUnfreshToken(t *testing.T) {
 	t.Parallel()
-	c := newUnlockedController(t)
-	c.now = func() time.Time { return time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC) }
-	const clientID = "Iv1.await"
-	// expiration_date is in the past relative to c.now, so a plain GET would treat it
-	// as a miss; the await poll must still return it.
-	seeded := `{"access_token":"minted","expiration_date":"2020-01-01T00:00:00Z"}`
-	if err := c.store.Set(clientID, json.RawMessage(seeded)); err != nil {
-		t.Fatal(err)
-	}
-	got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID, AwaitDeviceFlow: true}, false)
-	if diff := cmp.Diff(&agentapi.Response{OK: true, Token: []byte(seeded)}, got); diff != "" {
-		t.Fatalf("await GET (-want +got):\n%s", diff)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedController(t)
+		const clientID = "Iv1.await"
+		// expiration_date is in the past, so a plain GET would treat it as a miss; the
+		// await poll must still return it.
+		seeded := fmt.Sprintf(`{"access_token":"minted","expiration_date":"%s"}`, time.Now().Add(-time.Hour).Format(time.RFC3339))
+		if err := c.store.Set(clientID, json.RawMessage(seeded)); err != nil {
+			t.Fatal(err)
+		}
+		got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID, AwaitDeviceFlow: true}, false)
+		if diff := cmp.Diff(&agentapi.Response{OK: true, Token: []byte(seeded)}, got); diff != "" {
+			t.Fatalf("await GET (-want +got):\n%s", diff)
+		}
+	})
 }
 
 // TestController_handleGet_awaitNoToken verifies that a poll finding no stored token
@@ -156,11 +163,13 @@ func TestController_handleGet_awaitNoToken(t *testing.T) {
 	}
 }
 
-// seedExpiredWithRefresh stores an expired access token whose refresh token is valid
-// until refreshValidUntil, and returns the seeded raw JSON.
+// seedExpiredWithRefresh stores an access token that expired an hour ago and whose
+// refresh token is valid until refreshValidUntil. It must be called from within a
+// synctest bubble, since the expiration is relative to the bubble's clock.
 func seedExpiredWithRefresh(t *testing.T, c *Controller, clientID string, refreshValidUntil time.Time) {
 	t.Helper()
-	seeded := fmt.Sprintf(`{"access_token":"old","expiration_date":"2020-01-01T00:00:00Z","refresh_token":"old-refresh","refresh_token_expiration_date":"%s"}`, refreshValidUntil.Format(time.RFC3339))
+	seeded := fmt.Sprintf(`{"access_token":"old","expiration_date":"%s","refresh_token":"old-refresh","refresh_token_expiration_date":"%s"}`,
+		time.Now().Add(-time.Hour).Format(time.RFC3339), refreshValidUntil.Format(time.RFC3339))
 	if err := c.store.Set(clientID, json.RawMessage(seeded)); err != nil {
 		t.Fatal(err)
 	}
@@ -170,90 +179,98 @@ func seedExpiredWithRefresh(t *testing.T, c *Controller, clientID string, refres
 // refresh token is silently refreshed (no device flow), and the rotated token is stored.
 func TestController_handleGet_refresh(t *testing.T) {
 	t.Parallel()
-	c := newUnlockedController(t)
-	now := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
-	c.now = func() time.Time { return now }
-	rt := &refreshRoundTripper{
-		status: http.StatusOK,
-		body:   `{"access_token":"new-access","refresh_token":"new-refresh","expires_in":28800,"refresh_token_expires_in":15897600}`,
-	}
-	setClientTransport(c, rt)
-	const clientID = "Iv1.refresh"
-	seedExpiredWithRefresh(t, c, clientID, now.Add(24*time.Hour))
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedController(t)
+		// The bubble's clock does not advance while the test goroutine runs, so the
+		// expiration dates the controller computes are exactly now plus expires_in.
+		now := time.Now()
+		rt := &refreshRoundTripper{
+			status: http.StatusOK,
+			body:   `{"access_token":"new-access","refresh_token":"new-refresh","expires_in":28800,"refresh_token_expires_in":15897600}`,
+		}
+		setClientTransport(c, rt)
+		const clientID = "Iv1.refresh"
+		seedExpiredWithRefresh(t, c, clientID, now.Add(24*time.Hour))
 
-	got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+		got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
 
-	// The response carries only the access token; the refresh token stays server-side.
-	//nolint:gosec // G117: serializing a token in a test to build the expected bytes.
-	wantResp, err := json.Marshal(&struct {
-		AccessToken    string    `json:"access_token"`
-		ExpirationDate time.Time `json:"expiration_date"`
-	}{AccessToken: "new-access", ExpirationDate: now.Add(28800 * time.Second)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if diff := cmp.Diff(&agentapi.Response{OK: true, Token: wantResp}, got); diff != "" {
-		t.Fatalf("refreshed GET (-want +got):\n%s", diff)
-	}
-	if !rt.called {
-		t.Fatal("the refresh endpoint was not called")
-	}
-	// The rotated token, including the refresh token, is persisted in the store.
-	//nolint:gosec // G117: serializing a token in a test to build the expected stored bytes.
-	wantStored, err := json.Marshal(&pubapi.AccessToken{
-		AccessToken:                "new-access",
-		ExpirationDate:             now.Add(28800 * time.Second),
-		RefreshToken:               "new-refresh",
-		RefreshTokenExpirationDate: now.Add(15897600 * time.Second),
+		// The response carries only the access token; the refresh token stays server-side.
+		//nolint:gosec // G117: serializing a token in a test to build the expected bytes.
+		wantResp, err := json.Marshal(&struct {
+			AccessToken    string    `json:"access_token"`
+			ExpirationDate time.Time `json:"expiration_date"`
+		}{AccessToken: "new-access", ExpirationDate: now.Add(28800 * time.Second)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if diff := cmp.Diff(&agentapi.Response{OK: true, Token: wantResp}, got); diff != "" {
+			t.Fatalf("refreshed GET (-want +got):\n%s", diff)
+		}
+		if !rt.called {
+			t.Fatal("the refresh endpoint was not called")
+		}
+		// The rotated token, including the refresh token, is persisted in the store.
+		//nolint:gosec // G117: serializing a token in a test to build the expected stored bytes.
+		wantStored, err := json.Marshal(&pubapi.AccessToken{
+			AccessToken:                "new-access",
+			ExpirationDate:             now.Add(28800 * time.Second),
+			RefreshToken:               "new-refresh",
+			RefreshTokenExpirationDate: now.Add(15897600 * time.Second),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		stored, ok, err := c.store.Get(clientID)
+		if err != nil || !ok {
+			t.Fatalf("stored token get: ok=%v err=%v", ok, err)
+		}
+		if diff := cmp.Diff(json.RawMessage(wantStored), stored); diff != "" {
+			t.Fatalf("stored token (-want +got):\n%s", diff)
+		}
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	stored, ok, err := c.store.Get(clientID)
-	if err != nil || !ok {
-		t.Fatalf("stored token get: ok=%v err=%v", ok, err)
-	}
-	if diff := cmp.Diff(json.RawMessage(wantStored), stored); diff != "" {
-		t.Fatalf("stored token (-want +got):\n%s", diff)
-	}
 }
 
 // TestController_dispatchGet_usesUnlockFlag verifies that dispatch feeds handleGet the
 // unlock-set refresh flag: a GET routed through handle refreshes only when the flag is on.
 func TestController_dispatchGet_usesUnlockFlag(t *testing.T) {
 	t.Parallel()
-	newController := func(enable bool) (*Controller, *refreshRoundTripper) {
+	// newController must be called from within a synctest bubble: the seeded token's
+	// expiration is relative to the bubble's clock.
+	newController := func(t *testing.T, enable bool) (*Controller, *refreshRoundTripper) {
+		t.Helper()
 		c := newUnlockedController(t)
 		c.enableRefreshToken = enable // as if unlocked with --enable-refresh
-		now := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
-		c.now = func() time.Time { return now }
 		rt := &refreshRoundTripper{
 			status: http.StatusOK,
 			body:   `{"access_token":"new-access","refresh_token":"new-refresh","expires_in":28800,"refresh_token_expires_in":15897600}`,
 		}
 		setClientTransport(c, rt)
-		seedExpiredWithRefresh(t, c, "Iv1.x", now.Add(24*time.Hour))
+		seedExpiredWithRefresh(t, c, "Iv1.x", time.Now().Add(24*time.Hour))
 		return c, rt
 	}
 
 	t.Run("enabled refreshes", func(t *testing.T) {
 		t.Parallel()
-		c, rt := newController(true)
-		got, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.x"}`+"\n"))
-		if !got.OK || !rt.called {
-			t.Fatalf("a GET with refresh enabled must refresh; resp=%+v called=%v", got, rt.called)
-		}
+		synctest.Test(t, func(t *testing.T) {
+			c, rt := newController(t, true)
+			got, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.x"}`+"\n"))
+			if !got.OK || !rt.called {
+				t.Fatalf("a GET with refresh enabled must refresh; resp=%+v called=%v", got, rt.called)
+			}
+		})
 	})
 	t.Run("disabled does not refresh", func(t *testing.T) {
 		t.Parallel()
-		c, rt := newController(false)
-		got, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.x"}`+"\n"))
-		if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
-			t.Fatalf("GET with refresh disabled (-want +got):\n%s", diff)
-		}
-		if rt.called {
-			t.Fatal("must not refresh when the unlock flag is off")
-		}
+		synctest.Test(t, func(t *testing.T) {
+			c, rt := newController(t, false)
+			got, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.x"}`+"\n"))
+			if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
+				t.Fatalf("GET with refresh disabled (-want +got):\n%s", diff)
+			}
+			if rt.called {
+				t.Fatal("must not refresh when the unlock flag is off")
+			}
+		})
 	})
 }
 
@@ -261,42 +278,42 @@ func TestController_dispatchGet_usesUnlockFlag(t *testing.T) {
 // not used and the request falls through to a not-found miss (no HTTP call).
 func TestController_handleGet_refreshTokenExpired(t *testing.T) {
 	t.Parallel()
-	c := newUnlockedController(t)
-	now := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
-	c.now = func() time.Time { return now }
-	rt := &refreshRoundTripper{status: http.StatusOK, body: `{}`}
-	setClientTransport(c, rt)
-	const clientID = "Iv1.refreshexp"
-	seedExpiredWithRefresh(t, c, clientID, now.Add(-time.Hour)) // refresh token already expired
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedController(t)
+		rt := &refreshRoundTripper{status: http.StatusOK, body: `{}`}
+		setClientTransport(c, rt)
+		const clientID = "Iv1.refreshexp"
+		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(-time.Minute)) // refresh token already expired
 
-	got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
-	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
-		t.Fatalf("expired refresh token (-want +got):\n%s", diff)
-	}
-	if rt.called {
-		t.Fatal("must not call the refresh endpoint with an expired refresh token")
-	}
+		got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+		if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
+			t.Fatalf("expired refresh token (-want +got):\n%s", diff)
+		}
+		if rt.called {
+			t.Fatal("must not call the refresh endpoint with an expired refresh token")
+		}
+	})
 }
 
 // TestController_handleGet_refreshDisabled verifies that a valid refresh token is not used
 // when refresh is disabled.
 func TestController_handleGet_refreshDisabled(t *testing.T) {
 	t.Parallel()
-	c := newUnlockedController(t)
-	now := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
-	c.now = func() time.Time { return now }
-	rt := &refreshRoundTripper{status: http.StatusOK, body: `{}`}
-	setClientTransport(c, rt)
-	const clientID = "Iv1.refreshoff"
-	seedExpiredWithRefresh(t, c, clientID, now.Add(24*time.Hour))
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedController(t)
+		rt := &refreshRoundTripper{status: http.StatusOK, body: `{}`}
+		setClientTransport(c, rt)
+		const clientID = "Iv1.refreshoff"
+		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
 
-	got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, false)
-	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
-		t.Fatalf("refresh disabled (-want +got):\n%s", diff)
-	}
-	if rt.called {
-		t.Fatal("must not refresh when enableRefreshToken is false")
-	}
+		got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, false)
+		if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
+			t.Fatalf("refresh disabled (-want +got):\n%s", diff)
+		}
+		if rt.called {
+			t.Fatal("must not refresh when enableRefreshToken is false")
+		}
+	})
 }
 
 // TestController_handleGet_refreshHTTPError verifies that a failing refresh request falls
@@ -304,28 +321,28 @@ func TestController_handleGet_refreshDisabled(t *testing.T) {
 // refresh token was still valid, the response carries a security warning for the user.
 func TestController_handleGet_refreshHTTPError(t *testing.T) {
 	t.Parallel()
-	c := newUnlockedController(t)
-	now := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
-	c.now = func() time.Time { return now }
-	rt := &refreshRoundTripper{status: http.StatusInternalServerError, body: `{}`}
-	setClientTransport(c, rt)
-	const clientID = "Iv1.refresherr"
-	seedExpiredWithRefresh(t, c, clientID, now.Add(24*time.Hour))
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedController(t)
+		rt := &refreshRoundTripper{status: http.StatusInternalServerError, body: `{}`}
+		setClientTransport(c, rt)
+		const clientID = "Iv1.refresherr"
+		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
 
-	got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
-	if got.Error != agentapi.RespNotFound {
-		t.Fatalf("refresh HTTP error must be a not-found miss, got error %q", got.Error)
-	}
-	if got.Warning == "" {
-		t.Fatal("a still-valid refresh token that failed to refresh must set an incident Warning")
-	}
-	if !rt.called {
-		t.Fatal("the refresh endpoint should have been called")
-	}
-	// The old token is left in place (not corrupted) on a refresh failure.
-	if _, ok, err := c.store.Get(clientID); err != nil || !ok {
-		t.Fatalf("stored token after failed refresh: ok=%v err=%v", ok, err)
-	}
+		got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+		if got.Error != agentapi.RespNotFound {
+			t.Fatalf("refresh HTTP error must be a not-found miss, got error %q", got.Error)
+		}
+		if got.Warning == "" {
+			t.Fatal("a still-valid refresh token that failed to refresh must set an incident Warning")
+		}
+		if !rt.called {
+			t.Fatal("the refresh endpoint should have been called")
+		}
+		// The old token is left in place (not corrupted) on a refresh failure.
+		if _, ok, err := c.store.Get(clientID); err != nil || !ok {
+			t.Fatalf("stored token after failed refresh: ok=%v err=%v", ok, err)
+		}
+	})
 }
 
 // TestController_handleGet_refreshPeerAlreadyRefreshed verifies that when a refresh fails
@@ -334,39 +351,40 @@ func TestController_handleGet_refreshHTTPError(t *testing.T) {
 // instead of raising a false incident warning.
 func TestController_handleGet_refreshPeerAlreadyRefreshed(t *testing.T) {
 	t.Parallel()
-	c := newUnlockedController(t)
-	now := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
-	c.now = func() time.Time { return now }
-	const clientID = "Iv1.peerrefresh"
-	seedExpiredWithRefresh(t, c, clientID, now.Add(24*time.Hour))
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedController(t)
+		now := time.Now()
+		const clientID = "Iv1.peerrefresh"
+		seedExpiredWithRefresh(t, c, clientID, now.Add(24*time.Hour))
 
-	// The refresh call fails, but as a side effect it stores a fresh, valid token, standing
-	// in for a sibling GET that consumed the rotating refresh token first.
-	fresh := fmt.Sprintf(`{"access_token":"peer-access","expiration_date":"%s","refresh_token":"peer-refresh","refresh_token_expiration_date":"%s"}`,
-		now.Add(8*time.Hour).Format(time.RFC3339), now.Add(24*time.Hour).Format(time.RFC3339))
-	var called bool
-	setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
-		called = true
-		if err := c.store.Set(clientID, json.RawMessage(fresh)); err != nil {
-			t.Errorf("seed the peer-refreshed token: %v", err)
+		// The refresh call fails, but as a side effect it stores a fresh, valid token, standing
+		// in for a sibling GET that consumed the rotating refresh token first.
+		fresh := fmt.Sprintf(`{"access_token":"peer-access","expiration_date":"%s","refresh_token":"peer-refresh","refresh_token_expiration_date":"%s"}`,
+			now.Add(8*time.Hour).Format(time.RFC3339), now.Add(24*time.Hour).Format(time.RFC3339))
+		var called bool
+		setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
+			called = true
+			if err := c.store.Set(clientID, json.RawMessage(fresh)); err != nil {
+				t.Errorf("seed the peer-refreshed token: %v", err)
+			}
+			return &http.Response{StatusCode: http.StatusInternalServerError, Body: io.NopCloser(strings.NewReader("{}")), Header: make(http.Header)}, nil
+		}))
+
+		got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+		if !called {
+			t.Fatal("the refresh endpoint should have been called")
 		}
-		return &http.Response{StatusCode: http.StatusInternalServerError, Body: io.NopCloser(strings.NewReader("{}")), Header: make(http.Header)}, nil
-	}))
-
-	got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
-	if !called {
-		t.Fatal("the refresh endpoint should have been called")
-	}
-	// The peer's fresh access token is served with no incident warning.
-	//nolint:gosec // G117: serializing a token in a test to build the expected bytes.
-	wantResp, err := json.Marshal(&struct {
-		AccessToken    string    `json:"access_token"`
-		ExpirationDate time.Time `json:"expiration_date"`
-	}{AccessToken: "peer-access", ExpirationDate: now.Add(8 * time.Hour)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if diff := cmp.Diff(&agentapi.Response{OK: true, Token: wantResp}, got); diff != "" {
-		t.Fatalf("peer-refreshed GET (-want +got):\n%s", diff)
-	}
+		// The peer's fresh access token is served with no incident warning.
+		//nolint:gosec // G117: serializing a token in a test to build the expected bytes.
+		wantResp, err := json.Marshal(&struct {
+			AccessToken    string    `json:"access_token"`
+			ExpirationDate time.Time `json:"expiration_date"`
+		}{AccessToken: "peer-access", ExpirationDate: now.Add(8 * time.Hour)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if diff := cmp.Diff(&agentapi.Response{OK: true, Token: wantResp}, got); diff != "" {
+			t.Fatalf("peer-refreshed GET (-want +got):\n%s", diff)
+		}
+	})
 }

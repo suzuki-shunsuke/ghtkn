@@ -83,7 +83,7 @@ func (c *Controller) sweepExpiredTokens(st *tokenstore.Store, ttl time.Duration)
 		}
 		return
 	}
-	cutoff := c.now().Add(-ttl)
+	cutoff := time.Now().Add(-ttl)
 	for _, id := range ids {
 		raw, ok, err := st.Get(id)
 		if err != nil || !ok {

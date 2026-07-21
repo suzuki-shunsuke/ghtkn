@@ -83,8 +83,6 @@ type Controller struct {
 	client *deviceflow.Client
 	// revoker revokes stored tokens via GitHub's credential revocation API.
 	revoker revoker
-	// now returns the current time; overridable in tests for the expiration check.
-	now func() time.Time
 	// enableRefreshToken lets an expiring access token be refreshed with a stored
 	// refresh token instead of re-running the device flow. It is part of the unlocked
 	// state (guarded by mu): set from the passphrase-authenticated UNLOCK and read per
@@ -110,6 +108,10 @@ func (c *Controller) refreshEnabled() bool {
 
 // New creates a new agent Controller. The server starts locked (no token store);
 // it is unlocked later via the UNLOCK command.
+//
+// The controller reads the clock with time.Now rather than an injectable hook: tests
+// that need a controlled clock run inside a testing/synctest bubble, where the time
+// package itself is fake.
 func New() *Controller {
 	// One HTTP client, shared by the device-flow and revoke clients, with a per-request
 	// timeout so no GitHub call can block a handler goroutine indefinitely.
@@ -118,7 +120,6 @@ func New() *Controller {
 		status:  map[string]*deviceFlowState{},
 		client:  deviceflow.New(&deviceflow.Input{HTTPClient: httpClient}),
 		revoker: revoke.New(httpClient),
-		now:     time.Now,
 		goos:    runtime.GOOS,
 	}
 }
