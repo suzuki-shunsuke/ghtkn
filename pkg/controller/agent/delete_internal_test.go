@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -20,16 +19,16 @@ func TestController_handle_delete(t *testing.T) {
 	if err := c.store.Set("Iv1.abc", json.RawMessage(`{"access_token":"abc"}`)); err != nil {
 		t.Fatal(err)
 	}
-	del, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"DELETE","client_id":"Iv1.abc"}`+"\n"))
+	del, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"DELETE","client_id":"Iv1.abc"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true}, del); diff != "" {
 		t.Fatalf("DELETE (-want +got):\n%s", diff)
 	}
-	get, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.abc"}`+"\n"))
+	get, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.abc"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, get); diff != "" {
 		t.Fatalf("GET after DELETE (-want +got):\n%s", diff)
 	}
 	// Deleting an absent token is a no-op success.
-	del2, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"DELETE","client_id":"Iv1.absent"}`+"\n"))
+	del2, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"DELETE","client_id":"Iv1.absent"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true}, del2); diff != "" {
 		t.Fatalf("DELETE of an absent token (-want +got):\n%s", diff)
 	}
@@ -39,7 +38,7 @@ func TestController_handle_delete(t *testing.T) {
 func TestController_handle_delete_locked(t *testing.T) {
 	t.Parallel()
 	c := New() // locked: no store
-	del, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"DELETE","client_id":"Iv1.x"}`+"\n"))
+	del, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"DELETE","client_id":"Iv1.x"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, del); diff != "" {
 		t.Fatalf("DELETE while locked (-want +got):\n%s", diff)
 	}

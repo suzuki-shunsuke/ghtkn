@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -57,7 +56,7 @@ func TestController_handleGet_pendingFlow(t *testing.T) {
 		verificationURI: "https://github.com/login/device",
 		expiresIn:       900,
 	}
-	got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, false)
+	got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, false)
 	want := &agentapi.Response{
 		OK:              true,
 		Pending:         true,
@@ -76,7 +75,7 @@ func TestController_handleGet_pendingFlow(t *testing.T) {
 func TestController_handleGet_missNoFlow(t *testing.T) {
 	t.Parallel()
 	c := newUnlockedController(t)
-	got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: "Iv1.notoken"}, false)
+	got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: "Iv1.notoken"}, false)
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
 		t.Fatalf("plain GET miss (-want +got):\n%s", diff)
 	}
@@ -98,7 +97,7 @@ func TestController_handleGet_expired(t *testing.T) {
 		if err := c.store.Set(clientID, json.RawMessage(seeded)); err != nil {
 			t.Fatal(err)
 		}
-		got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, false)
+		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, false)
 		if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
 			t.Fatalf("expired GET (-want +got):\n%s", diff)
 		}
@@ -118,12 +117,12 @@ func TestController_handleGet_minExpiration(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		within := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID, MinExpiration: 10 * time.Minute}, false)
+		within := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID, MinExpiration: 10 * time.Minute}, false)
 		if diff := cmp.Diff(&agentapi.Response{OK: true, Token: []byte(seeded)}, within); diff != "" {
 			t.Fatalf("GET with 10m MinExpiration (-want +got):\n%s", diff)
 		}
 
-		beyond := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID, MinExpiration: time.Hour}, false)
+		beyond := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID, MinExpiration: time.Hour}, false)
 		if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, beyond); diff != "" {
 			t.Fatalf("GET with 1h MinExpiration (-want +got):\n%s", diff)
 		}
@@ -145,7 +144,7 @@ func TestController_handleGet_awaitReturnsUnfreshToken(t *testing.T) {
 		if err := c.store.Set(clientID, json.RawMessage(seeded)); err != nil {
 			t.Fatal(err)
 		}
-		got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID, AwaitDeviceFlow: true}, false)
+		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID, AwaitDeviceFlow: true}, false)
 		if diff := cmp.Diff(&agentapi.Response{OK: true, Token: []byte(seeded)}, got); diff != "" {
 			t.Fatalf("await GET (-want +got):\n%s", diff)
 		}
@@ -157,7 +156,7 @@ func TestController_handleGet_awaitReturnsUnfreshToken(t *testing.T) {
 func TestController_handleGet_awaitNoToken(t *testing.T) {
 	t.Parallel()
 	c := newUnlockedController(t)
-	got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: "Iv1.none", AwaitDeviceFlow: true}, false)
+	got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: "Iv1.none", AwaitDeviceFlow: true}, false)
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
 		t.Fatalf("await GET without a token (-want +got):\n%s", diff)
 	}
@@ -192,7 +191,7 @@ func TestController_handleGet_refresh(t *testing.T) {
 		const clientID = "Iv1.refresh"
 		seedExpiredWithRefresh(t, c, clientID, now.Add(24*time.Hour))
 
-		got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
 
 		// The response carries only the access token; the refresh token stays server-side.
 		//nolint:gosec // G117: serializing a token in a test to build the expected bytes.
@@ -253,7 +252,7 @@ func TestController_dispatchGet_usesUnlockFlag(t *testing.T) {
 		t.Parallel()
 		synctest.Test(t, func(t *testing.T) {
 			c, rt := newController(t, true)
-			got, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.x"}`+"\n"))
+			got, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.x"}`+"\n"))
 			if !got.OK || !rt.called {
 				t.Fatalf("a GET with refresh enabled must refresh; resp=%+v called=%v", got, rt.called)
 			}
@@ -263,7 +262,7 @@ func TestController_dispatchGet_usesUnlockFlag(t *testing.T) {
 		t.Parallel()
 		synctest.Test(t, func(t *testing.T) {
 			c, rt := newController(t, false)
-			got, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.x"}`+"\n"))
+			got, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.x"}`+"\n"))
 			if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
 				t.Fatalf("GET with refresh disabled (-want +got):\n%s", diff)
 			}
@@ -285,7 +284,7 @@ func TestController_handleGet_refreshTokenExpired(t *testing.T) {
 		const clientID = "Iv1.refreshexp"
 		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(-time.Minute)) // refresh token already expired
 
-		got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
 		if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
 			t.Fatalf("expired refresh token (-want +got):\n%s", diff)
 		}
@@ -306,7 +305,7 @@ func TestController_handleGet_refreshDisabled(t *testing.T) {
 		const clientID = "Iv1.refreshoff"
 		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
 
-		got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, false)
+		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, false)
 		if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
 			t.Fatalf("refresh disabled (-want +got):\n%s", diff)
 		}
@@ -328,7 +327,7 @@ func TestController_handleGet_refreshHTTPError(t *testing.T) {
 		const clientID = "Iv1.refresherr"
 		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
 
-		got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
 		if got.Error != agentapi.RespNotFound {
 			t.Fatalf("refresh HTTP error must be a not-found miss, got error %q", got.Error)
 		}
@@ -370,7 +369,7 @@ func TestController_handleGet_refreshPeerAlreadyRefreshed(t *testing.T) {
 			return &http.Response{StatusCode: http.StatusInternalServerError, Body: io.NopCloser(strings.NewReader("{}")), Header: make(http.Header)}, nil
 		}))
 
-		got := c.handleGet(context.Background(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
 		if !called {
 			t.Fatal("the refresh endpoint should have been called")
 		}

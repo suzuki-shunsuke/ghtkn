@@ -2,7 +2,6 @@ package agent
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -24,12 +23,12 @@ func TestController_handle_unlock(t *testing.T) {
 	c.keyFile = filepath.Join(t.TempDir(), "key")
 	c.tokenDir = t.TempDir()
 
-	unlock, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))
+	unlock, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true}, unlock); diff != "" {
 		t.Fatalf("UNLOCK (-want +got):\n%s", diff)
 	}
 	// After unlock, GET works (returns not found rather than locked).
-	get, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.x"}`+"\n"))
+	get, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.x"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, get); diff != "" {
 		t.Fatalf("GET after unlock (-want +got):\n%s", diff)
 	}
@@ -44,8 +43,8 @@ func TestController_handle_unlock_enableRefresh(t *testing.T) {
 	c.keyFile = filepath.Join(t.TempDir(), "key")
 	c.tokenDir = t.TempDir()
 
-	// Use a cancellable context: enabling refresh starts the sweep goroutine, which must
-	// stop when the test ends.
+	// t.Context is canceled when the test ends, which stops the sweep goroutine that
+	// enabling refresh starts.
 	unlock, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","enable_refresh_token":true}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true, RefreshTokenEnabled: true}, unlock); diff != "" {
 		t.Fatalf("UNLOCK --enable-refresh (-want +got):\n%s", diff)
@@ -54,13 +53,13 @@ func TestController_handle_unlock_enableRefresh(t *testing.T) {
 		t.Fatal("refresh must be enabled after unlock --enable-refresh")
 	}
 	// STATUS reports it.
-	status, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"STATUS"}`+"\n"))
+	status, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"STATUS"}`+"\n"))
 	if !status.RefreshTokenEnabled {
 		t.Fatalf("STATUS must report refresh enabled, got %+v", status)
 	}
 	// An already-unlocked re-unlock without the flag must NOT flip it (the early-return
 	// path never verifies the passphrase, so it must not change security state).
-	reunlock, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))
+	reunlock, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true, RefreshTokenEnabled: true}, reunlock); diff != "" {
 		t.Fatalf("re-unlock (-want +got):\n%s", diff)
 	}
@@ -113,7 +112,7 @@ func TestController_handle_unlock_refreshUnsupportedOS(t *testing.T) {
 		t.Fatal("refresh must not be enabled on Windows")
 	}
 	// A plain unlock still works on Windows.
-	plain, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))
+	plain, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true}, plain); diff != "" {
 		t.Fatalf("UNLOCK on Windows (-want +got):\n%s", diff)
 	}
@@ -124,8 +123,9 @@ func TestController_handle_unlock_refreshUnsupportedOS(t *testing.T) {
 // front; this is the server-side backstop for any other client.
 func TestController_handle_unlock_capsRefreshTokenTTL(t *testing.T) {
 	t.Parallel()
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
+	// The unlock starts the background sweep; t.Context is canceled when the test ends,
+	// so the goroutine stops with it.
+	ctx := t.Context()
 	c := New()
 	c.keyFile = filepath.Join(t.TempDir(), "key")
 	c.tokenDir = t.TempDir()
@@ -158,7 +158,7 @@ func TestController_handle_unlock_orphanTokens(t *testing.T) {
 	c.keyFile = filepath.Join(t.TempDir(), "key") // absent: a new key is generated
 	c.tokenDir = dir
 
-	unlock, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))
+	unlock, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true}, unlock); diff != "" {
 		t.Fatalf("UNLOCK (-want +got):\n%s", diff)
 	}
@@ -195,7 +195,7 @@ func TestController_handle_unlock_stripsRefreshWhenDisabled(t *testing.T) {
 	c2 := New()
 	c2.keyFile = keyFile
 	c2.tokenDir = tokenDir
-	unlock, _ := c2.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","confirm_refresh_token_removal":true}`+"\n"))
+	unlock, _ := c2.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","confirm_refresh_token_removal":true}`+"\n"))
 	if unlock.RefreshTokenEnabled {
 		t.Fatalf("refresh must be disabled, got %+v", unlock)
 	}
@@ -249,7 +249,7 @@ func TestController_handle_unlock_pendingRefreshRemoval(t *testing.T) {
 	c := New()
 	c.keyFile = keyFile
 	c.tokenDir = tokenDir
-	unlock, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))
+	unlock, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{RefreshTokenRemovalPending: true, Error: errMsgRefreshTokenRemovalPending}, unlock); diff != "" {
 		t.Fatalf("UNLOCK (-want +got):\n%s", diff)
 	}
@@ -277,7 +277,7 @@ func TestController_handle_unlock_confirmedRefreshRemoval(t *testing.T) {
 	c := New()
 	c.keyFile = keyFile
 	c.tokenDir = tokenDir
-	unlock, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","confirm_refresh_token_removal":true}`+"\n"))
+	unlock, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","confirm_refresh_token_removal":true}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true}, unlock); diff != "" {
 		t.Fatalf("UNLOCK (-want +got):\n%s", diff)
 	}
@@ -301,7 +301,7 @@ func TestController_handle_unlock_noPromptWhenRefreshExpired(t *testing.T) {
 	c := New()
 	c.keyFile = keyFile
 	c.tokenDir = tokenDir
-	unlock, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))
+	unlock, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true}, unlock); diff != "" {
 		t.Fatalf("UNLOCK (-want +got):\n%s", diff)
 	}

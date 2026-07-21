@@ -86,7 +86,7 @@ func TestController_handle(t *testing.T) {
 			t.Parallel()
 			c := newUnlockedController(t)
 			for i, req := range d.requests {
-				got, _ := c.handle(context.Background(), strings.NewReader(req+"\n"))
+				got, _ := c.handle(t.Context(), strings.NewReader(req+"\n"))
 				if diff := cmp.Diff(d.want[i], got); diff != "" {
 					t.Fatalf("request %d (-want +got):\n%s", i, diff)
 				}
@@ -104,7 +104,7 @@ func TestController_handle_getSeeded(t *testing.T) {
 	if err := c.store.Set("X", json.RawMessage(seeded)); err != nil {
 		t.Fatal(err)
 	}
-	got, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"X"}`+"\n"))
+	got, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"X"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true, Token: []byte(seeded)}, got); diff != "" {
 		t.Fatalf("GET (-want +got):\n%s", diff)
 	}
@@ -118,7 +118,7 @@ func TestController_handle_statusCounts(t *testing.T) {
 	if err := c.store.Set("X", json.RawMessage(`{"access_token":"abc"}`)); err != nil {
 		t.Fatal(err)
 	}
-	got, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"STATUS"}`+"\n"))
+	got, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"STATUS"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true, Count: 1}, got); diff != "" {
 		t.Fatalf("STATUS (-want +got):\n%s", diff)
 	}
@@ -132,7 +132,7 @@ func TestController_handle_obsoleteClient(t *testing.T) {
 	t.Parallel()
 	c := newUnlockedController(t)
 	tooOld := agentapi.MinProtocolVersion - 1
-	got, _ := c.handle(context.Background(), strings.NewReader(fmt.Sprintf(`{"protocol_version":%d,"command":"GET","client_id":"Iv1.x"}`, tooOld)+"\n"))
+	got, _ := c.handle(t.Context(), strings.NewReader(fmt.Sprintf(`{"protocol_version":%d,"command":"GET","client_id":"Iv1.x"}`, tooOld)+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespObsoleteClient}, got); diff != "" {
 		t.Fatalf("obsolete client (-want +got):\n%s", diff)
 	}
@@ -145,11 +145,11 @@ func TestController_handle_legacySetGet(t *testing.T) {
 	t.Parallel()
 	c := newUnlockedController(t)
 	const token = `{"access_token":"abc","expiration_date":"2999-01-01T00:00:00Z"}`
-	set, _ := c.handle(context.Background(), strings.NewReader(`{"command":"SET","client_id":"Iv1.x","token":`+token+`}`+"\n"))
+	set, _ := c.handle(t.Context(), strings.NewReader(`{"command":"SET","client_id":"Iv1.x","token":`+token+`}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true}, set); diff != "" {
 		t.Fatalf("legacy SET (-want +got):\n%s", diff)
 	}
-	get, _ := c.handle(context.Background(), strings.NewReader(`{"command":"GET","client_id":"Iv1.x"}`+"\n"))
+	get, _ := c.handle(t.Context(), strings.NewReader(`{"command":"GET","client_id":"Iv1.x"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true, Token: []byte(token)}, get); diff != "" {
 		t.Fatalf("legacy GET (-want +got):\n%s", diff)
 	}
@@ -162,12 +162,12 @@ func TestController_handle_setRejectedForCurrentClient(t *testing.T) {
 	t.Parallel()
 	c := newUnlockedController(t)
 	const token = `{"access_token":"abc","expiration_date":"2999-01-01T00:00:00Z"}`
-	set, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"SET","client_id":"Iv1.x","token":`+token+`}`+"\n"))
+	set, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"SET","client_id":"Iv1.x","token":`+token+`}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{Error: errMsgSetNotAllowed}, set); diff != "" {
 		t.Fatalf("current-client SET (-want +got):\n%s", diff)
 	}
 	// Nothing was stored: a subsequent GET is a miss.
-	get, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.x"}`+"\n"))
+	get, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.x"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, get); diff != "" {
 		t.Fatalf("GET after rejected SET (-want +got):\n%s", diff)
 	}
@@ -179,7 +179,7 @@ func TestController_handle_setRejectedForCurrentClient(t *testing.T) {
 func TestController_handle_legacyGetMissing(t *testing.T) {
 	t.Parallel()
 	c := newUnlockedController(t)
-	got, _ := c.handle(context.Background(), strings.NewReader(`{"command":"GET","client_id":"missing"}`+"\n"))
+	got, _ := c.handle(t.Context(), strings.NewReader(`{"command":"GET","client_id":"missing"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
 		t.Fatalf("legacy GET miss (-want +got):\n%s", diff)
 	}
@@ -206,7 +206,7 @@ func TestController_handle_legacyNoRefresh(t *testing.T) {
 		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
 
 		// Legacy GET: no protocol_version field (decodes to 0).
-		got, _ := c.handle(context.Background(), strings.NewReader(`{"command":"GET","client_id":"`+clientID+`"}`+"\n"))
+		got, _ := c.handle(t.Context(), strings.NewReader(`{"command":"GET","client_id":"`+clientID+`"}`+"\n"))
 		if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, got); diff != "" {
 			t.Fatalf("legacy GET must not refresh (-want +got):\n%s", diff)
 		}
@@ -222,7 +222,7 @@ func TestController_handle_obsoleteAgent(t *testing.T) {
 	t.Parallel()
 	c := newUnlockedController(t)
 	newer := agentapi.ProtocolVersion + 1
-	got, _ := c.handle(context.Background(), strings.NewReader(fmt.Sprintf(`{"protocol_version":%d,"command":"GET","client_id":"Iv1.x"}`, newer)+"\n"))
+	got, _ := c.handle(t.Context(), strings.NewReader(fmt.Sprintf(`{"protocol_version":%d,"command":"GET","client_id":"Iv1.x"}`, newer)+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespObsoleteAgent}, got); diff != "" {
 		t.Fatalf("obsolete agent (-want +got):\n%s", diff)
 	}
@@ -234,11 +234,11 @@ func TestController_handle_locked(t *testing.T) {
 	t.Parallel()
 	c := New() // locked: no store
 
-	get, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.x"}`+"\n"))
+	get, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.x"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, get); diff != "" {
 		t.Fatalf("GET while locked (-want +got):\n%s", diff)
 	}
-	status, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"STATUS"}`+"\n"))
+	status, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"STATUS"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true, Locked: true}, status); diff != "" {
 		t.Fatalf("STATUS while locked (-want +got):\n%s", diff)
 	}
@@ -254,7 +254,7 @@ func TestController_handle_disk(t *testing.T) {
 	if err := c.store.Set("Iv1.abc", json.RawMessage(seeded)); err != nil {
 		t.Fatal(err)
 	}
-	get, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.abc"}`+"\n"))
+	get, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.abc"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true, Token: []byte(seeded)}, get); diff != "" {
 		t.Fatalf("GET (-want +got):\n%s", diff)
 	}
@@ -274,7 +274,7 @@ func TestController_handle_undecryptable(t *testing.T) {
 	c := New()
 	c.store = tokenstore.New(make([]byte, 32), dir)
 
-	get, _ := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.abc"}`+"\n"))
+	get, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.abc"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespNotFound}, get); diff != "" {
 		t.Fatalf("GET of an undecryptable token must be a miss (-want +got):\n%s", diff)
 	}
@@ -284,7 +284,7 @@ func TestController_handle_undecryptable(t *testing.T) {
 func TestController_handle_stop(t *testing.T) {
 	t.Parallel()
 	c := New()
-	got, shutdown := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"STOP"}`+"\n"))
+	got, shutdown := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"STOP"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true}, got); diff != "" {
 		t.Fatalf("response (-want +got):\n%s", diff)
 	}
@@ -293,7 +293,7 @@ func TestController_handle_stop(t *testing.T) {
 	}
 
 	// Non-stop commands must not request shutdown.
-	if _, shutdown := c.handle(context.Background(), strings.NewReader(`{"protocol_version":1,"command":"STATUS"}`+"\n")); shutdown {
+	if _, shutdown := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"STATUS"}`+"\n")); shutdown {
 		t.Fatal("STATUS must not request shutdown")
 	}
 }

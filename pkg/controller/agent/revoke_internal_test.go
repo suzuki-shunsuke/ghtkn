@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -23,7 +22,7 @@ func TestController_handleRevoke(t *testing.T) {
 	if err := c.store.Set("Iv1.b", json.RawMessage(`{"access_token":"secret-b"}`)); err != nil {
 		t.Fatal(err)
 	}
-	got := c.handleRevoke(context.Background(), &agentapi.Request{Command: agentapi.CommandRevoke, ClientIDs: []string{"Iv1.a", "Iv1.b"}})
+	got := c.handleRevoke(t.Context(), &agentapi.Request{Command: agentapi.CommandRevoke, ClientIDs: []string{"Iv1.a", "Iv1.b"}})
 	if diff := cmp.Diff(&agentapi.Response{OK: true}, got); diff != "" {
 		t.Fatalf("REVOKE (-want +got):\n%s", diff)
 	}
@@ -48,7 +47,7 @@ func TestController_handleRevoke_noToken(t *testing.T) {
 	if err := c.store.Set("Iv1.a", json.RawMessage(`{"access_token":"secret-a"}`)); err != nil {
 		t.Fatal(err)
 	}
-	got := c.handleRevoke(context.Background(), &agentapi.Request{Command: agentapi.CommandRevoke, ClientIDs: []string{"Iv1.a", "Iv1.absent"}})
+	got := c.handleRevoke(t.Context(), &agentapi.Request{Command: agentapi.CommandRevoke, ClientIDs: []string{"Iv1.a", "Iv1.absent"}})
 	if diff := cmp.Diff(&agentapi.Response{OK: true}, got); diff != "" {
 		t.Fatalf("REVOKE with a no-token client (-want +got):\n%s", diff)
 	}
@@ -70,7 +69,7 @@ func TestController_handleRevoke_revokeFails(t *testing.T) {
 	if err := c.store.Set("Iv1.b", json.RawMessage(`{"access_token":"secret-b"}`)); err != nil {
 		t.Fatal(err)
 	}
-	got := c.handleRevoke(context.Background(), &agentapi.Request{Command: agentapi.CommandRevoke, ClientIDs: []string{"Iv1.a", "Iv1.b"}})
+	got := c.handleRevoke(t.Context(), &agentapi.Request{Command: agentapi.CommandRevoke, ClientIDs: []string{"Iv1.a", "Iv1.b"}})
 	if diff := cmp.Diff(&agentapi.Response{OK: true, RevokeFailed: []string{"Iv1.a", "Iv1.b"}}, got); diff != "" {
 		t.Fatalf("REVOKE with a failing revoker (-want +got):\n%s", diff)
 	}
@@ -85,7 +84,7 @@ func TestController_handleRevoke_revokeFails(t *testing.T) {
 func TestController_handleRevoke_locked(t *testing.T) {
 	t.Parallel()
 	c := New() // locked: no store
-	got := c.handleRevoke(context.Background(), &agentapi.Request{Command: agentapi.CommandRevoke, ClientIDs: []string{"Iv1.x"}})
+	got := c.handleRevoke(t.Context(), &agentapi.Request{Command: agentapi.CommandRevoke, ClientIDs: []string{"Iv1.x"}})
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, got); diff != "" {
 		t.Fatalf("REVOKE while locked (-want +got):\n%s", diff)
 	}
