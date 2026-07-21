@@ -17,7 +17,9 @@ const (
 )
 
 // ttlUnit maps a d/w/m suffix (units time.ParseDuration does not understand but that are
-// practical for a TTL measured in days, weeks, or months) to its duration.
+// practical for a TTL measured in days, weeks, or months) to its duration. These are the
+// only accepted units: m must mean a month here, so a value time.ParseDuration would read
+// with m as minutes (e.g. "1m30s") is rejected rather than silently meaning something else.
 func ttlUnit(b byte) (time.Duration, bool) {
 	switch b {
 	case 'd':
@@ -33,9 +35,9 @@ func ttlUnit(b byte) (time.Duration, bool) {
 
 // parseRefreshTokenTTL parses a --refresh-token-ttl value. It accepts a number with a
 // d (day), w (week), or m (30-day month) suffix, e.g. "3d", "4w", "2m", "1.5w", and
-// falls back to time.ParseDuration for other inputs (e.g. "168h"). It rejects empty,
-// negative, and out-of-range values: the TTL must not be negative and must not exceed
-// six months. Zero is allowed and means "use the agent default".
+// nothing else. It rejects empty, negative, and out-of-range values: the TTL must not be
+// negative and must not exceed six months. Zero is allowed and means "use the agent
+// default".
 // checkRefreshTokenSupported rejects --enable-refresh on an OS where the refresh-token
 // feature is unsupported (see agent.RefreshTokenSupported). The agent refuses such an
 // UNLOCK too; failing here means the user isn't asked for the passphrase first. goos is
@@ -65,16 +67,13 @@ func parseDurationValue(s string) (time.Duration, error) {
 	if s == "" {
 		return 0, errors.New("refresh-token-ttl must not be empty")
 	}
-	if unit, ok := ttlUnit(s[len(s)-1]); ok {
-		n, err := strconv.ParseFloat(s[:len(s)-1], 64)
-		if err != nil {
-			return 0, fmt.Errorf("parse refresh-token-ttl %q: %w", s, err)
-		}
-		return time.Duration(n * float64(unit)), nil
+	unit, ok := ttlUnit(s[len(s)-1])
+	if !ok {
+		return 0, fmt.Errorf("refresh-token-ttl must end with d (day), w (week), or m (30-day month), e.g. 7d, 4w, 2m: %q", s)
 	}
-	d, err := time.ParseDuration(s)
+	n, err := strconv.ParseFloat(s[:len(s)-1], 64)
 	if err != nil {
 		return 0, fmt.Errorf("parse refresh-token-ttl %q: %w", s, err)
 	}
-	return d, nil
+	return time.Duration(n * float64(unit)), nil
 }

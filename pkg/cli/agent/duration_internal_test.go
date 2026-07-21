@@ -50,7 +50,6 @@ func TestParseRefreshTokenTTL(t *testing.T) {
 		{name: "week default", in: "1w", want: 7 * 24 * time.Hour},
 		{name: "months", in: "2m", want: 2 * 30 * 24 * time.Hour},
 		{name: "fractional week", in: "1.5w", want: time.Duration(1.5 * float64(7*24*time.Hour))},
-		{name: "hours fallback", in: "168h", want: 168 * time.Hour},
 		{name: "zero uses server default", in: "0w", want: 0},
 		{name: "just under six months", in: "179d", want: 179 * 24 * time.Hour},
 		{name: "exactly six months accepted", in: "6m", want: 6 * 30 * 24 * time.Hour},
@@ -62,6 +61,11 @@ func TestParseRefreshTokenTTL(t *testing.T) {
 		{name: "no number", in: "w", wantErr: true},
 		{name: "unknown unit", in: "4x", wantErr: true},
 		{name: "not a duration", in: "abc", wantErr: true},
+		// time.ParseDuration units are not accepted: m must mean a month, so anything it
+		// would read with m as minutes must not parse at all.
+		{name: "hours are not accepted", in: "168h", wantErr: true},
+		{name: "minutes and seconds are not accepted", in: "1m30s", wantErr: true},
+		{name: "seconds are not accepted", in: "30s", wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
