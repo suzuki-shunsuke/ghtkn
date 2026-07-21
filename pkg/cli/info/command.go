@@ -88,9 +88,11 @@ func (r *runner) action(_ context.Context, logger *slogutil.Logger, args *Args) 
 		return err //nolint:wrapcheck
 	}
 	// Resolve the effective config (config file plus environment overrides) so info can
-	// report the settings that actually take effect. It is best-effort: a config that
-	// can't be loaded must not fail the troubleshooting command, so warn and omit it.
-	cfg, err := ghtkn.LoadConfig()
+	// report the settings that actually take effect. The path resolved above is passed
+	// in, so the reported config_path is always the file the reported config came from.
+	// It is best-effort: a config that can't be loaded must not fail the troubleshooting
+	// command, so warn and omit it.
+	cfg, err := ghtkn.LoadConfig(&ghtkn.InputLoadConfig{ConfigFilePath: configPath})
 	if err != nil {
 		logger.Warn("load the config for the info output; omitting the config section", "error", err)
 		cfg = nil

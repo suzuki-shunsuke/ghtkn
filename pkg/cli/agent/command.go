@@ -70,7 +70,9 @@ type runner struct {
 // environment and config, which can differ from the environment a later 'ghtkn get'/
 // 'auth' runs in.
 func (r *runner) warnIfBackendNotAgent() {
-	cfg, err := ghtkn.LoadConfig()
+	// The global --config flag selects the config file; when it is empty the SDK falls
+	// back to GHTKN_CONFIG and then the default path.
+	cfg, err := ghtkn.LoadConfig(&ghtkn.InputLoadConfig{ConfigFilePath: r.flags.Config})
 	if err != nil {
 		slogerr.WithError(r.logger.Logger, err).Debug("resolve the backend for the agent-usage check")
 		return
