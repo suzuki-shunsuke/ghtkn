@@ -6,7 +6,6 @@ import (
 	"errors"
 	"time"
 
-	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keyfile"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
@@ -168,7 +167,7 @@ func (c *Controller) stripRefreshTokens(st *tokenstore.Store) {
 // cleared, and whether anything changed. An unparsable token, or one that already has
 // no refresh token, yields (nil, false).
 func stripRefreshToken(raw json.RawMessage) (json.RawMessage, bool) {
-	token := &pubapi.AccessToken{}
+	token := &storedToken{}
 	if err := json.Unmarshal(raw, token); err != nil {
 		return nil, false
 	}

@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"time"
 
-	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	"github.com/suzuki-shunsuke/go-github-device-flow/deviceflow"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
@@ -115,13 +114,13 @@ func (c *Controller) startDeviceFlow(ctx context.Context, logger *slog.Logger, c
 	return state, nil
 }
 
-// encodeToken converts a device flow access token into the JSON the SDK stores and
-// reads: the token value plus an absolute expiration date computed from ExpiresIn. When
+// encodeToken converts a device flow access token into the JSON the agent stores: the
+// token value plus an absolute expiration date computed from ExpiresIn. When
 // enableRefreshToken is set it also stores the refresh token and its own (longer)
 // expiration computed from RefreshTokenExpiresIn.
 func (c *Controller) encodeToken(token *deviceflow.AccessToken, enableRefreshToken bool) (json.RawMessage, error) {
 	now := time.Now()
-	ac := &pubapi.AccessToken{
+	ac := &storedToken{
 		AccessToken:    token.AccessToken,
 		ExpirationDate: now.Add(time.Duration(token.ExpiresIn) * time.Second),
 	}

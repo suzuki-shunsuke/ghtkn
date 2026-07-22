@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 	"github.com/suzuki-shunsuke/go-github-device-flow/deviceflow"
 )
@@ -210,7 +209,7 @@ func TestController_handleGet_refresh(t *testing.T) {
 		}
 		// The rotated token, including the refresh token, is persisted in the store.
 		//nolint:gosec // G117: serializing a token in a test to build the expected stored bytes.
-		wantStored, err := json.Marshal(&pubapi.AccessToken{
+		wantStored, err := json.Marshal(&storedToken{
 			AccessToken:                "new-access",
 			ExpirationDate:             now.Add(28800 * time.Second),
 			RefreshToken:               "new-refresh",

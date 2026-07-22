@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	pubapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/api"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
@@ -52,7 +51,7 @@ func (c *Controller) collectRevocableTokens(st *tokenstore.Store, clientIDs []st
 		if !ok {
 			continue // nothing stored for this client: nothing to revoke.
 		}
-		token := &pubapi.AccessToken{}
+		token := &storedToken{}
 		err := json.Unmarshal(raw, token)
 		// The decrypted plaintext (access + refresh token) is no longer needed once
 		// parsed; the extracted string fields below are what get revoked.
