@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/harden"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keyfile"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/stop"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
@@ -22,6 +23,11 @@ import (
 // It asks for confirmation first because the operation is destructive, and requires
 // a terminal both for that confirmation and for the new passphrase.
 func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
+	// Best-effort, before the new passphrase is read: block same-user memory reads and
+	// core dumps of this process (Linux-only, no-op elsewhere). It holds the passphrase
+	// from the prompt until the new key file is written.
+	harden.Process(logger)
+
 	keyFile, err := keyfile.KeyPath(c.getEnv, runtime.GOOS)
 	if err != nil {
 		return err //nolint:wrapcheck

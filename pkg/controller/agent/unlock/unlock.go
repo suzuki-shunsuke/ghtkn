@@ -8,6 +8,7 @@ import (
 	"time"
 
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/harden"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tty"
 )
 
@@ -22,6 +23,13 @@ import (
 // token may sit unused before the agent discards it; it applies only when refresh is
 // enabled.
 func (c *Controller) Run(ctx context.Context, logger *slog.Logger, enableRefreshToken bool, refreshTokenTTL time.Duration) error {
+	// Best-effort, before the passphrase is read: block same-user memory reads and core
+	// dumps of this process (Linux-only, no-op elsewhere). This command is usually
+	// short-lived, but it holds the passphrase while it waits at the refresh-token
+	// removal prompt, which is bounded only by the user, and the marshaled request
+	// carries a copy that cannot be zeroed (see agent.SecretBytes.MarshalJSON).
+	harden.Process(logger)
+
 	path, err := agentapi.SocketPath(c.getEnv, runtime.GOOS)
 	if err != nil {
 		return err //nolint:wrapcheck

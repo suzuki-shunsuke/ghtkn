@@ -8,6 +8,7 @@ import (
 	"runtime"
 
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/harden"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keyfile"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
 )
@@ -23,9 +24,9 @@ import (
 // does not register its own signal handler.
 func (c *Controller) Start(ctx context.Context, logger *slog.Logger) error {
 	// Best-effort: block same-user memory reads and core dumps of this process before it
-	// ever holds a data key or decrypted tokens (see hardenProcess; Linux-only, no-op
+	// ever holds a data key or decrypted tokens (see harden.Process; Linux-only, no-op
 	// elsewhere).
-	hardenProcess(logger)
+	harden.Process(logger)
 
 	keyFile, err := keyfile.KeyPath(os.Getenv, runtime.GOOS)
 	if err != nil {

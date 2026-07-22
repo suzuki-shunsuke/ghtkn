@@ -34,7 +34,7 @@ const goosWindows = "windows"
 // token from leaking are POSIX-specific: the 0600 permissions the agent sets on the
 // key, the token files, and the socket are effectively a no-op there, and there is no
 // equivalent of the PR_SET_DUMPABLE hardening that stops a same-user process from
-// reading the agent's memory (see hardenProcess). A refresh token outlives the 8-hour
+// reading the agent's memory (see harden.Process). A refresh token outlives the 8-hour
 // access token by months, so it is not worth storing without them.
 //
 // This is the single source of truth for the restriction: the CLI rejects
