@@ -1,4 +1,3 @@
-//nolint:wrapcheck
 package initcmd_test
 
 import (
@@ -6,305 +5,223 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/initcmd"
 )
 
-func TestController_Init(t *testing.T) { //nolint:gocognit,cyclop,funlen
-	t.Parallel()
-	tests := []struct {
-		name            string
-		configFilePath  string
-		setupFS         func(fs afero.Fs)
-		wantErr         bool
-		errContains     string
-		checkFile       bool
-		wantLogContains string
-	}{
-		{
-			name:            "create new config file",
-			configFilePath:  "/home/user/.config/ghtkn/ghtkn.yaml",
-			setupFS:         func(_ afero.Fs) {},
-			wantErr:         false,
-			checkFile:       true,
-			wantLogContains: "The configuration file has been created",
-		},
-		{
-			name:           "config file already exists",
-			configFilePath: "/home/user/.config/ghtkn/ghtkn.yaml",
-			setupFS: func(fs afero.Fs) {
-				_ = fs.MkdirAll("/home/user/.config/ghtkn", 0o755)
-				_ = afero.WriteFile(fs, "/home/user/.config/ghtkn/ghtkn.yaml", []byte("existing content"), 0o644)
-			},
-			wantErr:         false,
-			checkFile:       false,
-			wantLogContains: "The configuration file already exists",
-		},
-		{
-			name:            "create config in nested directory",
-			configFilePath:  "/home/user/.config/ghtkn/subdir/ghtkn.yaml",
-			setupFS:         func(_ afero.Fs) {},
-			wantErr:         false,
-			checkFile:       true,
-			wantLogContains: "The configuration file has been created",
-		},
-		{
-			name:            "create config in current directory",
-			configFilePath:  "ghtkn.yaml",
-			setupFS:         func(_ afero.Fs) {},
-			wantErr:         false,
-			checkFile:       true,
-			wantLogContains: "The configuration file has been created",
-		},
-		{
-			name:            "create config with absolute path",
-			configFilePath:  "/etc/ghtkn/ghtkn.yaml",
-			setupFS:         func(_ afero.Fs) {},
-			wantErr:         false,
-			checkFile:       true,
-			wantLogContains: "The configuration file has been created",
-		},
-		{
-			name:           "directory exists but file doesn't",
-			configFilePath: "/home/user/.config/ghtkn/ghtkn.yaml",
-			setupFS: func(fs afero.Fs) {
-				_ = fs.MkdirAll("/home/user/.config/ghtkn", 0o755)
-			},
-			wantErr:         false,
-			checkFile:       true,
-			wantLogContains: "The configuration file has been created",
-		},
+// newLogger returns a logger writing into buf so tests can assert what the user is told.
+func newLogger(buf *bytes.Buffer) *slog.Logger {
+	return slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+}
+
+// checkCreated asserts that path holds the default configuration and grants nothing
+// beyond 0644.
+func checkCreated(t *testing.T, path string) {
+	t.Helper()
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read the created file: %v", err)
+	}
+	for _, field := range []string{"apps:", "client_id:"} {
+		if !strings.Contains(string(content), field) {
+			t.Errorf("the created file does not contain %q:\n%s", field, content)
+		}
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat the created file: %v", err)
+	}
+	// The file is created with 0644, but the process umask may clear bits from it, so
+	// the exact mode is environment-dependent. What matters is that nothing beyond 0644
+	// is granted: no write for group or other, and not executable.
+	if perm := info.Mode().Perm(); perm|0o644 != 0o644 {
+		t.Errorf("file permissions = %o, want no bits beyond 644", perm)
+	}
+}
+
+// initCase is one Init scenario against a temporary directory.
+type initCase struct {
+	name string
+	// path is joined onto the test's temporary directory.
+	path string
+	// setup prepares the temporary directory before Init runs.
+	setup func(t *testing.T, dir string)
+	// wantExisting is the content the file must keep, i.e. Init must not overwrite it.
+	wantExisting    string
+	wantLogContains string
+}
+
+// run executes the scenario in its own temporary directory.
+func (tt *initCase) run(t *testing.T) {
+	t.Helper()
+	dir := t.TempDir()
+	if tt.setup != nil {
+		tt.setup(t, dir)
+	}
+	path := filepath.Join(dir, tt.path)
+
+	buf := &bytes.Buffer{}
+	if err := initcmd.New().Init(newLogger(buf), path); err != nil {
+		t.Fatalf("Init() error: %v", err)
 	}
 
+	if !strings.Contains(buf.String(), tt.wantLogContains) {
+		t.Errorf("log does not contain %q:\n%s", tt.wantLogContains, buf)
+	}
+	if tt.wantExisting != "" {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read the existing file: %v", err)
+		}
+		if string(content) != tt.wantExisting {
+			t.Errorf("the existing file was overwritten: %q", content)
+		}
+		return
+	}
+	checkCreated(t, path)
+}
+
+func TestController_Init(t *testing.T) {
+	t.Parallel()
+	tests := []initCase{
+		{
+			name:            "create the config file",
+			path:            "ghtkn.yaml",
+			wantLogContains: "The configuration file has been created",
+		},
+		{
+			name:            "create the config file in a directory that does not exist yet",
+			path:            filepath.Join("a", "b", "ghtkn.yaml"),
+			wantLogContains: "The configuration file has been created",
+		},
+		{
+			name: "the directory exists but the file does not",
+			path: filepath.Join("cfg", "ghtkn.yaml"),
+			setup: func(t *testing.T, dir string) {
+				t.Helper()
+				if err := os.Mkdir(filepath.Join(dir, "cfg"), 0o755); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantLogContains: "The configuration file has been created",
+		},
+		{
+			name: "an existing config file is kept",
+			path: "ghtkn.yaml",
+			setup: func(t *testing.T, dir string) {
+				t.Helper()
+				if err := os.WriteFile(filepath.Join(dir, "ghtkn.yaml"), []byte("existing content"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantExisting:    "existing content",
+			wantLogContains: "The configuration file already exists",
+		},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
-			// Setup filesystem
-			fs := afero.NewMemMapFs()
-			if tt.setupFS != nil {
-				tt.setupFS(fs)
-			}
-
-			// Setup logger with buffer to capture logs
-			var buf bytes.Buffer
-			logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{
-				Level: slog.LevelDebug,
-			}))
-
-			// Create controller
-			ctrl := initcmd.New(fs)
-
-			// Execute Init
-			err := ctrl.Init(logger, tt.configFilePath)
-
-			// Check error
-			if tt.wantErr {
-				if err == nil {
-					t.Fatal("expected error but got nil")
-				}
-				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
-					t.Errorf("error = %v, want error containing %v", err, tt.errContains)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			// Check log output
-			logOutput := buf.String()
-			if tt.wantLogContains != "" && !strings.Contains(logOutput, tt.wantLogContains) {
-				t.Errorf("log output does not contain expected string\ngot: %v\nwant substring: %v", logOutput, tt.wantLogContains)
-			}
-
-			// Check file creation
-			if tt.checkFile { //nolint:nestif
-				exists, err := afero.Exists(fs, tt.configFilePath)
-				if err != nil {
-					t.Fatalf("failed to check file existence: %v", err)
-				}
-				if !exists {
-					t.Errorf("config file was not created at %s", tt.configFilePath)
-				}
-
-				// Check file content
-				content, err := afero.ReadFile(fs, tt.configFilePath)
-				if err != nil {
-					t.Fatalf("failed to read created file: %v", err)
-				}
-
-				// Should contain the default template
-				if !strings.Contains(string(content), "apps:") {
-					t.Error("created file does not contain expected 'apps:' field")
-				}
-				if !strings.Contains(string(content), "client_id:") {
-					t.Error("created file does not contain expected 'client_id:' field")
-				}
-
-				// Check file permissions
-				info, err := fs.Stat(tt.configFilePath)
-				if err != nil {
-					t.Fatalf("failed to stat created file: %v", err)
-				}
-				mode := info.Mode()
-				expectedMode := os.FileMode(0o644)
-				if mode != expectedMode {
-					t.Errorf("file permissions = %v, want %v", mode, expectedMode)
-				}
-
-				// Check directory exists
-				dirPath := filepath.Dir(tt.configFilePath)
-				if dirPath != "." && dirPath != "/" {
-					dirInfo, err := fs.Stat(dirPath)
-					if err != nil {
-						t.Fatalf("failed to stat directory: %v", err)
-					}
-					// Check if it's a directory
-					if !dirInfo.IsDir() {
-						t.Errorf("expected %s to be a directory", dirPath)
-					}
-				}
-			}
+			tt.run(t)
 		})
 	}
 }
 
-func TestController_Init_ErrorCases(t *testing.T) {
+// TestController_Init_relativePath verifies that a config path with no directory part
+// works: the directory to create is ".", which already exists.
+//
+//nolint:paralleltest // t.Chdir, which keeps the relative path inside a temporary directory, cannot be used in a parallel test.
+func TestController_Init_relativePath(t *testing.T) {
+	t.Chdir(t.TempDir())
+
+	buf := &bytes.Buffer{}
+	if err := initcmd.New().Init(newLogger(buf), "ghtkn.yaml"); err != nil {
+		t.Fatalf("Init() error: %v", err)
+	}
+	checkCreated(t, "ghtkn.yaml")
+}
+
+// TestController_Init_statError verifies that a path whose existence cannot be
+// determined is reported instead of being written over. A parent that is a regular file
+// makes the check fail with ENOTDIR rather than "does not exist".
+func TestController_Init_statError(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows reports a path under a regular file as not existing, which is a different branch")
+	}
+	file := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(file, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
 
-	t.Run("filesystem error on exists check", func(t *testing.T) {
-		t.Parallel()
+	err := initcmd.New().Init(newLogger(&bytes.Buffer{}), filepath.Join(file, "ghtkn.yaml"))
+	if err == nil {
+		t.Fatal("Init() must fail when it cannot tell whether the config file exists")
+	}
+	if !strings.Contains(err.Error(), "check if a configuration file exists") {
+		t.Errorf("Init() error = %v, want it to report the existence check", err)
+	}
+}
 
-		// Create a mock filesystem that returns an error
-		fs := &errorFS{
-			existsErr: true,
+// TestController_Init_mkdirError verifies that a directory that cannot be created is
+// reported as such.
+func TestController_Init_mkdirError(t *testing.T) {
+	t.Parallel()
+	skipUnlessPermissionsDeny(t)
+	dir := readOnlyDir(t)
+
+	err := initcmd.New().Init(newLogger(&bytes.Buffer{}), filepath.Join(dir, "sub", "ghtkn.yaml"))
+	if err == nil {
+		t.Fatal("Init() must fail when the config directory cannot be created")
+	}
+	if !strings.Contains(err.Error(), "create config dir") {
+		t.Errorf("Init() error = %v, want it to report the directory creation", err)
+	}
+}
+
+// TestController_Init_writeError verifies that a file that cannot be written is reported
+// as such. The directory already exists, so only the write fails.
+func TestController_Init_writeError(t *testing.T) {
+	t.Parallel()
+	skipUnlessPermissionsDeny(t)
+	dir := readOnlyDir(t)
+
+	err := initcmd.New().Init(newLogger(&bytes.Buffer{}), filepath.Join(dir, "ghtkn.yaml"))
+	if err == nil {
+		t.Fatal("Init() must fail when the config file cannot be written")
+	}
+	if !strings.Contains(err.Error(), "create a configuration file") {
+		t.Errorf("Init() error = %v, want it to report the file creation", err)
+	}
+}
+
+// skipUnlessPermissionsDeny skips a test that makes a directory unwritable to provoke a
+// failure, on the platforms where that does not deny the owner: root bypasses the
+// permission bits, and Windows does not honor them this way.
+func skipUnlessPermissionsDeny(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not deny writes through the permission bits set here")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses the permission bits set here")
+	}
+}
+
+// readOnlyDir returns a directory the test process may read but not write.
+func readOnlyDir(t *testing.T) string {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), "read-only")
+	if err := os.Mkdir(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	// TempDir's cleanup must be able to remove it again.
+	t.Cleanup(func() {
+		if err := os.Chmod(dir, 0o755); err != nil {
+			t.Error(err)
 		}
-
-		ctrl := initcmd.New(fs)
-		logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
-
-		if err := ctrl.Init(logger, "/test/config.yaml"); err != nil {
-			if !strings.Contains(err.Error(), "check if a configuration file exists") {
-				t.Errorf("unexpected error message: %v", err)
-			}
-			return
-		}
-		t.Fatal("expected error but got nil")
 	})
-
-	t.Run("filesystem error on mkdir", func(t *testing.T) {
-		t.Parallel()
-
-		fs := &errorFS{
-			mkdirErr: true,
-		}
-
-		ctrl := initcmd.New(fs)
-		logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
-
-		if err := ctrl.Init(logger, "/test/config.yaml"); err != nil {
-			if !strings.Contains(err.Error(), "create config dir") {
-				t.Errorf("unexpected error message: %v", err)
-			}
-			return
-		}
-		t.Fatal("expected error but got nil")
-	})
-
-	t.Run("filesystem error on write file", func(t *testing.T) {
-		t.Parallel()
-
-		fs := &errorFS{
-			writeErr: true,
-		}
-
-		ctrl := initcmd.New(fs)
-		logger := slog.New(slog.NewTextHandler(bytes.NewBuffer(nil), nil))
-
-		if err := ctrl.Init(logger, "/test/config.yaml"); err != nil {
-			if !strings.Contains(err.Error(), "create a configuration file") {
-				t.Errorf("unexpected error message: %v", err)
-			}
-			return
-		}
-		t.Fatal("expected error but got nil")
-	})
-}
-
-// errorFS is a mock filesystem that returns errors for testing
-type errorFS struct {
-	afero.Fs
-	existsErr bool
-	mkdirErr  bool
-	writeErr  bool
-}
-
-func (fs *errorFS) Name() string {
-	return "errorFS"
-}
-
-func (fs *errorFS) Create(name string) (afero.File, error) {
-	if fs.writeErr {
-		return nil, os.ErrPermission
-	}
-	return afero.NewMemMapFs().Create(name)
-}
-
-func (fs *errorFS) MkdirAll(_ string, _ os.FileMode) error {
-	if fs.mkdirErr {
-		return os.ErrPermission
-	}
-	return nil
-}
-
-func (fs *errorFS) OpenFile(name string, flag int, perm os.FileMode) (afero.File, error) {
-	if fs.writeErr {
-		return nil, os.ErrPermission
-	}
-	return afero.NewMemMapFs().OpenFile(name, flag, perm)
-}
-
-func (fs *errorFS) Stat(_ string) (os.FileInfo, error) {
-	if fs.existsErr {
-		return nil, os.ErrPermission
-	}
-	// Return not found for new files
-	return nil, os.ErrNotExist
-}
-
-func (fs *errorFS) Remove(_ string) error {
-	return nil
-}
-
-func (fs *errorFS) RemoveAll(_ string) error {
-	return nil
-}
-
-func (fs *errorFS) Rename(_, _ string) error {
-	return nil
-}
-
-func (fs *errorFS) Chmod(_ string, _ os.FileMode) error {
-	return nil
-}
-
-func (fs *errorFS) Chown(_ string, _, _ int) error {
-	return nil
-}
-
-func (fs *errorFS) Chtimes(_ string, _, _ time.Time) error {
-	return nil
-}
-
-func (fs *errorFS) Open(name string) (afero.File, error) {
-	return afero.NewMemMapFs().Open(name)
-}
-
-func (fs *errorFS) Mkdir(_ string, _ os.FileMode) error {
-	return nil
+	return dir
 }

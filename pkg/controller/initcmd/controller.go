@@ -2,20 +2,11 @@
 // It handles the creation of ghtkn configuration files with default templates.
 package initcmd
 
-import (
-	"github.com/spf13/afero"
-)
-
 // Controller manages the initialization of ghtkn configuration.
 // It provides methods to create configuration files with appropriate permissions.
-type Controller struct {
-	fs afero.Fs
-}
+type Controller struct{}
 
-// New creates a new Controller instance with the provided filesystem and environment.
-// The filesystem is used for all file operations, allowing for easy testing with mock filesystems.
-func New(fs afero.Fs) *Controller {
-	return &Controller{
-		fs: fs,
-	}
+// New creates a new Controller instance.
+func New() *Controller {
+	return &Controller{}
 }

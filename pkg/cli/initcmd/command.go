@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/spf13/afero"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/initcmd"
@@ -74,7 +73,5 @@ func action(_ context.Context, logger *slogutil.Logger, args *Args) error {
 		}
 		configFilePath = p
 	}
-	fs := afero.NewOsFs()
-	ctrl := initcmd.New(fs)
-	return ctrl.Init(logger.Logger, configFilePath) //nolint:wrapcheck
+	return initcmd.New().Init(logger.Logger, configFilePath) //nolint:wrapcheck
 }

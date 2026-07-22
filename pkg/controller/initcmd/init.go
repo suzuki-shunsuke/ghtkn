@@ -2,12 +2,12 @@ package initcmd
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
-
-	"github.com/spf13/afero"
 )
 
 // defaultConfig provides a default configuration template for ghtkn.
@@ -27,18 +27,19 @@ const (
 // a template configuration if it doesn't exist.
 // Returns an error if file operations fail, nil if successful or file already exists.
 func (c *Controller) Init(logger *slog.Logger, configFilePath string) error {
-	f, err := afero.Exists(c.fs, configFilePath)
-	if err != nil {
-		return fmt.Errorf("check if a configuration file exists: %w", err)
-	}
-	if f {
+	switch _, err := os.Stat(configFilePath); {
+	case err == nil:
 		logger.Warn("The configuration file already exists", "path", configFilePath)
 		return nil
+	case !errors.Is(err, fs.ErrNotExist):
+		// Anything other than "it isn't there" means the answer is unknown, so the file
+		// must not be written over whatever is actually at that path.
+		return fmt.Errorf("check if a configuration file exists: %w", err)
 	}
-	if err := c.fs.MkdirAll(filepath.Dir(configFilePath), dirPermission); err != nil {
+	if err := os.MkdirAll(filepath.Dir(configFilePath), dirPermission); err != nil {
 		return fmt.Errorf("create config dir: %w", err)
 	}
-	if err := afero.WriteFile(c.fs, configFilePath, defaultConfig, filePermission); err != nil {
+	if err := os.WriteFile(configFilePath, defaultConfig, filePermission); err != nil {
 		return fmt.Errorf("create a configuration file: %w", err)
 	}
 	logger.Info("The configuration file has been created", slog.String("path", configFilePath))

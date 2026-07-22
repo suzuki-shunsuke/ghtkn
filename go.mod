@@ -11,7 +11,6 @@ go 1.26.5
 require (
 	github.com/google/go-cmp v0.7.0
 	github.com/lmittmann/tint v1.1.3
-	github.com/spf13/afero v1.15.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
 	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.4.2-0.20260722164954-8296d7d2fadf
 	github.com/suzuki-shunsuke/go-github-device-flow v0.0.2-0.20260714121453-3389c27e8995
@@ -45,5 +44,4 @@ require (
 	golang.org/x/image v0.28.0 // indirect
 	golang.org/x/mobile v0.0.0-20250606033058-a2a15c67f36f // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
 )
