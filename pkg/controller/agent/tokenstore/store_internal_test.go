@@ -154,34 +154,6 @@ func TestValidClientID(t *testing.T) {
 	}
 }
 
-// TestStore_diskModeNoPlaintextCache verifies that in disk mode the store never retains
-// the decrypted token in memory: neither Set nor Get populates the in-memory map, so a
-// memory dump cannot yield a plaintext access/refresh token from the cache.
-func TestStore_diskModeNoPlaintextCache(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-	s := New(testDataKey(t), dir)
-	token := json.RawMessage(`{"access_token":"ghu_secret","expiration_date":"2999-01-01T00:00:00Z"}`)
-
-	if err := s.Set("Iv1.abc", token); err != nil {
-		t.Fatal(err)
-	}
-	if len(s.tokens) != 0 {
-		t.Fatalf("Set must not cache the plaintext in disk mode; map has %d entries", len(s.tokens))
-	}
-
-	got, ok, err := s.Get("Iv1.abc")
-	if err != nil || !ok {
-		t.Fatalf("Get: ok=%v err=%v", ok, err)
-	}
-	if string(got) != string(token) {
-		t.Fatalf("Get returned %q, want %q", got, token)
-	}
-	if len(s.tokens) != 0 {
-		t.Fatalf("Get must not cache the plaintext in disk mode; map has %d entries", len(s.tokens))
-	}
-}
-
 // TestStore_getReturnsCallerOwnedBuffer verifies that the token Get returns is a private
 // copy the caller may scrub, so zeroing it (to shorten the plaintext's lifetime) does not
 // corrupt the store's data for a later read.
@@ -207,46 +179,6 @@ func TestStore_getReturnsCallerOwnedBuffer(t *testing.T) {
 		t.Fatalf("second Get: ok=%v err=%v", ok, err)
 	}
 	if string(again) != string(token) {
-		t.Fatalf("scrubbing a returned token corrupted the store: got %q", again)
-	}
-}
-
-// TestStore_memoryModeOwnsBuffers verifies that in memory-only mode (New(nil, "")) the
-// store neither aliases the caller's Set buffer nor hands out its own on Get: scrubbing
-// the buffer passed to Set, and scrubbing a buffer returned by Get, both leave the stored
-// token intact. Disk mode gets this for free (Set re-encrypts, Get re-decrypts), so this
-// exercises the memory-mode copy branch specifically.
-func TestStore_memoryModeOwnsBuffers(t *testing.T) {
-	t.Parallel()
-	s := New(nil, "")
-	const want = `{"access_token":"ghu_secret","expiration_date":"2999-01-01T00:00:00Z"}`
-
-	// Set must copy: scrubbing the caller's buffer must not corrupt the stored token.
-	token := json.RawMessage(want)
-	if err := s.Set("Iv1.abc", token); err != nil {
-		t.Fatal(err)
-	}
-	for i := range token {
-		token[i] = 0
-	}
-
-	// Get must copy: scrubbing a returned buffer must not corrupt the stored token.
-	got, ok, err := s.Get("Iv1.abc")
-	if err != nil || !ok {
-		t.Fatalf("Get: ok=%v err=%v", ok, err)
-	}
-	if string(got) != want {
-		t.Fatalf("scrubbing the Set buffer corrupted the store: got %q", got)
-	}
-	for i := range got {
-		got[i] = 0
-	}
-
-	again, ok, err := s.Get("Iv1.abc")
-	if err != nil || !ok {
-		t.Fatalf("second Get: ok=%v err=%v", ok, err)
-	}
-	if string(again) != want {
 		t.Fatalf("scrubbing a returned token corrupted the store: got %q", again)
 	}
 }

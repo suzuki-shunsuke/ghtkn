@@ -41,51 +41,39 @@ func validClientID(id string) bool {
 
 // Store caches access tokens keyed by client ID.
 //
-// In memory-only mode (dataKey == nil, dir == "") tokens live only for the lifetime
-// of the process, held in the tokens map. In disk mode tokens are encrypted with
-// dataKey (AES-256-GCM) and persisted under dir as one file per client ID; the plaintext
-// is NOT cached in memory. Each Get reads and decrypts the file so the decrypted token
-// only lives for the duration of the request, keeping recognizable access/refresh
-// tokens (which carry scannable "ghu_"/"ghr_" prefixes) out of a memory dump. Tokens
-// are opaque JSON so the agent does not depend on the concrete access token type
-// defined in the ghtkn SDK.
+// Tokens are encrypted with dataKey (AES-256-GCM) and persisted under dir as one file
+// per client ID. The store holds no field for the plaintext, so a decrypted token only
+// lives for the duration of the request that reads it: each Get reads and decrypts the
+// file anew, keeping recognizable access/refresh tokens (which carry scannable
+// "ghu_"/"ghr_" prefixes) out of a memory dump. Tokens are opaque JSON so the agent does
+// not depend on the concrete access token type defined in the ghtkn SDK.
 type Store struct {
-	mu sync.Mutex
-	// tokens holds tokens only in memory-only mode (dir == ""). In disk mode it stays
-	// empty: the plaintext is never retained between requests.
-	tokens  map[string]json.RawMessage
-	dataKey []byte // nil in memory-only mode
-	dir     string // "" in memory-only mode
+	// mu serializes access to the token files so concurrent requests for the same client
+	// ID cannot interleave a read with a write or a delete.
+	mu      sync.Mutex
+	dataKey []byte
+	dir     string
 }
 
 // New creates a token store that persists encrypted tokens under dir,
-// encrypting them with dataKey.
+// encrypting them with dataKey. dir must not be empty.
 func New(dataKey []byte, dir string) *Store {
 	return &Store{
-		tokens:  map[string]json.RawMessage{},
 		dataKey: dataKey,
 		dir:     dir,
 	}
 }
 
 // Get returns the token for clientID. The bool result is false when no token is stored
-// for the client ID. In disk mode it reads and decrypts the token file on every call
-// and does NOT cache the plaintext, so the decrypted token is not retained in memory
-// between requests; the caller should scrub the returned bytes once done with them.
+// for the client ID. It reads and decrypts the token file on every call and does NOT
+// cache the plaintext, so the decrypted token is not retained in memory between
+// requests; the caller should scrub the returned bytes once done with them.
 func (s *Store) Get(clientID string) (json.RawMessage, bool, error) {
 	if !validClientID(clientID) {
 		return nil, false, ErrInvalidClientID
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	if s.dir == "" {
-		if token, ok := s.tokens[clientID]; ok {
-			// Return a copy so the caller may scrub it without corrupting the stored one.
-			return append(json.RawMessage(nil), token...), true, nil
-		}
-		return nil, false, nil
-	}
 
 	blob, err := os.ReadFile(filepath.Join(s.dir, clientID))
 	if err != nil {
@@ -101,21 +89,14 @@ func (s *Store) Get(clientID string) (json.RawMessage, bool, error) {
 	return json.RawMessage(plaintext), true, nil
 }
 
-// Set stores a token for clientID. In disk mode it encrypts the token and writes it
-// atomically to disk without retaining the plaintext in memory. In memory-only mode it
-// keeps the token in the map (that is its only storage).
+// Set stores a token for clientID: it encrypts the token and writes it atomically to
+// disk without retaining the plaintext in memory.
 func (s *Store) Set(clientID string, token json.RawMessage) error {
 	if !validClientID(clientID) {
 		return ErrInvalidClientID
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	if s.dir == "" {
-		// Copy so the caller may scrub its buffer without corrupting the stored token.
-		s.tokens[clientID] = append(json.RawMessage(nil), token...)
-		return nil
-	}
 
 	blob, err := crypt.Seal(s.dataKey, token)
 	if err != nil {
@@ -127,9 +108,9 @@ func (s *Store) Set(clientID string, token json.RawMessage) error {
 	return nil
 }
 
-// Delete removes the token cached for clientID from memory and, in disk mode, from
-// disk. Deleting a client ID with no cached token is a no-op (a missing file is not
-// an error), so callers can delete unconditionally.
+// Delete removes the token stored for clientID. Deleting a client ID with no stored
+// token is a no-op (a missing file is not an error), so callers can delete
+// unconditionally.
 func (s *Store) Delete(clientID string) error {
 	if !validClientID(clientID) {
 		return ErrInvalidClientID
@@ -137,43 +118,29 @@ func (s *Store) Delete(clientID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.dir != "" {
-		if err := os.Remove(filepath.Join(s.dir, clientID)); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("remove the token file: %w", err)
-		}
+	if err := os.Remove(filepath.Join(s.dir, clientID)); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("remove the token file: %w", err)
 	}
-	delete(s.tokens, clientID)
 	return nil
 }
 
-// Len returns the number of stored tokens. In disk mode it counts the valid token
-// files on disk (ignoring temporary files and invalid names). A read error yields 0 so
-// that STATUS stays infallible.
+// Len returns the number of stored tokens by counting the valid token files on disk
+// (ignoring temporary files and invalid names). A read error yields 0 so that STATUS
+// stays infallible.
 func (s *Store) Len() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.dir == "" {
-		return len(s.tokens)
-	}
 	return len(s.diskClientIDs())
 }
 
-// ClientIDs returns the client IDs of all stored tokens. In disk mode it lists the
-// valid token files on disk (ignoring temporary files and invalid names); in
-// memory-only mode it lists the in-memory keys. It lets callers iterate every stored
-// token, e.g. to sweep expired ones or strip refresh tokens.
+// ClientIDs returns the client IDs of all stored tokens, listing the valid token files
+// on disk (ignoring temporary files and invalid names). It lets callers iterate every
+// stored token, e.g. to sweep expired ones or strip refresh tokens.
 func (s *Store) ClientIDs() ([]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.dir == "" {
-		ids := make([]string, 0, len(s.tokens))
-		for id := range s.tokens {
-			ids = append(ids, id)
-		}
-		return ids, nil
-	}
 	entries, err := os.ReadDir(s.dir)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
