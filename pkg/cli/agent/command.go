@@ -250,7 +250,12 @@ token files, and creates a new key from a freshly entered passphrase. The old
 passphrase is not needed and the cached tokens are discarded (they are reminted from
 GitHub on the next 'ghtkn get'). It asks for confirmation first.
 
-$ ghtkn agent reset`,
+It leaves the agent stopped, so start it again and unlock it with the new passphrase
+afterwards; until then every 'ghtkn get' fails.
+
+$ ghtkn agent reset
+$ ghtkn agent start
+$ ghtkn agent unlock`,
 		Action: r.reset,
 	}
 }

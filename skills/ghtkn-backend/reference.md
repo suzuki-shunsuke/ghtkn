@@ -100,6 +100,13 @@ Note that resetting deletes the existing key and access tokens.
 ghtkn agent reset
 ```
 
+Resetting leaves the agent stopped, so start it again and unlock it with the new passphrase.
+
+```sh
+ghtkn agent start
+ghtkn agent unlock
+```
+
 The socket, the encryption key, and the encrypted access tokens are created with permission `0600`, so other users can't read them or connect to the socket.
 
 ### Running the agent as a service

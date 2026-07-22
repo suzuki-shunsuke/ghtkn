@@ -59,7 +59,9 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 		return err
 	}
 
-	logger.Info("ghtkn agent has been reset", "key", keyFile)
+	// The agent was stopped above and reset does not start it again, so say so: until it
+	// is started and unlocked with the new passphrase, every `ghtkn get` fails.
+	logger.Info("ghtkn agent has been reset; it is stopped, so start it again with `ghtkn agent start` and unlock it with `ghtkn agent unlock` using the new passphrase", "key", keyFile)
 	return nil
 }
 
