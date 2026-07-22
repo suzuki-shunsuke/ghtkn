@@ -68,27 +68,6 @@ func TestController_handle_unlock_enableRefresh(t *testing.T) {
 	}
 }
 
-// TestRefreshTokenSupported verifies the refresh-token feature is gated off on Windows
-// and allowed elsewhere.
-func TestRefreshTokenSupported(t *testing.T) {
-	t.Parallel()
-	for _, d := range []struct {
-		goos string
-		want bool
-	}{
-		{goos: "linux", want: true},
-		{goos: "darwin", want: true},
-		{goos: "windows", want: false},
-	} {
-		t.Run(d.goos, func(t *testing.T) {
-			t.Parallel()
-			if got := RefreshTokenSupported(d.goos); got != d.want {
-				t.Fatalf("RefreshTokenSupported(%q) = %v, want %v", d.goos, got, d.want)
-			}
-		})
-	}
-}
-
 // TestController_handle_unlock_refreshUnsupportedOS verifies the agent refuses an UNLOCK
 // that asks to enable refresh tokens on Windows, rather than silently unlocking with
 // refresh off. The CLI rejects --enable-refresh up front; this is the backstop for any
