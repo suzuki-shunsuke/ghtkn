@@ -13,7 +13,7 @@ require (
 	github.com/lmittmann/tint v1.1.3
 	github.com/spf13/afero v1.15.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
-	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.4.2-0.20260722123929-8130b742a544
+	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.4.2-0.20260722134138-153c659e8449
 	github.com/suzuki-shunsuke/go-github-device-flow v0.0.2-0.20260714121453-3389c27e8995
 	github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.1
 	github.com/suzuki-shunsuke/slog-error v0.2.2

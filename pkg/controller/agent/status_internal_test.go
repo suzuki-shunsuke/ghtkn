@@ -66,3 +66,30 @@ func TestServe_status_unlocked(t *testing.T) {
 		t.Fatalf("count = %d, want 1", resp.Count)
 	}
 }
+
+// TestServe_protoVersion verifies that a response served over the socket carries this
+// agent's protocol version. A client that needs the server-owned token lifecycle
+// refuses an agent whose responses lack it (agentapi.ErrObsoleteAgent), so forgetting
+// to stamp it would make every current client treat this agent as obsolete. The test
+// name is kept short so the socket path stays under the platform's sun_path limit.
+func TestServe_protoVersion(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "a.sock")
+	c := New()
+	listener, err := listen(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { listener.Close() })
+	go c.serve(t.Context(), listener, slog.New(slog.DiscardHandler)) //nolint:errcheck // serve returns nil once the listener is closed
+
+	// STATUS on a locked agent: even a response built before any dispatch must be
+	// stamped, so the version does not depend on which command was served.
+	resp, err := agentapi.Send(t.Context(), path, &agentapi.Request{Command: agentapi.CommandStatus})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.ProtocolVersion != agentapi.ProtocolVersion {
+		t.Fatalf("resp.ProtocolVersion = %d, want %d", resp.ProtocolVersion, agentapi.ProtocolVersion)
+	}
+}

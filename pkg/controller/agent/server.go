@@ -86,6 +86,13 @@ func (c *Controller) handleConn(ctx context.Context, conn net.Conn, logger *slog
 		return
 	}
 	resp, shutdown := c.handle(ctx, io.LimitReader(conn, maxRequestBytes))
+	// Stamp this agent's protocol version on every response so a client can tell how old
+	// the agent is. A client that needs the server-owned token lifecycle refuses an agent
+	// that does not set it (agentapi.ErrObsoleteAgent): such an agent predates the
+	// request fields the lifecycle depends on and would answer them as a plain GET.
+	// Upgrading ghtkn does not update a running agent, so this is the signal that the
+	// user must restart it.
+	resp.ProtocolVersion = agentapi.ProtocolVersion
 	// The response may carry an access token (GET); zero it and the marshaled bytes once no
 	// longer needed so the plaintext does not linger in memory. Deferred so every path below
 	// scrubs, including an early return on a write-deadline error.
