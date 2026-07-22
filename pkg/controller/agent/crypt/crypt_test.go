@@ -1,9 +1,11 @@
-package crypt
+package crypt_test
 
 import (
 	"bytes"
 	"errors"
 	"testing"
+
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/crypt"
 )
 
 // testKey returns a deterministic 32-byte key for tests.
@@ -20,14 +22,14 @@ func TestSealOpen_roundTrip(t *testing.T) {
 	t.Parallel()
 	key := testKey(t)
 	plaintext := []byte(`{"access_token":"secret"}`)
-	blob, err := Seal(key, plaintext)
+	blob, err := crypt.Seal(key, plaintext)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if bytes.Contains(blob, plaintext) {
 		t.Fatal("ciphertext must not contain the plaintext")
 	}
-	got, err := Open(key, blob)
+	got, err := crypt.Open(key, blob)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,31 +40,31 @@ func TestSealOpen_roundTrip(t *testing.T) {
 
 func TestOpen_wrongKey(t *testing.T) {
 	t.Parallel()
-	blob, err := Seal(testKey(t), []byte("hello"))
+	blob, err := crypt.Seal(testKey(t), []byte("hello"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	wrong := make([]byte, 32)
-	if _, err := Open(wrong, blob); !errors.Is(err, ErrDecrypt) {
-		t.Fatalf("err = %v, want ErrDecrypt", err)
+	if _, err := crypt.Open(wrong, blob); !errors.Is(err, crypt.ErrDecrypt) {
+		t.Fatalf("err = %v, want crypt.ErrDecrypt", err)
 	}
 }
 
 func TestOpen_tooShort(t *testing.T) {
 	t.Parallel()
-	if _, err := Open(testKey(t), []byte{1, 2, 3}); !errors.Is(err, ErrDecrypt) {
-		t.Fatalf("err = %v, want ErrDecrypt", err)
+	if _, err := crypt.Open(testKey(t), []byte{1, 2, 3}); !errors.Is(err, crypt.ErrDecrypt) {
+		t.Fatalf("err = %v, want crypt.ErrDecrypt", err)
 	}
 }
 
 func TestSeal_uniqueNonce(t *testing.T) {
 	t.Parallel()
 	key := testKey(t)
-	a, err := Seal(key, []byte("same"))
+	a, err := crypt.Seal(key, []byte("same"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := Seal(key, []byte("same"))
+	b, err := crypt.Seal(key, []byte("same"))
 	if err != nil {
 		t.Fatal(err)
 	}

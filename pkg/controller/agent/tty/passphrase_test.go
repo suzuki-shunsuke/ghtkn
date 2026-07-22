@@ -1,8 +1,10 @@
-package tty
+package tty_test
 
 import (
 	"errors"
 	"testing"
+
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tty"
 )
 
 func TestPromptPassphrase(t *testing.T) {
@@ -15,7 +17,7 @@ func TestPromptPassphrase(t *testing.T) {
 			calls++
 			return []byte("pass"), nil
 		}
-		got, err := PromptPassphrase(read, true)
+		got, err := tty.PromptPassphrase(read, true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -34,7 +36,7 @@ func TestPromptPassphrase(t *testing.T) {
 			calls++
 			return []byte("pass"), nil
 		}
-		if _, err := PromptPassphrase(read, false); err != nil {
+		if _, err := tty.PromptPassphrase(read, false); err != nil {
 			t.Fatal(err)
 		}
 		if calls != 2 {
@@ -51,8 +53,8 @@ func TestPromptPassphrase(t *testing.T) {
 			i++
 			return v, nil
 		}
-		if _, err := PromptPassphrase(read, false); !errors.Is(err, ErrPassphraseMismatch) {
-			t.Fatalf("err = %v, want ErrPassphraseMismatch", err)
+		if _, err := tty.PromptPassphrase(read, false); !errors.Is(err, tty.ErrPassphraseMismatch) {
+			t.Fatalf("err = %v, want tty.ErrPassphraseMismatch", err)
 		}
 	})
 }
