@@ -86,3 +86,41 @@ func TestParseRefreshTokenTTL(t *testing.T) {
 		})
 	}
 }
+
+// TestRefreshTokenTTL verifies how the --refresh-token-ttl flag is resolved: it is
+// rejected without --enable-refresh instead of being silently ignored, an omitted flag
+// leaves the default to the agent, and a given value is parsed as usual.
+func TestRefreshTokenTTL(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		enableRefresh bool
+		value         string
+		want          time.Duration
+		wantErr       bool
+	}{
+		{name: "omitted, refresh enabled: the agent applies its default", enableRefresh: true},
+		{name: "omitted, refresh disabled: nothing to reject", enableRefresh: false},
+		{name: "given with refresh enabled", enableRefresh: true, value: "4w", want: 4 * 7 * 24 * time.Hour},
+		{name: "given without refresh enabled", value: "4w", wantErr: true},
+		{name: "given with refresh enabled but unparsable", enableRefresh: true, value: "4x", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := refreshTokenTTL(tt.enableRefresh, tt.value)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("refreshTokenTTL(%v, %q) = %v, want error", tt.enableRefresh, tt.value, got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("refreshTokenTTL(%v, %q) unexpected error: %v", tt.enableRefresh, tt.value, err)
+			}
+			if got != tt.want {
+				t.Fatalf("refreshTokenTTL(%v, %q) = %v, want %v", tt.enableRefresh, tt.value, got, tt.want)
+			}
+		})
+	}
+}

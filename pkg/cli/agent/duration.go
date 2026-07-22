@@ -49,6 +49,23 @@ func checkRefreshTokenSupported(enableRefreshToken bool, goos string) error {
 	return nil
 }
 
+// refreshTokenTTL resolves the --refresh-token-ttl flag for an unlock. An empty value
+// means the flag was not given, so zero is sent and the agent applies its own default.
+//
+// The flag without --enable-refresh is an error rather than a silent no-op: the TTL only
+// bounds how long a stored refresh token may sit unused before the agent discards it, and
+// an unlock without --enable-refresh stores no refresh token for it to bound. Accepting
+// it would tell the user their setting took effect when nothing reads it.
+func refreshTokenTTL(enableRefresh bool, value string) (time.Duration, error) {
+	if value == "" {
+		return 0, nil
+	}
+	if !enableRefresh {
+		return 0, errors.New("--refresh-token-ttl applies only with --enable-refresh: it bounds how long a stored refresh token may sit unused, and an unlock without --enable-refresh keeps no refresh token. Rerun with --enable-refresh, or drop --refresh-token-ttl")
+	}
+	return parseRefreshTokenTTL(value)
+}
+
 func parseRefreshTokenTTL(s string) (time.Duration, error) {
 	d, err := parseDurationValue(s)
 	if err != nil {

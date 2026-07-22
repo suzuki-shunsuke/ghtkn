@@ -209,9 +209,12 @@ $ ghtkn agent unlock`,
 				Destination: &args.EnableRefresh,
 			},
 			&cli.StringFlag{
+				// No default value: an empty value means the flag was not given, which
+				// lets the agent apply its own default (one week) instead of duplicating
+				// it here, and lets this command tell "not given" from an explicit value
+				// it must reject without --enable-refresh.
 				Name:        "refresh-token-ttl",
-				Usage:       "How long a stored token may sit unused before the agent discards it, e.g. 7d/4w/2m (only with --enable-refresh)",
-				Value:       "1w",
+				Usage:       "How long a stored token may sit unused before the agent discards it, e.g. 7d/4w/2m (default 1w; only with --enable-refresh)",
 				Destination: &args.RefreshTokenTTL,
 			},
 		},
@@ -231,7 +234,7 @@ func (r *runner) unlock(ctx context.Context, args *unlockArgs) error {
 	if err := checkRefreshTokenSupported(args.EnableRefresh, runtime.GOOS); err != nil {
 		return err
 	}
-	ttl, err := parseRefreshTokenTTL(args.RefreshTokenTTL)
+	ttl, err := refreshTokenTTL(args.EnableRefresh, args.RefreshTokenTTL)
 	if err != nil {
 		return err
 	}
