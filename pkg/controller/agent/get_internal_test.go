@@ -129,9 +129,9 @@ func TestController_handleGet_minExpiration(t *testing.T) {
 }
 
 // TestController_handleGet_awaitReturnsUnfreshToken verifies that a poll waiting for a
-// device-flow result (AwaitDeviceFlow) returns the stored token as is, without the
-// freshness check, so a freshly minted but short-lived token (e.g. a non-expiring
-// GitHub App token, stored with expiration_date = mint time) is still handed back.
+// device-flow result (AwaitDeviceFlow), once the flow has finished (no in-progress or
+// failed marker), returns the stored token as is without the freshness check, so a
+// freshly minted but already-past-expiry token is still handed back.
 func TestController_handleGet_awaitReturnsUnfreshToken(t *testing.T) {
 	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
@@ -385,4 +385,26 @@ func TestController_handleGet_refreshPeerAlreadyRefreshed(t *testing.T) {
 			t.Fatalf("peer-refreshed GET (-want +got):\n%s", diff)
 		}
 	})
+}
+
+// TestController_tokenValid_neverExpires verifies how a never-expiring token (zero
+// expiration, from a GitHub App with token expiration disabled) is judged: it is valid
+// for a normal min_expiration, but a min_expiration beyond the maximum token lifetime —
+// the "regenerate regardless" signal ghtkn auth uses — makes it count as invalid so the
+// token is regenerated.
+func TestController_tokenValid_neverExpires(t *testing.T) {
+	t.Parallel()
+	c := &Controller{}
+	// A token whose expiration_date is the zero time.
+	raw := json.RawMessage(`{"access_token":"ghu_never"}`)
+
+	if !c.tokenValid(raw, time.Hour) {
+		t.Error("a never-expiring token must be valid for a normal min_expiration")
+	}
+	if !c.tokenValid(raw, maxTokenLifetime) {
+		t.Error("a never-expiring token must be valid at exactly the max token lifetime")
+	}
+	if c.tokenValid(raw, maxTokenLifetime+time.Hour) {
+		t.Error("a never-expiring token must count as invalid when min_expiration forces regeneration")
+	}
 }

@@ -46,8 +46,12 @@ const (
 	errMsgSet             = "set the token"
 	errMsgSetNotAllowed   = "set is not allowed for this protocol version; the agent owns the token lifecycle"
 	errMsgStartDeviceFlow = "start the device flow"
-	errMsgDelete          = "delete the token"
-	errMsgUnlock          = "unlock the agent"
+	// errMsgDeviceFlowFailed is returned to a poll waiting on a device flow that ended
+	// without minting a token (the one-time code expired, or the poll/store failed). It
+	// is a full sentence because the client prints it verbatim.
+	errMsgDeviceFlowFailed = "the ghtkn agent's device flow did not complete; the one-time code may have expired. Run the command again to retry."
+	errMsgDelete           = "delete the token"
+	errMsgUnlock           = "unlock the agent"
 	// errMsgRefreshTokenRemovalPending accompanies RefreshTokenRemovalPending so an older
 	// client that does not understand the field still shows a meaningful reason.
 	errMsgRefreshTokenRemovalPending = "stored refresh tokens would be removed; confirm the removal or rerun with --enable-refresh to keep them"

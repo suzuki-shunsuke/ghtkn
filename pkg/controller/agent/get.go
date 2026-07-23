@@ -11,6 +11,11 @@ import (
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
 
+// maxTokenLifetime is the longest a GitHub App user access token can be valid: GitHub
+// issues them for at most 8 hours. A minExpiration greater than this cannot be satisfied
+// by any real token, so it means "regenerate regardless" (as 'ghtkn auth' relies on).
+const maxTokenLifetime = 8 * time.Hour
+
 // tokenValid reports whether the stored token is still valid for at least
 // minExpiration from now. An unparsable token is treated as invalid so it is
 // re-minted rather than served.
@@ -22,6 +27,13 @@ func (c *Controller) tokenValid(raw json.RawMessage, minExpiration time.Duration
 	}{}
 	if err := json.Unmarshal(raw, token); err != nil {
 		return false
+	}
+	if token.ExpirationDate.IsZero() {
+		// The token never expires (a GitHub App with user-token expiration disabled).
+		// It is valid on its own, but a minExpiration beyond the maximum token lifetime
+		// is a request to regenerate regardless (ghtkn auth forcing a fresh token so a
+		// revoked one is replaced), so it counts as invalid then.
+		return minExpiration <= maxTokenLifetime
 	}
 	// Valid when it does not expire within minExpiration, i.e. now+minExpiration is
 	// not after the expiration date.
@@ -127,10 +139,22 @@ func (c *Controller) handleGet(ctx context.Context, req *agentapi.Request, enabl
 		return &agentapi.Response{Error: agentapi.RespLocked}
 	}
 
-	// A device flow is already running for this client ID. Report progress and echo
-	// the one-time code so a client that just arrived can display it too.
+	// A device flow is recorded for this client ID.
 	if state, ok := c.deviceFlow(req.ClientID); ok {
-		return pendingResponse(state)
+		switch {
+		case state.errMsg == "":
+			// Still running: report progress and echo the one-time code so a client that
+			// just arrived can display it too.
+			return pendingResponse(state)
+		case req.AwaitDeviceFlow:
+			// The flow this client is waiting on failed. Tell it so, rather than letting
+			// it fall through to the pre-flow token that was never deleted.
+			return &agentapi.Response{Error: state.errMsg}
+		default:
+			// A non-waiting request: the recorded failure is stale for it, so drop it and
+			// continue. A StartDeviceFlow request starts a fresh flow below.
+			c.clearDeviceFlow(req.ClientID)
+		}
 	}
 
 	// Polling for the result of a flow this client started: the flow deleted any stale
