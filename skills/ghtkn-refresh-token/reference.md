@@ -27,6 +27,22 @@ Do not use this feature in an environment where intruding malware can easily esc
 A normal desktop environment usually requires a password, but development containers and VMs often run as root in the first place, or allow escalation to root via passwordless sudo.
 Do not use it in such environments.
 
+## The window enabling refresh widens, and how to limit it
+
+Enabling refresh is a tradeoff worth understanding before you turn it on.
+
+Everything here applies only while the agent is unlocked. While it is unlocked, a process running as your user (including malware that has landed in your session) can ask the agent for access tokens over the socket, whether or not refresh is enabled. If the agent is locked, nothing can be obtained. Enabling refresh widens that window in two ways.
+
+For an app you are actively using, it does not change much. `ghtkn get` returns the cached access token when one is still valid (on average four hours of its eight-hour life remain), so an attacker that simply reads what `ghtkn get` returns gets the same short-lived token whether or not refresh is enabled. The token's life is only extended if the attacker deliberately forces a renewal (for example by running `ghtkn auth`), which is a targeted attack against ghtkn specifically; then it gains on average four and at most eight more hours.
+
+For an app you have not used within the last eight hours, it changes more. Without refresh, that app's cached access token has expired, and renewing it needs the interactive device flow, so an attacker cannot obtain one. With refresh, the attacker can obtain a fresh access token as long as a valid refresh token is still stored, which is up to `--refresh-token-ttl` (three days by default, longer if you raise it). That TTL is therefore the window in which an idle app's token is reachable.
+
+The default three-day TTL already keeps this window short, so for most people it needs no further action. If you want to reduce it further, you have a few options:
+
+- Shorten `--refresh-token-ttl` below the three-day default. It leaves apps you use every few days untouched, because a token refreshed recently is not swept (see [refresh-token-ttl](#refresh-token-ttl-automatically-remove-unused-refresh-tokens-from-the-backend) below).
+- Lock the agent when you will not need a token for a while, with `ghtkn agent lock`, which closes the window entirely until you unlock again. Because it needs no passphrase, it can be wired to a screen-lock or logout hook; re-enabling refresh on the next unlock needs `ghtkn agent unlock --enable-refresh` and the passphrase (see [Lock the agent to shrink the exposure window](../ghtkn-backend/reference.md#lock-the-agent-to-shrink-the-exposure-window)).
+- If you want to close a particular app's window immediately instead of waiting for the TTL, you can revoke its token with `ghtkn revoke <app name>`, which revokes and deletes it so no refresh token is left to mint from (see [ghtkn revoke](../ghtkn-revoke-tokens/reference.md)). With the short default TTL this is rarely worth the trouble, and it sends you a notification email from GitHub, so treat it as an option for the extra-cautious rather than a routine step.
+
 ## Usage
 
 1. Update the ghtkn CLI to v0.3.4 or later

@@ -85,6 +85,8 @@ ghtkn agent stop
 ghtkn agent lock
 ```
 
+### Lock the agent to shrink the exposure window
+
 `ghtkn agent lock` discards the data key the agent holds in memory and returns it to the locked state, without stopping the process, closing the socket, or deleting the key file.
 Cached tokens become unreadable until you run `ghtkn agent unlock` again with the same passphrase, which re-derives the same data key from the key file, so tokens stored before the lock are readable again.
 Unlike `ghtkn agent stop`, the process and socket keep running, and unlike `unlock`, locking needs no passphrase.
