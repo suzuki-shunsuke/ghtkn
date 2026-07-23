@@ -183,7 +183,7 @@ Note that ghtkn working in the sandbox doesn't make `git push` or `gh` work: the
 
 This section is macOS-only, and applies only when the client itself reaches GitHub, so the `agent` backend on v0.3.4 or later never hits it.
 
-```
+```text
 Post "https://api.github.com/credentials/revoke": tls: failed to verify certificate: x509: OSStatus -26276
 ```
 

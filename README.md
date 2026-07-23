@@ -17,7 +17,7 @@ These long-lived tokens pose **significant security risks**:
 ## :white_check_mark: The ghtkn Solution
 
 ghtkn (pronounced `G-H Token`) generates **8-hour User Access Tokens** from GitHub Apps using Device Flow - a fundamentally more secure approach:
-- **Short-lived tokens** - Only 8 hours validity minimizes damage from any potential leak
+- **Short-lived tokens** - Valid for only 8 hours, minimizing damage from any potential leak
 - **No secrets required** - Only needs a Client ID (which isn't secret), no Private Keys or Client Secrets
 - **User-attributed actions** - Operations are performed as you, not as an app
 - **Automatic token management** - Integrates with the backend (the default is OS keyring) for secure storage and reuse

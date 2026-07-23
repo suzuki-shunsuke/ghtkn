@@ -4,6 +4,7 @@
 
 ghtkn stores generated access tokens and their expiration dates in the backend.
 `ghtkn get` retrieves these, and if the expiration has passed, regenerates the access token through Device Flow.
+(With the agent backend and refresh enabled, an expired token is instead refreshed silently from the stored refresh token when a usable one exists, and Device Flow runs only otherwise. See the ghtkn-refresh-token skill.)
 The access token validity period is 8 hours.
 
 By default, if the access token hasn't expired, it returns it, but this may result in a short-lived access token being returned.

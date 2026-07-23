@@ -3,7 +3,7 @@
 You can configure multiple GitHub Apps in the `apps` section of the configuration file and create and use different Apps for each Organization or User.
 By default, the first App in `apps` is used.
 
-Each app must have a unique `name`, `client_id`, and `git_owner`.
+Each app must have a `name` and a `client_id`; `git_owner` is optional. Whichever of these are set must be unique across apps: no two apps may share a `name`, a `client_id`, or a `git_owner`.
 `client_id` identifies the GitHub App everywhere below the configuration: the stored access token, its refresh, and its revocation are all keyed by it.
 Two apps sharing one client id would therefore be two names for a single access token, where revoking or minting for one silently does it for the other, so ghtkn rejects that configuration.
 One app entry is enough to reach every account the App is installed on; to use it for several repository owners, select it with `GHTKN_APP` or `GHTKN_GIT_APP` rather than adding a second entry with the same `client_id`.
