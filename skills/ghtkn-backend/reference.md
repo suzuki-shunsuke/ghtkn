@@ -109,6 +109,20 @@ ghtkn agent unlock
 
 The socket, the encryption key, and the encrypted access tokens are created with permission `0600`, so other users can't read them or connect to the socket.
 
+### Restart the agent after upgrading ghtkn
+
+Upgrading the `ghtkn` binary does not update an agent that is already running: the running process keeps executing the old binary, so a bug fix or a new feature (for example refresh-token support) does not take effect until the agent restarts.
+A client that needs behavior the running agent is too old for even refuses to talk to it and asks you to restart it.
+
+So after you upgrade ghtkn, restart the agent and unlock it again.
+`ghtkn agent start` refuses to start while another agent is still running, so stop the old one first:
+
+```sh
+ghtkn agent stop
+ghtkn agent start &
+ghtkn agent unlock
+```
+
 ### Running the agent as a service
 
 `ghtkn agent start &` runs the agent for the current shell session.
