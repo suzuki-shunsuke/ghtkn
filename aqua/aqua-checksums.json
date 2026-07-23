@@ -1,28 +1,28 @@
 {
   "checksums": [
     {
-      "id": "github_release/github.com/anchore/syft/v1.46.0/syft_1.46.0_darwin_amd64.tar.gz",
-      "checksum": "5C983DB13533DE02E5331AAE88091116F25365840741F86234084A30166672A7",
+      "id": "github_release/github.com/anchore/syft/v1.48.0/syft_1.48.0_darwin_amd64.tar.gz",
+      "checksum": "DC7B2135FA5591003596DF4DDB3408F499B68174F5E7DC1C77A373B753463182",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/anchore/syft/v1.46.0/syft_1.46.0_darwin_arm64.tar.gz",
-      "checksum": "CD4E2C40E075684A5746D8959F76B6572BB2D2DDA8CF6877DBFFF1CC0BAEEA01",
+      "id": "github_release/github.com/anchore/syft/v1.48.0/syft_1.48.0_darwin_arm64.tar.gz",
+      "checksum": "FEF3E6D5DF336A0A4C3E421E503119D1E221CF82A3EF5E426A791FCD81667E87",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/anchore/syft/v1.46.0/syft_1.46.0_linux_amd64.tar.gz",
-      "checksum": "D654F678B709EB53C393D38519D5ED7D2E57205529404018614CFEFA0FB2B5CA",
+      "id": "github_release/github.com/anchore/syft/v1.48.0/syft_1.48.0_linux_amd64.tar.gz",
+      "checksum": "6CEF9A7F37220D9067EAF9CFAAA2FCE986E9F320A8D42CBC36658C99AF78EA04",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/anchore/syft/v1.46.0/syft_1.46.0_linux_arm64.tar.gz",
-      "checksum": "9FAFEF4DB4F032CE81008D3A1529985D41CEB6CCDF2B388C9CE2F1ED7D32082E",
+      "id": "github_release/github.com/anchore/syft/v1.48.0/syft_1.48.0_linux_arm64.tar.gz",
+      "checksum": "6865A3D97C4E28B4B38571C17A2BF512DA4494EF1D37613C3122FCE0D67E63B0",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/anchore/syft/v1.46.0/syft_1.46.0_windows_amd64.zip",
-      "checksum": "1E515C1AC4BC65917F8D0A52B6AE0E611082779CBF2DA9D470282158DD24EA13",
+      "id": "github_release/github.com/anchore/syft/v1.48.0/syft_1.48.0_windows_amd64.zip",
+      "checksum": "B46CB02A47C5B76A1656958757D62AC07D0CB7DE35F92E8A7E02D450CBB53097",
       "algorithm": "sha256"
     },
     {
@@ -191,28 +191,28 @@
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/sigstore/cosign/v3.1.1/cosign-darwin-amd64",
-      "checksum": "14D2678DFBFDE18798151E86FBD91EBDADBB7424B18412A42A155DD8A2DF4C7A",
+      "id": "github_release/github.com/sigstore/cosign/v3.1.2/cosign-darwin-amd64",
+      "checksum": "ACD180F8B015BE25240CA33ABEE8A1E564EB65CDF1A3CEE4725456D2DCEB7DA6",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/sigstore/cosign/v3.1.1/cosign-darwin-arm64",
-      "checksum": "94B42A9E697BE95675F6160AB031A9A5F1EC1E646D6F648D7B2F5CD59ECECBC5",
+      "id": "github_release/github.com/sigstore/cosign/v3.1.2/cosign-darwin-arm64",
+      "checksum": "DEC1C3F802320B19C2FBCF2DC7BCFB3F258E1C181A046C23A1A074BDF932F10A",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/sigstore/cosign/v3.1.1/cosign-linux-amd64",
-      "checksum": "AE1ECD212663F3693AD9EDF8B1A183900C9A52D3155BA6E354237F9A0F6463FC",
+      "id": "github_release/github.com/sigstore/cosign/v3.1.2/cosign-linux-amd64",
+      "checksum": "F7622ED3CF22E55E1AE6377C080979FF77A22DA9981C11DF222A2E444991E7CF",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/sigstore/cosign/v3.1.1/cosign-linux-arm64",
-      "checksum": "2EC865872E331C32FD12B08DAE15332D3F92C0AA029219589684A4903CA85D11",
+      "id": "github_release/github.com/sigstore/cosign/v3.1.2/cosign-linux-arm64",
+      "checksum": "90E7AE0B5DFD60F20816B52C012ADDF7FC055EBCC7BEA4CE81C428CA8518C302",
       "algorithm": "sha256"
     },
     {
-      "id": "github_release/github.com/sigstore/cosign/v3.1.1/cosign-windows-amd64.exe",
-      "checksum": "9D2C026E667BFD979FA7BA1CAB8C4B24D2E73F336EC2D57F7FC72C7E73E5B4B6",
+      "id": "github_release/github.com/sigstore/cosign/v3.1.2/cosign-windows-amd64.exe",
+      "checksum": "FE4D621D7AE5E900EE62089837C00F996AE9ACB82027D573D1D157B6EE875CB2",
       "algorithm": "sha256"
     },
     {
@@ -396,8 +396,8 @@
       "algorithm": "sha256"
     },
     {
-      "id": "registries/github_content/github.com/aquaproj/aqua-registry/v4.538.0/registry.yaml",
-      "checksum": "2BDF2310CD8DFD9AE2015014A90554485DB37EDD0902B0AA6873023F99F53CF7",
+      "id": "registries/github_content/github.com/aquaproj/aqua-registry/v4.541.0/registry.yaml",
+      "checksum": "992059585E567C09C1E9986B74A16A7BA60D262706BEFDEE1E0BD9F221144BCB",
       "algorithm": "sha256"
     }
   ]
