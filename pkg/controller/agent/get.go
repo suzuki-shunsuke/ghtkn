@@ -53,8 +53,12 @@ func pendingResponse(state *deviceFlowState) *agentapi.Response {
 }
 
 // deviceFlowResult answers a poll that waits for a device-flow result: it returns the
-// stored token as is (the flow deleted any stale token first, so a present token is the
-// freshly minted one), or RespNotFound when the flow ended without storing one.
+// stored token as is, or RespNotFound when the flow ended without storing one. This is
+// only reached once the flow's in-progress marker is gone, and a failed flow leaves the
+// marker with an errMsg that handleGet turns into an error before here (the marker is
+// cleared only on a clean completion, which stores the freshly minted token over any
+// previous one). So a token present here is that freshly minted one, even though the
+// pre-flow token was never deleted up front.
 func (c *Controller) deviceFlowResult(st *tokenstore.Store, clientID string) *agentapi.Response {
 	token, ok, resp := c.readStoredToken(st, clientID)
 	defer scrub(token)
@@ -157,9 +161,10 @@ func (c *Controller) handleGet(ctx context.Context, req *agentapi.Request, enabl
 		}
 	}
 
-	// Polling for the result of a flow this client started: the flow deleted any stale
-	// token up front, so a stored token here is the freshly minted one. Return it as is
-	// (no freshness check); its absence means the flow ended without a token.
+	// Polling for the result of a flow this client started. A failed flow was already
+	// turned into an error above (its marker carries an errMsg), so reaching here means
+	// the flow completed and stored its token, overwriting any pre-flow one. Return that
+	// token as is (no freshness check); its absence means the flow ended without a token.
 	if req.AwaitDeviceFlow {
 		return c.deviceFlowResult(st, req.ClientID)
 	}
