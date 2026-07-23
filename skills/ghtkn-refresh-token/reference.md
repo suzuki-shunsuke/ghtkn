@@ -87,7 +87,7 @@ A refresh token is valid for six months.
 Even though they are encrypted, holding on to long-lived refresh tokens carries some risk.
 For an access token you use infrequently, authenticating with the device flow each time is good enough without a refresh token.
 So the agent periodically (every 24 hours) deletes access tokens and refresh tokens that have gone unused for a certain period, removing the whole file from the backend.
-The period before deletion defaults to one week, and can be changed with the `--refresh-token-ttl` option of `ghtkn agent unlock`.
+The period before deletion defaults to three days, and can be changed with the `--refresh-token-ttl` option of `ghtkn agent unlock`.
 The value is a number followed by a `d` (day), `w` (week), or `m` (30-day month) suffix, e.g. `7d`, `4w`, `2m`.
 Only these three units are accepted: a TTL is naturally measured in days, weeks, or months, so `m` always means a 30-day month here, and units that `time.ParseDuration` would otherwise accept, such as `h`/`m`/`s` (e.g. `720h` or `1m30s`), are rejected rather than silently reinterpreted (`m` as a minute).
 Because a refresh token is valid for six months, you cannot specify a longer period.

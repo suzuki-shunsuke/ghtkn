@@ -11,9 +11,11 @@ import (
 
 const (
 	// defaultRefreshTokenTTL is how long a stored token may sit unused before the sweep
-	// discards it, when the unlock request does not specify one. One week balances
-	// convenience against how long an unused refresh token lingers.
-	defaultRefreshTokenTTL = 7 * 24 * time.Hour
+	// discards it, when the unlock request does not specify one. Three days keeps the
+	// window in which a rarely used app's refresh token lingers (and can be minted from)
+	// short, while leaving apps used every few days untouched; use --refresh-token-ttl to
+	// trade convenience for a longer window.
+	defaultRefreshTokenTTL = 3 * 24 * time.Hour
 	// MaxRefreshTokenTTL caps --refresh-token-ttl: a stored token is useless once its
 	// refresh token expires (GitHub issues refresh tokens that live about six months),
 	// so a larger TTL is clamped to this. A month is counted as 30 days. This is the

@@ -95,12 +95,14 @@ func TestController_handleLock_stopsSweep(t *testing.T) {
 		c.keyFile = filepath.Join(t.TempDir(), "key")
 		c.tokenDir = t.TempDir()
 
-		// Unlock with refresh enabled, which starts the sweep (bound to a cancelable ctx).
-		unlock, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","enable_refresh_token":true}`+"\n"))
+		// Unlock with refresh enabled and an explicit 7d TTL (604800000000000ns), which
+		// starts the sweep (bound to a cancelable ctx). The TTL is explicit so this test
+		// does not depend on the default.
+		unlock, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","enable_refresh_token":true,"refresh_token_ttl":604800000000000}`+"\n"))
 		if !unlock.OK {
 			t.Fatalf("UNLOCK --enable-refresh failed: %+v", unlock)
 		}
-		// Expired just over 6 days ago: within the 7d default TTL now, past it after a day.
+		// Expired just over 6 days ago: within the 7d TTL now, past it after a day.
 		seedToken(t, c, "Iv1.aging", time.Now().Add(-6*24*time.Hour-time.Hour))
 		synctest.Wait() // the immediate sweep has run; the token is still within the TTL
 		tokenFile := filepath.Join(c.tokenDir, "Iv1.aging")
