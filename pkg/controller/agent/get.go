@@ -285,14 +285,40 @@ func (c *Controller) refreshAccessToken(ctx context.Context, st *tokenstore.Stor
 		return nil, ""
 	}
 	defer scrub(fresh)
-	// A store failure is not fatal: return the refreshed token so the client gets a
-	// working one this run (the next get simply refreshes again).
+	// Return the refreshed token so this get succeeds even if the store write fails below.
 	if err := st.Set(clientID, fresh); err != nil {
 		if c.logger != nil {
 			slogerr.WithError(c.logger, err).Warn("store the refreshed access token", "client_id", clientID)
 		}
+		// GitHub rotated the refresh token, so the copy in `fresh` (returned but not
+		// persisted) is the only live one and the stored token's refresh token is now spent.
+		// Left in place, the next get would try that dead refresh token, fail, and raise a
+		// false incident warning. Drop the stale stored token so the next get re-authenticates
+		// via the device flow instead.
+		c.dropStaleAfterFailedStore(st, clientID, minExpiration)
 	}
 	return tokenResponse(fresh), ""
+}
+
+// dropStaleAfterFailedStore best-effort discards the cached token for clientID after a
+// refresh whose store write failed. Because GitHub rotates the refresh token, a failed
+// store leaves the stored token carrying a now-spent refresh token; discarding it makes
+// the next get fall back to the device flow instead of trying the dead refresh token and
+// raising a false incident warning. The delete is conditional (DeleteIf): it removes the
+// token only while it is still not valid for minExpiration, so a fresher token a concurrent
+// refresh or device flow may have stored in the meantime is left in place.
+//
+// This helps when the delete can still succeed even though the store write could not, e.g.
+// a full disk, where os.Remove frees the directory entry without needing space. When the
+// failure is directory-level (permissions) the delete also fails and the stale token
+// remains, but then the agent cannot store any token at all, a louder problem than one
+// false incident warning, and this is no worse than leaving it in place.
+func (c *Controller) dropStaleAfterFailedStore(st *tokenstore.Store, clientID string, minExpiration time.Duration) {
+	if _, err := st.DeleteIf(clientID, func(raw json.RawMessage) bool {
+		return !c.tokenValid(raw, minExpiration)
+	}); err != nil && c.logger != nil {
+		slogerr.WithError(c.logger, err).Warn("drop the stale cached token after a failed refresh store", "client_id", clientID)
+	}
 }
 
 // refreshedByPeer re-reads the stored token after a failed refresh and returns a token

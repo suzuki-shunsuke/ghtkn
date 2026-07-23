@@ -387,6 +387,39 @@ func TestController_handleGet_refreshPeerAlreadyRefreshed(t *testing.T) {
 	})
 }
 
+// TestController_dropStaleAfterFailedStore verifies the recovery after a refresh whose
+// store write failed: the stale token (still not valid for the request, so carrying a
+// now-spent refresh token) is discarded so the next get re-authenticates, while a token
+// that a concurrent refresh or device flow may have stored (valid for the request) is kept.
+func TestController_dropStaleAfterFailedStore(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedController(t)
+		now := time.Now()
+
+		// A stale (expired) token is dropped: the next get will re-authenticate instead of
+		// trying its dead refresh token and raising a false incident warning.
+		const staleID = "Iv1.stale"
+		seedExpiredWithRefresh(t, c, staleID, now.Add(24*time.Hour))
+		c.dropStaleAfterFailedStore(c.store, staleID, 0)
+		if _, ok, _ := c.store.Get(staleID); ok {
+			t.Fatal("a stale cached token must be dropped after a failed refresh store")
+		}
+
+		// A token still valid for the requirement is kept (stands in for one a concurrent
+		// refresh or device flow stored in the meantime).
+		const freshID = "Iv1.fresh"
+		fresh := fmt.Sprintf(`{"access_token":"a","expiration_date":"%s"}`, now.Add(8*time.Hour).Format(time.RFC3339))
+		if err := c.store.Set(freshID, json.RawMessage(fresh)); err != nil {
+			t.Fatal(err)
+		}
+		c.dropStaleAfterFailedStore(c.store, freshID, time.Hour)
+		if _, ok, _ := c.store.Get(freshID); !ok {
+			t.Fatal("a token still valid for the requirement must be kept")
+		}
+	})
+}
+
 // TestController_tokenValid_neverExpires verifies how a never-expiring token (zero
 // expiration, from a GitHub App with token expiration disabled) is judged: it is valid
 // for a normal min_expiration, but a min_expiration beyond the maximum token lifetime —
