@@ -92,6 +92,12 @@ type Controller struct {
 	// sweep discards it (see sweep.go). It is part of the unlocked state (guarded by mu),
 	// set from UNLOCK, and only used when enableRefreshToken is set.
 	refreshTokenTTL time.Duration
+	// sweepCancel stops the refresh-token sweep started at unlock. It is part of the
+	// unlocked state (guarded by mu): UNLOCK sets it to a cancel func derived from the
+	// server context, and LOCK calls it so the sweep goroutine does not outlive the
+	// unlocked state (which would leak a goroutine and run multiple sweeps across
+	// lock/unlock cycles). It is nil when refresh is disabled (no sweep runs).
+	sweepCancel context.CancelFunc
 	// goos is the GOOS the agent runs on, set in New and overridable in tests. It gates
 	// the refresh-token feature (see RefreshTokenSupported); it is read-only after New,
 	// so it needs no lock.

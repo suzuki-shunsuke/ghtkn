@@ -233,6 +233,33 @@ func TestStore_deleteIf_invalidClientID(t *testing.T) {
 	}
 }
 
+// TestStore_zero verifies that Zero scrubs the store's data key so it can no longer
+// decrypt, while leaving the encrypted token on disk intact for a fresh store.
+func TestStore_zero(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	token := json.RawMessage(`{"access_token":"abc"}`)
+	s := tokenstore.New(testDataKey(t), dir)
+	if err := s.Set("Iv1.abc", token); err != nil {
+		t.Fatal(err)
+	}
+
+	s.Zero()
+	// The scrubbed store can no longer decrypt its own token.
+	if _, _, err := s.Get("Iv1.abc"); err == nil {
+		t.Fatal("Get after Zero must fail to decrypt")
+	}
+
+	// The on-disk token is untouched: a fresh store with the same key still reads it.
+	got, ok, err := tokenstore.New(testDataKey(t), dir).Get("Iv1.abc")
+	if err != nil || !ok {
+		t.Fatalf("a fresh store must still read the token, got ok=%v err=%v", ok, err)
+	}
+	if string(got) != string(token) {
+		t.Fatalf("token = %q, want %q", got, token)
+	}
+}
+
 // TestStore_ClientIDs verifies that ClientIDs lists every stored token, ignoring
 // temporary files and invalid names.
 func TestStore_ClientIDs(t *testing.T) {

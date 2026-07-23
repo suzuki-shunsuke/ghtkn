@@ -17,6 +17,7 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/lock"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/reset"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/status"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/stop"
@@ -51,6 +52,7 @@ Tokens are encrypted at rest with AES-256-GCM.`,
 			r.stopCommand(),
 			r.statusCommand(),
 			r.unlockCommand(),
+			r.lockCommand(),
 			r.resetCommand(),
 		},
 	}
@@ -239,6 +241,35 @@ func (r *runner) unlock(ctx context.Context, args *unlockArgs) error {
 		return err
 	}
 	return unlock.New().Run(ctx, r.logger.Logger, args.EnableRefresh, ttl) //nolint:wrapcheck
+}
+
+// lockCommand returns the CLI command definition for the 'agent lock' subcommand.
+func (r *runner) lockCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "lock",
+		Usage: "Lock the running ghtkn agent by discarding its in-memory data key",
+		Description: `Lock the running ghtkn agent.
+
+It asks the agent to discard the data key it holds in memory and return to the
+locked state, without stopping the process or deleting the key file. Cached tokens
+become unreadable until you run 'ghtkn agent unlock' again with the same passphrase.
+Unlike 'ghtkn agent stop', the process and socket keep running, and unlike 'unlock',
+locking needs no passphrase, so it can be wired to a screen-lock or logout hook to
+shrink the window in which the agent holds decrypted tokens.
+
+$ ghtkn agent lock`,
+		Action: r.lock,
+	}
+}
+
+// lock executes the 'agent lock' command logic.
+// It configures the log level and asks the running agent to discard its data key.
+func (r *runner) lock(ctx context.Context, _ *cli.Command) error {
+	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
+		return fmt.Errorf("set log level: %w", err)
+	}
+	r.warnIfBackendNotAgent()
+	return lock.New().Run(ctx, r.logger.Logger) //nolint:wrapcheck
 }
 
 // resetCommand returns the CLI command definition for the 'agent reset' subcommand.

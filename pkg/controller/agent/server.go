@@ -168,6 +168,8 @@ func (c *Controller) handle(ctx context.Context, r io.Reader) (*agentapi.Respons
 // with SET, and the agent must not run the device flow or refresh for it. Such a
 // client never sets StartDeviceFlow (the field did not exist), so GET never starts a
 // flow on its own; refresh is disabled explicitly here.
+//
+//nolint:cyclop // a command router has one case per protocol command; its complexity scales with the command set by design.
 func (c *Controller) dispatch(ctx context.Context, req *agentapi.Request) (*agentapi.Response, bool) {
 	legacy := req.ProtocolVersion < agentapi.ProtocolVersionServerLifecycle
 	switch req.Command {
@@ -183,6 +185,8 @@ func (c *Controller) dispatch(ctx context.Context, req *agentapi.Request) (*agen
 		return c.handleStatus(), false
 	case agentapi.CommandUnlock:
 		return c.handleUnlock(ctx, req), false
+	case agentapi.CommandLock:
+		return c.handleLock(), false
 	case agentapi.CommandStop:
 		return &agentapi.Response{OK: true}, true
 	default:

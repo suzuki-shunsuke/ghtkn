@@ -74,14 +74,22 @@ Even after the agent starts, you can't get access tokens until you enter the pas
 ghtkn agent unlock
 ```
 
-There are also `status` and `stop` commands.
+There are also `status`, `stop`, and `lock` commands.
 
 ```sh
 : Check the agent status
 ghtkn agent status
 : Stop the agent
 ghtkn agent stop
+: Discard the in-memory data key without stopping the agent
+ghtkn agent lock
 ```
+
+`ghtkn agent lock` discards the data key the agent holds in memory and returns it to the locked state, without stopping the process, closing the socket, or deleting the key file.
+Cached tokens become unreadable until you run `ghtkn agent unlock` again with the same passphrase, which re-derives the same data key from the key file, so tokens stored before the lock are readable again.
+Unlike `ghtkn agent stop`, the process and socket keep running, and unlike `unlock`, locking needs no passphrase.
+
+This lets you shrink the window in which the agent holds decrypted tokens: while the agent is unlocked, a process running as your user can ask it for access tokens, so locking it when you step away (or when you switch to activities more likely to run untrusted code) reduces exposure. Because it needs no passphrase, `ghtkn agent lock` can be wired to a screen-lock or logout hook to do this automatically.
 
 To get access tokens, set `GHTKN_BACKEND` to `agent` and run `ghtkn get` or the ghtkn Go SDK.
 

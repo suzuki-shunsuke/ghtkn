@@ -66,8 +66,13 @@ func (c *Controller) handleUnlock(ctx context.Context, req *agentapi.Request) *a
 	c.refreshTokenTTL = c.resolveRefreshTokenTTL(req.RefreshTokenTTL)
 	c.logUnlocked(store, created)
 	if c.enableRefreshToken {
-		// Discard tokens unused past the TTL for as long as the agent runs.
-		c.startRefreshTokenSweep(ctx, store, c.refreshTokenTTL)
+		// Discard tokens unused past the TTL until the agent shuts down or is locked. The
+		// sweep is bound to a cancelable child of the server context so LOCK can stop it
+		// (see handleLock); otherwise a later unlock would start a second sweep while this
+		// one keeps running.
+		sweepCtx, cancel := context.WithCancel(ctx)
+		c.sweepCancel = cancel
+		c.startRefreshTokenSweep(sweepCtx, store, c.refreshTokenTTL)
 	} else {
 		// Refresh is off: drop any refresh tokens left by a previous refresh-enabled run.
 		c.stripRefreshTokens(store)

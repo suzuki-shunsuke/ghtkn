@@ -168,6 +168,19 @@ func (s *Store) ClientIDs() ([]string, error) {
 	return diskClientIDsFromEntries(entries), nil
 }
 
+// Zero scrubs the store's data key so the key no longer lives in memory. It is used when
+// the agent is locked (see the agent controller's handleLock): the store is discarded
+// afterwards, so this only shortens how long the plaintext key lingers. It runs under the
+// store lock so it does not race an in-flight Get/Set/Delete; a decrypt attempted after
+// Zero fails and surfaces as ErrDecryptToken, which callers treat as a cache miss.
+func (s *Store) Zero() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := range s.dataKey {
+		s.dataKey[i] = 0
+	}
+}
+
 // getLocked reads and decrypts the token for clientID. The caller must hold s.mu. It
 // classifies errors the same way Get does: a missing file is (nil, false, nil) and a
 // decrypt failure is wrapped with ErrDecryptToken. It exists so DeleteIf can read under
