@@ -12,9 +12,9 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/lmittmann/tint v1.1.3
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
-	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.4.2-0.20260723151442-f8f1c20d8289
-	github.com/suzuki-shunsuke/go-github-device-flow v0.0.2-0.20260714121453-3389c27e8995
-	github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.1
+	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.4.2-0.20260723202433-35d0ff528a74
+	github.com/suzuki-shunsuke/go-github-device-flow v0.0.2-0.20260723200608-b91d9018984b
+	github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.2-0.20260723202049-b59e884ad0ce
 	github.com/suzuki-shunsuke/slog-error v0.2.2
 	github.com/suzuki-shunsuke/slog-util v0.3.2
 	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.3
