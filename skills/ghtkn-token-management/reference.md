@@ -30,8 +30,19 @@ min_expiration: 1h
 If you're only using the GitHub CLI to call an API, it usually finishes in an instant, so you probably won't need to set this.
 However, if you're passing the access token to a script that takes, say, 30 minutes to run, setting it to something like `50m` will prevent the token from expiring in the middle of the script.
 
-By the way, if you set the value to 8 hours or more, you can replicate how ghtkn regenerates the access token.
+By the way, if you set the value to more than 8 hours (the maximum lifetime of a user access token), you can replicate how ghtkn regenerates the access token, because no real token can ever satisfy the requirement.
 This could be useful if you want to test how `ghtkn` behaves.
+
+## Non-expiring GitHub Apps (strongly discouraged)
+
+A GitHub App can be configured with user access token expiration disabled, in which case it issues access tokens that never expire.
+ghtkn works with such an App, but using one is strongly discouraged.
+The whole value of ghtkn is to hand out short-lived access tokens, so that a leaked token is only usable for a short window; a non-expiring token throws that away, and a leak is then effectively permanent until you notice it and revoke the token manually.
+Keep user access token expiration enabled on your GitHub App.
+
+For completeness, ghtkn does handle a non-expiring token correctly.
+It is stored with no expiration date and served from the cache, instead of running the device flow on every `ghtkn get` (a token with no expiration would otherwise read as already expired and be regenerated every time).
+`ghtkn auth` still regenerates it, because it asks for more validity than any token can have (see above), so you can replace a revoked non-expiring token by running `ghtkn auth`.
 
 ## ghtkn auth
 
