@@ -165,6 +165,74 @@ func TestStore_getReturnsCallerOwnedBuffer(t *testing.T) {
 	}
 }
 
+// TestStore_deleteIf_miss verifies that DeleteIf is a no-op for a missing token and never
+// calls the predicate.
+func TestStore_deleteIf_miss(t *testing.T) {
+	t.Parallel()
+	s := tokenstore.New(testDataKey(t), t.TempDir())
+	deleted, err := s.DeleteIf("Iv1.absent", func(json.RawMessage) bool {
+		t.Error("predicate must not run for a missing token")
+		return true
+	})
+	if err != nil || deleted {
+		t.Fatalf("DeleteIf on miss = (%v, %v), want (false, nil)", deleted, err)
+	}
+}
+
+// TestStore_deleteIf_keep verifies that a false predicate keeps the token and receives
+// its decrypted bytes.
+func TestStore_deleteIf_keep(t *testing.T) {
+	t.Parallel()
+	token := json.RawMessage(`{"access_token":"abc"}`)
+	s := tokenstore.New(testDataKey(t), t.TempDir())
+	if err := s.Set("Iv1.keep", token); err != nil {
+		t.Fatal(err)
+	}
+	deleted, err := s.DeleteIf("Iv1.keep", func(raw json.RawMessage) bool {
+		if string(raw) != string(token) {
+			t.Errorf("predicate got %q, want %q", raw, token)
+		}
+		return false
+	})
+	if err != nil || deleted {
+		t.Fatalf("DeleteIf with a false predicate = (%v, %v), want (false, nil)", deleted, err)
+	}
+	if _, ok, err := s.Get("Iv1.keep"); err != nil || !ok {
+		t.Fatalf("a token kept by a false predicate must remain, got ok=%v err=%v", ok, err)
+	}
+}
+
+// TestStore_deleteIf_drop verifies that a true predicate deletes the token from disk.
+func TestStore_deleteIf_drop(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	key := testDataKey(t)
+	s := tokenstore.New(key, dir)
+	if err := s.Set("Iv1.drop", json.RawMessage(`{"access_token":"abc"}`)); err != nil {
+		t.Fatal(err)
+	}
+	deleted, err := s.DeleteIf("Iv1.drop", func(json.RawMessage) bool { return true })
+	if err != nil || !deleted {
+		t.Fatalf("DeleteIf with a true predicate = (%v, %v), want (true, nil)", deleted, err)
+	}
+	if _, ok, err := tokenstore.New(key, dir).Get("Iv1.drop"); err != nil || ok {
+		t.Fatalf("a token dropped by a true predicate must be gone, got ok=%v err=%v", ok, err)
+	}
+}
+
+// TestStore_deleteIf_invalidClientID verifies that an invalid client ID is rejected
+// without calling the predicate.
+func TestStore_deleteIf_invalidClientID(t *testing.T) {
+	t.Parallel()
+	s := tokenstore.New(testDataKey(t), t.TempDir())
+	if _, err := s.DeleteIf("../escape", func(json.RawMessage) bool {
+		t.Error("predicate must not run for an invalid client id")
+		return true
+	}); err == nil {
+		t.Fatal("DeleteIf must reject an invalid client id")
+	}
+}
+
 // TestStore_ClientIDs verifies that ClientIDs lists every stored token, ignoring
 // temporary files and invalid names.
 func TestStore_ClientIDs(t *testing.T) {

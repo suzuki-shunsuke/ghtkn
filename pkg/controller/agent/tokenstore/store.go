@@ -75,18 +75,7 @@ func (s *Store) Get(clientID string) (json.RawMessage, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	blob, err := os.ReadFile(filepath.Join(s.dir, clientID))
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, false, nil
-		}
-		return nil, false, fmt.Errorf("read the token file: %w", err)
-	}
-	plaintext, err := crypt.Open(s.dataKey, blob)
-	if err != nil {
-		return nil, false, fmt.Errorf("%w: %w", ErrDecryptToken, err)
-	}
-	return json.RawMessage(plaintext), true, nil
+	return s.getLocked(clientID)
 }
 
 // Set stores a token for clientID: it encrypts the token and writes it atomically to
@@ -118,10 +107,38 @@ func (s *Store) Delete(clientID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if err := os.Remove(filepath.Join(s.dir, clientID)); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("remove the token file: %w", err)
+	return s.deleteLocked(clientID)
+}
+
+// DeleteIf deletes the token stored for clientID only when pred returns true for its
+// current decrypted contents. The read, the predicate, and the delete all run under the
+// store lock, so a concurrent Set (e.g. a refresh storing a fresh token) cannot slip in
+// between the check and the delete. pred receives the decrypted token bytes and must not
+// retain them; the store zeroes them once pred returns. It reports whether a token was
+// deleted. A missing token is a no-op (false, nil); a read/decrypt failure is returned as
+// an error and nothing is deleted.
+func (s *Store) DeleteIf(clientID string, pred func(raw json.RawMessage) bool) (bool, error) {
+	if !validClientID(clientID) {
+		return false, ErrInvalidClientID
 	}
-	return nil
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	raw, ok, err := s.getLocked(clientID)
+	if err != nil || !ok {
+		return false, err
+	}
+	shouldDelete := pred(raw)
+	for i := range raw { // scrub the decrypted token; DeleteIf owns it
+		raw[i] = 0
+	}
+	if !shouldDelete {
+		return false, nil
+	}
+	if err := s.deleteLocked(clientID); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // Len returns the number of stored tokens by counting the valid token files on disk
@@ -149,6 +166,34 @@ func (s *Store) ClientIDs() ([]string, error) {
 		return nil, fmt.Errorf("read the token directory: %w", err)
 	}
 	return diskClientIDsFromEntries(entries), nil
+}
+
+// getLocked reads and decrypts the token for clientID. The caller must hold s.mu. It
+// classifies errors the same way Get does: a missing file is (nil, false, nil) and a
+// decrypt failure is wrapped with ErrDecryptToken. It exists so DeleteIf can read under
+// the same lock it deletes under (calling the public Get would deadlock, as it re-locks).
+func (s *Store) getLocked(clientID string) (json.RawMessage, bool, error) {
+	blob, err := os.ReadFile(filepath.Join(s.dir, clientID))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, false, nil
+		}
+		return nil, false, fmt.Errorf("read the token file: %w", err)
+	}
+	plaintext, err := crypt.Open(s.dataKey, blob)
+	if err != nil {
+		return nil, false, fmt.Errorf("%w: %w", ErrDecryptToken, err)
+	}
+	return json.RawMessage(plaintext), true, nil
+}
+
+// deleteLocked removes the token file for clientID (a missing file is not an error).
+// The caller must hold s.mu.
+func (s *Store) deleteLocked(clientID string) error {
+	if err := os.Remove(filepath.Join(s.dir, clientID)); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("remove the token file: %w", err)
+	}
+	return nil
 }
 
 // diskClientIDs lists the client IDs of the token files under s.dir. It returns nil on

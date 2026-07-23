@@ -85,22 +85,19 @@ func (c *Controller) sweepExpiredTokens(st *tokenstore.Store, ttl time.Duration)
 	}
 	cutoff := time.Now().Add(-ttl)
 	for _, id := range ids {
-		raw, ok, err := st.Get(id)
-		if err != nil || !ok {
-			continue
-		}
-		expired := tokenExpiredBefore(raw, cutoff)
-		scrub(raw)
-		if !expired {
-			continue
-		}
-		if err := st.Delete(id); err != nil {
+		// Read the expiration and delete under the store's lock in one operation, so a
+		// concurrent refresh that stores a fresh token cannot slip in between the check and
+		// the delete and have its new token discarded (see Store.DeleteIf).
+		deleted, err := st.DeleteIf(id, func(raw json.RawMessage) bool {
+			return tokenExpiredBefore(raw, cutoff)
+		})
+		if err != nil {
 			if c.logger != nil {
 				slogerr.WithError(c.logger, err).Warn("discard an unused token in the refresh-token sweep", "client_id", id)
 			}
 			continue
 		}
-		if c.logger != nil {
+		if deleted && c.logger != nil {
 			c.logger.Info("discarded a token unused past the refresh TTL", "client_id", id)
 		}
 	}
