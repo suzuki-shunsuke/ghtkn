@@ -56,6 +56,10 @@ func (s *Server) handleUnlock(ctx context.Context, req *agentapi.Request) *agent
 	// ConfirmRefreshTokenRemoval and falls through to strip below. A first-ever unlock has
 	// no stored tokens, so this never blocks key creation.
 	if s.needsRefreshRemovalConfirmation(req, store) {
+		// Nothing is bound to s.store on this path, so the data key just derived (and held
+		// by store) would otherwise linger un-zeroed until GC. Scrub it now, as every other
+		// path ends the key's life via s.store.Zero() (see handleLock).
+		store.Zero()
 		if s.logger != nil {
 			s.logger.Info("unlock without --enable-refresh found stored refresh tokens; awaiting confirmation to drop them")
 		}
