@@ -10,7 +10,7 @@ go 1.26.5
 
 require (
 	github.com/google/go-cmp v0.7.0
-	github.com/lmittmann/tint v1.1.3
+	github.com/lmittmann/tint v1.2.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
 	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.4.2-0.20260724041608-4a7e304abbdb
 	github.com/suzuki-shunsuke/go-github-device-flow v0.0.2-0.20260723200608-b91d9018984b
