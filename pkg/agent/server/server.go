@@ -26,24 +26,6 @@ import (
 	"github.com/suzuki-shunsuke/go-revoke-github-access-token/revoke"
 )
 
-// goosWindows is the runtime.GOOS value for Windows.
-const goosWindows = "windows"
-
-// RefreshTokenSupported reports whether the refresh-token feature may be enabled on
-// goos. It is unsupported on Windows because the defenses that keep a stored refresh
-// token from leaking are POSIX-specific: the 0600 permissions the agent sets on the
-// key, the token files, and the socket are effectively a no-op there, and there is no
-// equivalent of the PR_SET_DUMPABLE hardening that stops a same-user process from
-// reading the agent's memory (see harden.Process). A refresh token outlives the 8-hour
-// access token by months, so it is not worth storing without them.
-//
-// This is the single source of truth for the restriction: the CLI rejects
-// --enable-refresh up front by calling this, and handleUnlock refuses an UNLOCK that
-// asks for it, so no client can turn the feature on.
-func RefreshTokenSupported(goos string) bool {
-	return goos != goosWindows
-}
-
 // githubHTTPTimeout bounds a single HTTP request to GitHub (device-code request, token
 // refresh, and credential revocation, plus each individual device-flow poll request). Go's
 // default transport bounds only dial and TLS handshake, so a peer that accepts the
@@ -99,7 +81,7 @@ type Server struct {
 	// lock/unlock cycles). It is nil when refresh is disabled (no sweep runs).
 	sweepCancel context.CancelFunc
 	// goos is the GOOS the agent runs on, set in New and overridable in tests. It gates
-	// the refresh-token feature (see RefreshTokenSupported); it is read-only after New,
+	// the refresh-token feature (see refreshtoken.Supported); it is read-only after New,
 	// so it needs no lock.
 	goos string
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/refreshtoken"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/tokenstore"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
@@ -16,13 +17,6 @@ const (
 	// short, while leaving apps used every few days untouched; use --refresh-token-ttl to
 	// trade convenience for a longer window.
 	defaultRefreshTokenTTL = 3 * 24 * time.Hour
-	// MaxRefreshTokenTTL caps --refresh-token-ttl: a stored token is useless once its
-	// refresh token expires (GitHub issues refresh tokens that live about six months),
-	// so a larger TTL is clamped to this. A month is counted as 30 days. This is the
-	// single source of truth for the upper bound: the server clamps to it (see
-	// resolveRefreshTokenTTL) and the CLI rejects larger values up front by referencing
-	// this same constant (see pkg/cli/agent).
-	MaxRefreshTokenTTL = 6 * 30 * 24 * time.Hour
 	// refreshTokenSweepInterval is how often the sweep runs while the agent is unlocked.
 	// Checking every stored token's expiration daily is cheap relative to the risk of an
 	// unused refresh token lingering.
@@ -37,11 +31,11 @@ func (s *Server) resolveRefreshTokenTTL(ttl time.Duration) time.Duration {
 	switch {
 	case ttl <= 0:
 		return defaultRefreshTokenTTL
-	case ttl > MaxRefreshTokenTTL:
+	case ttl > refreshtoken.MaxTTL:
 		if s.logger != nil {
-			s.logger.Warn("refresh-token-ttl exceeds the maximum; capping it", "requested", ttl, "max", MaxRefreshTokenTTL)
+			s.logger.Warn("refresh-token-ttl exceeds the maximum; capping it", "requested", ttl, "max", refreshtoken.MaxTTL)
 		}
-		return MaxRefreshTokenTTL
+		return refreshtoken.MaxTTL
 	default:
 		return ttl
 	}

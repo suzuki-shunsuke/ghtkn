@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/refreshtoken"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/tokenstore"
 )
 
@@ -116,8 +117,8 @@ func TestServer_handle_unlock_capsRefreshTokenTTL(t *testing.T) {
 	if !unlock.OK {
 		t.Fatalf("unlock failed: %+v", unlock)
 	}
-	if c.refreshTokenTTL != MaxRefreshTokenTTL {
-		t.Fatalf("refreshTokenTTL = %v, want capped to %v", c.refreshTokenTTL, MaxRefreshTokenTTL)
+	if c.refreshTokenTTL != refreshtoken.MaxTTL {
+		t.Fatalf("refreshTokenTTL = %v, want capped to %v", c.refreshTokenTTL, refreshtoken.MaxTTL)
 	}
 }
 

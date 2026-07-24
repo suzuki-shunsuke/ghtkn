@@ -8,6 +8,7 @@ import (
 
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/keyfile"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/refreshtoken"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/tokenstore"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 )
@@ -26,10 +27,10 @@ func (s *Server) handleUnlock(ctx context.Context, req *agentapi.Request) *agent
 	// entry so it is zeroed even on the already-unlocked early return below.
 	defer scrub(req.Passphrase)
 	// Refuse rather than silently unlock with refresh off: the client asked for a feature
-	// this OS can't keep safe (see RefreshTokenSupported), and leaving the agent locked
+	// this OS can't keep safe (see refreshtoken.Supported), and leaving the agent locked
 	// makes that impossible to miss. The CLI rejects --enable-refresh before prompting
 	// for the passphrase; this covers any other client.
-	if req.EnableRefreshToken && !RefreshTokenSupported(s.goos) {
+	if req.EnableRefreshToken && !refreshtoken.Supported(s.goos) {
 		return &agentapi.Response{Error: errMsgRefreshTokenUnsupportedOS}
 	}
 	s.mu.Lock()

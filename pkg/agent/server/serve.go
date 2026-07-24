@@ -56,7 +56,7 @@ const (
 	// client that does not understand the field still shows a meaningful reason.
 	errMsgRefreshTokenRemovalPending = "stored refresh tokens would be removed; confirm the removal or rerun with --enable-refresh to keep them"
 	// errMsgRefreshTokenUnsupportedOS is returned when an UNLOCK asks to enable refresh
-	// tokens on an OS that doesn't support them (see RefreshTokenSupported).
+	// tokens on an OS that doesn't support them (see refreshtoken.Supported).
 	errMsgRefreshTokenUnsupportedOS = "refresh tokens are not supported on Windows; unlock the agent without enabling them"
 )
 
