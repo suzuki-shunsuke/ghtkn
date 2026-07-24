@@ -2,13 +2,13 @@
 // locked-start workflow. It prompts for the agent passphrase on the terminal and
 // sends it to a running agent over the Unix domain socket so the agent can load its
 // data key and make cached tokens readable. The agent server lives in
-// pkg/controller/agent.
+// pkg/agent/server.
 package unlock
 
 import (
 	"os"
 
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tty"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/tty"
 )
 
 // Controller backs the 'ghtkn agent unlock' command. It is a client: it never

@@ -8,11 +8,11 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/harden"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keyfile"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/harden"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/keyfile"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/tokenstore"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/tty"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/stop"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tty"
 )
 
 // Run recovers from a forgotten passphrase by reinitializing the agent: it stops
