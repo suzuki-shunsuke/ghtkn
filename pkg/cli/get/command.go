@@ -165,8 +165,12 @@ func (r *runner) action(ctx context.Context, cmd *cli.Command, logger *slogutil.
 		return fmt.Errorf("create the controller input: %w", err)
 	}
 	if r.isGitCredential {
-		if err := r.handleGitCredential(ctx, logger.Logger, args.SubCommand, input, inputGet); err != nil {
+		skip, err := r.handleGitCredential(ctx, logger.Logger, args.SubCommand, input, inputGet)
+		if err != nil {
 			return err
+		}
+		if skip {
+			return nil
 		}
 	} else {
 		setupGet(cmd, args, input, inputGet)

@@ -20,6 +20,7 @@ type gitCredentialTestCase struct {
 	arg          string
 	stdin        string
 	gitApp       string // value of GHTKN_GIT_APP
+	wantSkip     bool
 	wantAppName  string
 	wantAppOwner string
 }
@@ -38,8 +39,12 @@ func (d gitCredentialTestCase) run(t *testing.T) {
 	}
 	input := &get.Input{}
 	inputGet := &ghtkn.InputGet{}
-	if err := r.handleGitCredential(t.Context(), slog.New(slog.DiscardHandler), d.arg, input, inputGet); err != nil {
+	skip, err := r.handleGitCredential(t.Context(), slog.New(slog.DiscardHandler), d.arg, input, inputGet)
+	if err != nil {
 		t.Fatalf("handleGitCredential() error: %v", err)
+	}
+	if skip != d.wantSkip {
+		t.Errorf("skip = %v, want %v", skip, d.wantSkip)
 	}
 	if !input.IsGitCredential {
 		t.Error("input.IsGitCredential = false, want true")
@@ -76,6 +81,7 @@ func TestRunner_handleGitCredential(t *testing.T) {
 			arg:          "store",
 			stdin:        gcStdinWithPath,
 			gitApp:       "suzuki-shunsuke/git",
+			wantSkip:     true,
 			wantAppName:  "",
 			wantAppOwner: "",
 		},

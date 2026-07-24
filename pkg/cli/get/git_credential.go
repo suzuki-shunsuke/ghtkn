@@ -22,15 +22,22 @@ type scanResult struct {
 	Err      error
 }
 
-func (r *runner) handleGitCredential(ctx context.Context, logger *slog.Logger, arg string, input *get.Input, inputGet *ghtkn.InputGet) error {
+// handleGitCredential prepares the SDK request for Git credential helper mode.
+// It returns skip=true when the operation must not proceed to token retrieval:
+// only the 'get' operation is supported, so 'store' and 'erase' are treated as
+// no-ops (do nothing and exit 0), as Git ignores their result. Returning skip
+// for these avoids retrieving or creating a token for the default app, which
+// would happen with GHTKN_GIT_APP unapplied and could fail noisily (issue #518).
+func (r *runner) handleGitCredential(ctx context.Context, logger *slog.Logger, arg string, input *get.Input, inputGet *ghtkn.InputGet) (bool, error) {
 	logger.Debug("running in Git Credential Helper mode", "arg", arg)
 	input.IsGitCredential = true
 	if arg != "get" {
-		return nil
+		logger.Debug("ignoring an unsupported Git Credential Helper operation", "arg", arg)
+		return true, nil
 	}
 	result, err := r.readStdinForGitCredentialHelper(ctx, logger)
 	if err != nil {
-		return fmt.Errorf("read stdin: %w", err)
+		return false, fmt.Errorf("read stdin: %w", err)
 	}
 	if result.Owner == "" {
 		logger.Warn("failed to get the repository owner from stdin for Git Credential Helper")
@@ -39,7 +46,7 @@ func (r *runner) handleGitCredential(ctx context.Context, logger *slog.Logger, a
 	if app := r.getEnv(env.GitApp); app != "" {
 		inputGet.AppName = app
 	}
-	return nil
+	return false, nil
 }
 
 func (r *runner) readStdinForGitCredentialHelper(ctx context.Context, logger *slog.Logger) (*scanResult, error) { //nolint:cyclop
