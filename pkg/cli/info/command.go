@@ -10,11 +10,16 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
+	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/status"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/info"
+	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
@@ -77,7 +82,7 @@ $ ghtkn info | jq .envs`,
 // configuration file path, and delegates to the info controller to print the
 // environment information. Returns an error if the config path can't be
 // resolved or the controller fails.
-func (r *runner) action(_ context.Context, logger *slogutil.Logger, args *Args) error {
+func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args) error {
 	if err := logger.SetLevel(args.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
@@ -97,5 +102,50 @@ func (r *runner) action(_ context.Context, logger *slogutil.Logger, args *Args) 
 		logger.Warn("load the config for the info output; omitting the config section", "error", err)
 		cfg = nil
 	}
-	return info.New(os.Stdout, os.Getenv).Info(configPath, args.AppName, args.Version, cfg) //nolint:wrapcheck
+	// When the effective backend is the agent, include its state. This is best-effort:
+	// info is a troubleshooting command and must never fail because the agent is down.
+	agentBackend := cfg != nil && cfg.Backend != nil && cfg.Backend.Type == "agent"
+	agent := buildAgentStatus(ctx, agentBackend, logger)
+	return info.New(os.Stdout, os.Getenv).Info(configPath, args.AppName, args.Version, cfg, agent) //nolint:wrapcheck
+}
+
+// buildAgentStatus queries the running agent and builds the info output's agent section,
+// or returns nil when the backend is not the agent. It is best-effort: a not-running or
+// erroring agent yields {running:false} (with a warning) rather than failing info.
+func buildAgentStatus(ctx context.Context, agentBackend bool, logger *slogutil.Logger) *info.AgentStatus {
+	if !agentBackend {
+		return nil
+	}
+	resp, running, err := status.Query(ctx, os.Getenv)
+	if err != nil {
+		slogerr.WithError(logger.Logger, err).Warn("query the agent status for the info output")
+		return &info.AgentStatus{Running: false}
+	}
+	return agentStatusFromResponse(running, resp)
+}
+
+// agentStatusFromResponse maps an agent STATUS response to the info output's agent
+// section. Locked and RefreshToken describe the unlocked agent, so they are set only when
+// the agent is running (Locked) and unlocked (RefreshToken). It is a pure function so the
+// shaping is testable without a socket.
+func agentStatusFromResponse(running bool, resp *agentapi.Response) *info.AgentStatus {
+	if !running {
+		return &info.AgentStatus{Running: false}
+	}
+	st := &info.AgentStatus{Running: true, Locked: new(resp.Locked)}
+	if !resp.Locked {
+		// enabled/ttl describe the unlocked, refresh-enabled state; TTL is present only
+		// when the agent reports one (an older agent omits it).
+		rt := &info.AgentRefreshToken{Enabled: resp.RefreshTokenEnabled}
+		if resp.RefreshTokenTTL > 0 {
+			rt.TTL = formatTTLDays(resp.RefreshTokenTTL)
+		}
+		st.RefreshToken = rt
+	}
+	return st
+}
+
+// formatTTLDays renders a refresh-token TTL in days, e.g. "3d" or "10.5d".
+func formatTTLDays(d time.Duration) string {
+	return strconv.FormatFloat(d.Hours()/24, 'g', -1, 64) + "d"
 }

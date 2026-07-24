@@ -5,10 +5,30 @@ import (
 	"log/slog"
 	"path/filepath"
 	"testing"
+	"time"
 
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
 )
+
+// TestController_handleStatus_refreshTTL verifies that STATUS reports the refresh-token
+// TTL only when the agent is unlocked with refresh enabled (a locked agent has refresh
+// off, so it reports neither).
+func TestController_handleStatus_refreshTTL(t *testing.T) {
+	t.Parallel()
+	c := New()
+	c.store = tokenstore.New(testDataKey(t), t.TempDir()) // unlocked
+	c.enableRefreshToken = true
+	c.refreshTokenTTL = 3 * 24 * time.Hour
+	if resp := c.handleStatus(); !resp.RefreshTokenEnabled || resp.RefreshTokenTTL != 3*24*time.Hour {
+		t.Fatalf("unlocked+refresh STATUS must report the TTL, got %+v", resp)
+	}
+
+	locked := New() // locked: no store, refresh off
+	if resp := locked.handleStatus(); resp.RefreshTokenEnabled || resp.RefreshTokenTTL != 0 {
+		t.Fatalf("a locked agent must not report a refresh TTL, got %+v", resp)
+	}
+}
 
 // TestServe_status_locked verifies that a locked agent, served over a real socket,
 // reports running and locked in response to STATUS.

@@ -112,6 +112,15 @@ func (c *Controller) refreshEnabled() bool {
 	return c.enableRefreshToken
 }
 
+// refreshState reports whether refresh is enabled and, if so, the sweep TTL, read
+// together under one lock so STATUS reports a consistent pair. The TTL is meaningful
+// only when refresh is enabled (i.e. the agent is unlocked with it on).
+func (c *Controller) refreshState() (bool, time.Duration) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.enableRefreshToken, c.refreshTokenTTL
+}
+
 // New creates a new agent Controller. The server starts locked (no token store);
 // it is unlocked later via the UNLOCK command.
 //

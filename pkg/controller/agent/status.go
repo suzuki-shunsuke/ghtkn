@@ -9,9 +9,15 @@ import (
 // tokens are enabled.
 func (c *Controller) handleStatus() *agentapi.Response {
 	st := c.tokenStore()
-	resp := &agentapi.Response{OK: true, Locked: st == nil, Initialized: c.keyExists(), RefreshTokenEnabled: c.refreshEnabled()}
+	enabled, ttl := c.refreshState()
+	resp := &agentapi.Response{OK: true, Locked: st == nil, Initialized: c.keyExists(), RefreshTokenEnabled: enabled}
 	if st != nil {
 		resp.Count = st.Len()
+	}
+	if enabled {
+		// The TTL is part of the unlocked, refresh-enabled state, so report it only then
+		// (a locked agent has refresh off). A client such as `ghtkn info` shows it.
+		resp.RefreshTokenTTL = ttl
 	}
 	return resp
 }

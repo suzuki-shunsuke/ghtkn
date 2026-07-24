@@ -32,6 +32,26 @@ type Output struct {
 	App        string            `json:"app"`
 	ConfigPath string            `json:"config_path"`
 	Config     *ConfigView       `json:"config,omitempty"`
+	// Agent reports the ghtkn agent's state; it is set only when the resolved backend is
+	// the agent (the caller queries the agent and passes it in). It is nil otherwise.
+	Agent *AgentStatus `json:"agent,omitempty"`
+}
+
+// AgentStatus is the ghtkn agent's state as reported in the info output. Locked and
+// RefreshToken describe the unlocked agent, so they are present only when it is running:
+// Locked is nil (omitted) when the agent is not running, and RefreshToken is nil when the
+// agent is not running or is locked.
+type AgentStatus struct {
+	Running      bool               `json:"running"`
+	Locked       *bool              `json:"locked,omitempty"`
+	RefreshToken *AgentRefreshToken `json:"refresh_token,omitempty"`
+}
+
+// AgentRefreshToken reports the refresh-token settings of an unlocked agent: whether
+// refresh is enabled and, when it is, the sweep TTL in days (e.g. "3d").
+type AgentRefreshToken struct {
+	Enabled bool   `json:"enabled"`
+	TTL     string `json:"ttl,omitempty"`
 }
 
 // Info writes the environment information to the controller's stdout as indented JSON.
@@ -41,12 +61,13 @@ type Output struct {
 // redacted, and empty variables are omitted. appName, when non-empty, overrides
 // GHTKN_APP; when neither is set, the reported app falls back to the default app (the
 // first configured app), matching what ghtkn would actually use.
-func (c *Controller) Info(configPath, appName, version string, cfg *config.Config) error {
+func (c *Controller) Info(configPath, appName, version string, cfg *config.Config, agent *AgentStatus) error {
 	output := &Output{
 		OS:         runtime.GOOS,
 		Arch:       runtime.GOARCH,
 		Version:    version,
 		ConfigPath: configPath,
+		Agent:      agent,
 	}
 	// The caller resolves the effective config via ghtkn.LoadConfig (file plus env) and
 	// passes it in, so the controller stays free of config-file and environment lookups.

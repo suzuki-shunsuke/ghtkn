@@ -212,7 +212,7 @@ func TestController_Info(t *testing.T) { //nolint:funlen
 			buf := &bytes.Buffer{}
 			ctrl := info.New(buf, fakeEnv(tt.env))
 
-			if err := ctrl.Info(configPath, tt.appName, tt.version, tt.cfg); err != nil {
+			if err := ctrl.Info(configPath, tt.appName, tt.version, tt.cfg, nil); err != nil {
 				t.Fatalf("Info() returned an unexpected error: %v", err)
 			}
 
@@ -225,5 +225,41 @@ func TestController_Info(t *testing.T) { //nolint:funlen
 				t.Errorf("Info() output mismatch\n got: %+v\nwant: %+v", got, tt.want)
 			}
 		})
+	}
+}
+
+// TestController_Info_agent verifies that a passed-in agent status is rendered in the
+// output's `agent` section, and that a nil agent omits the section.
+func TestController_Info_agent(t *testing.T) {
+	t.Parallel()
+	agent := &info.AgentStatus{
+		Running:      true,
+		Locked:       new(false),
+		RefreshToken: &info.AgentRefreshToken{Enabled: true, TTL: "3d"},
+	}
+
+	buf := &bytes.Buffer{}
+	if err := info.New(buf, fakeEnv(nil)).Info("/x/ghtkn.yaml", "", "", nil, agent); err != nil {
+		t.Fatal(err)
+	}
+	got := &info.Output{}
+	if err := json.Unmarshal(buf.Bytes(), got); err != nil {
+		t.Fatalf("output is not valid JSON: %v\n%s", err, buf)
+	}
+	if !reflect.DeepEqual(got.Agent, agent) {
+		t.Errorf("agent section mismatch\n got: %+v\nwant: %+v", got.Agent, agent)
+	}
+
+	// A nil agent omits the section entirely.
+	buf.Reset()
+	if err := info.New(buf, fakeEnv(nil)).Info("/x/ghtkn.yaml", "", "", nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	got2 := &info.Output{}
+	if err := json.Unmarshal(buf.Bytes(), got2); err != nil {
+		t.Fatal(err)
+	}
+	if got2.Agent != nil {
+		t.Errorf("a nil agent must be omitted, got %+v", got2.Agent)
 	}
 }
