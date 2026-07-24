@@ -1,5 +1,26 @@
 # Token Management
 
+## Do not leak the access token
+
+The token `ghtkn get` writes to stdout is a live secret: anyone who sees it can act as you on GitHub until it expires (up to eight hours) or you revoke it. Coding agents in particular have leaked it by printing what `ghtkn get` returned.
+
+Rules:
+
+- Never print, echo, log, or include the token in your output, a response to the user, a chat message, a commit message, or an issue/PR. This applies to `ghtkn get` and `ghtkn get -f json` alike.
+- Do not run `ghtkn get` just to display or inspect the token. There is no reason to look at its value; if you need to check things, use `ghtkn info` or `env GH_TOKEN=$(ghtkn get) gh auth status`, neither of which prints the token.
+- Consume the token without showing it. Assign it to an environment variable and pass that to the tool that needs it:
+
+  ```sh
+  GH_TOKEN=$(ghtkn get) gh issue list
+  ```
+
+Better still, avoid handling the raw token at all:
+
+- For `git`, configure the [git credential helper](../ghtkn-git-credential-helper/reference.md) (`ghtkn git-credential`). Git then fetches a token itself for each operation, so you never run `ghtkn get` or see the token.
+- For `gh` and similar tools, use a small wrapper that sets `GH_TOKEN=$(ghtkn get)` before invoking the tool (see the ghtkn-troubleshooting skill), so the token stays in an environment variable and never reaches your output.
+
+If a token is exposed, revoke it immediately with `ghtkn revoke` (see the ghtkn-revoke-tokens skill).
+
 ## Access Token Regeneration
 
 ghtkn stores generated access tokens and their expiration dates in the backend.

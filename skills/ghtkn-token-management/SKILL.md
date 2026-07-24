@@ -1,7 +1,10 @@
 ---
 name: ghtkn-token-management
-description: Manage the ghtkn access token lifecycle - regeneration, ghtkn auth, the automatic device flow, and clipboard. Use when tokens expire, configuring -min-expiration, authenticating, or copying the one-time code.
+description: Manage the ghtkn access token lifecycle - regeneration, ghtkn auth, the automatic device flow, and clipboard. Use when tokens expire, configuring -min-expiration, authenticating, or copying the one-time code. The token ghtkn get outputs is a secret; never print or log it.
 ---
+
+> [!WARNING]
+> The token `ghtkn get` outputs is a secret. Do not print, echo, log, or include it in your output, a chat message, or a commit, and do not run `ghtkn get` (including `-f json`) just to display or inspect it - a leaked token is usable until it is revoked. Consume it without showing it: assign it to an environment variable (`GH_TOKEN=$(ghtkn get) gh ...`), or avoid the raw token entirely with the git credential helper (`ghtkn git-credential`) for git and a `GH_TOKEN` wrapper for gh.
 
 ghtkn caches access tokens in the backend and regenerates them via Device Flow on expiry (8-hour validity). Key points:
 
