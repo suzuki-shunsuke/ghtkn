@@ -1,0 +1,126 @@
+package agent
+
+import (
+	"testing"
+	"time"
+)
+
+// TestCheckRefreshTokenSupported verifies --enable-refresh is rejected on Windows and
+// allowed elsewhere, and that a plain unlock is never blocked.
+func TestCheckRefreshTokenSupported(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		enableRefresh bool
+		goos          string
+		wantErr       bool
+	}{
+		{name: "enable on linux", enableRefresh: true, goos: "linux"},
+		{name: "enable on darwin", enableRefresh: true, goos: "darwin"},
+		{name: "enable on windows", enableRefresh: true, goos: "windows", wantErr: true},
+		{name: "windows without the flag", enableRefresh: false, goos: "windows"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := checkRefreshTokenSupported(tt.enableRefresh, tt.goos)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("want an error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("want no error, got %v", err)
+			}
+		})
+	}
+}
+
+func TestParseRefreshTokenTTL(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		in      string
+		want    time.Duration
+		wantErr bool
+	}{
+		{name: "days", in: "3d", want: 72 * time.Hour},
+		{name: "weeks", in: "4w", want: 4 * 7 * 24 * time.Hour},
+		{name: "week default", in: "1w", want: 7 * 24 * time.Hour},
+		{name: "months", in: "2m", want: 2 * 30 * 24 * time.Hour},
+		{name: "fractional week", in: "1.5w", want: time.Duration(1.5 * float64(7*24*time.Hour))},
+		{name: "zero uses server default", in: "0w", want: 0},
+		{name: "just under six months", in: "179d", want: 179 * 24 * time.Hour},
+		{name: "exactly six months accepted", in: "6m", want: 6 * 30 * 24 * time.Hour},
+
+		{name: "over six months", in: "7m", wantErr: true},
+		{name: "over six months in days", in: "200d", wantErr: true},
+		{name: "negative", in: "-1w", wantErr: true},
+		{name: "empty", in: "", wantErr: true},
+		{name: "no number", in: "w", wantErr: true},
+		{name: "unknown unit", in: "4x", wantErr: true},
+		{name: "not a duration", in: "abc", wantErr: true},
+		// time.ParseDuration units are not accepted: m must mean a month, so anything it
+		// would read with m as minutes must not parse at all.
+		{name: "hours are not accepted", in: "168h", wantErr: true},
+		{name: "minutes and seconds are not accepted", in: "1m30s", wantErr: true},
+		{name: "seconds are not accepted", in: "30s", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := parseRefreshTokenTTL(tt.in)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("parseRefreshTokenTTL(%q) = %v, want error", tt.in, got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parseRefreshTokenTTL(%q) unexpected error: %v", tt.in, err)
+			}
+			if got != tt.want {
+				t.Fatalf("parseRefreshTokenTTL(%q) = %v, want %v", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestRefreshTokenTTL verifies how the --refresh-token-ttl flag is resolved: it is
+// rejected without --enable-refresh instead of being silently ignored, an omitted flag
+// leaves the default to the agent, and a given value is parsed as usual.
+func TestRefreshTokenTTL(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		enableRefresh bool
+		value         string
+		want          time.Duration
+		wantErr       bool
+	}{
+		{name: "omitted, refresh enabled: the agent applies its default", enableRefresh: true},
+		{name: "omitted, refresh disabled: nothing to reject", enableRefresh: false},
+		{name: "given with refresh enabled", enableRefresh: true, value: "4w", want: 4 * 7 * 24 * time.Hour},
+		{name: "given without refresh enabled", value: "4w", wantErr: true},
+		{name: "given with refresh enabled but unparsable", enableRefresh: true, value: "4x", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := refreshTokenTTL(tt.enableRefresh, tt.value)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("refreshTokenTTL(%v, %q) = %v, want error", tt.enableRefresh, tt.value, got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("refreshTokenTTL(%v, %q) unexpected error: %v", tt.enableRefresh, tt.value, err)
+			}
+			if got != tt.want {
+				t.Fatalf("refreshTokenTTL(%v, %q) = %v, want %v", tt.enableRefresh, tt.value, got, tt.want)
+			}
+		})
+	}
+}

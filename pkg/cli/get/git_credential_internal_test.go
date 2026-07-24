@@ -1,7 +1,6 @@
 package get
 
 import (
-	"context"
 	"log/slog"
 	"strings"
 	"testing"
@@ -39,7 +38,7 @@ func (d gitCredentialTestCase) run(t *testing.T) {
 	}
 	input := &get.Input{}
 	inputGet := &ghtkn.InputGet{}
-	if err := r.handleGitCredential(context.Background(), slog.New(slog.DiscardHandler), d.arg, input, inputGet); err != nil {
+	if err := r.handleGitCredential(t.Context(), slog.New(slog.DiscardHandler), d.arg, input, inputGet); err != nil {
 		t.Fatalf("handleGitCredential() error: %v", err)
 	}
 	if !input.IsGitCredential {

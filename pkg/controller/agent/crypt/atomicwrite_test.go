@@ -1,10 +1,12 @@
-package crypt
+package crypt_test
 
 import (
 	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/crypt"
 )
 
 func TestAtomicWrite(t *testing.T) {
@@ -13,7 +15,7 @@ func TestAtomicWrite(t *testing.T) {
 	path := filepath.Join(dir, "file")
 	data := []byte("payload")
 
-	if err := AtomicWrite(path, data); err != nil {
+	if err := crypt.AtomicWrite(path, data); err != nil {
 		t.Fatal(err)
 	}
 
@@ -29,8 +31,10 @@ func TestAtomicWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if perm := info.Mode().Perm(); perm != filePerm {
-		t.Fatalf("perm = %o, want %o", perm, filePerm)
+	// 0600 spelled out rather than read from the package: the file holds encrypted
+	// tokens, so "current user only" is the contract, not whatever the constant says.
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Fatalf("perm = %o, want %o", perm, 0o600)
 	}
 
 	entries, err := os.ReadDir(dir)

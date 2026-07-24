@@ -58,7 +58,7 @@ The encryption works as follows:
 
 - Access tokens are encrypted with AES-256-GCM.
 - The 32-byte data key used for encryption is generated randomly on the first `ghtkn agent unlock`, when you set the passphrase. `ghtkn agent start` doesn't create it, because deriving the key that wraps it needs the passphrase.
-- The data key is encrypted (wrapped) with a key (KEK) derived from the passphrase via Argon2id and saved to a key file. The passphrase itself and the KEK are not saved to disk; they are kept only in the agent's memory after unlocking.
+- The data key is encrypted (wrapped) with a key (KEK) derived from the passphrase via Argon2id and saved to a key file. Neither the passphrase nor the KEK is saved to disk, and both are wiped from memory as soon as the data key is unwrapped. Only the data key stays in the agent's memory while it is unlocked.
 
 Start the agent with the `ghtkn agent start` command.
 
@@ -74,14 +74,24 @@ Even after the agent starts, you can't get access tokens until you enter the pas
 ghtkn agent unlock
 ```
 
-There are also `status` and `stop` commands.
+There are also `status`, `stop`, and `lock` commands.
 
 ```sh
 : Check the agent status
 ghtkn agent status
 : Stop the agent
 ghtkn agent stop
+: Discard the in-memory data key without stopping the agent
+ghtkn agent lock
 ```
+
+### Lock the agent to shrink the exposure window
+
+`ghtkn agent lock` discards the data key the agent holds in memory and returns it to the locked state, without stopping the process, closing the socket, or deleting the key file.
+Cached tokens become unreadable until you run `ghtkn agent unlock` again with the same passphrase, which re-derives the same data key from the key file, so tokens stored before the lock are readable again.
+Unlike `ghtkn agent stop`, the process and socket keep running, and unlike `unlock`, locking needs no passphrase.
+
+This lets you shrink the window in which the agent holds decrypted tokens: while the agent is unlocked, a process running as your user can ask it for access tokens, so locking it when you step away (or when you switch to activities more likely to run untrusted code) reduces exposure. Because it needs no passphrase, `ghtkn agent lock` can be wired to a screen-lock or logout hook to do this automatically.
 
 To get access tokens, set `GHTKN_BACKEND` to `agent` and run `ghtkn get` or the ghtkn Go SDK.
 
@@ -100,7 +110,28 @@ Note that resetting deletes the existing key and access tokens.
 ghtkn agent reset
 ```
 
+Resetting leaves the agent stopped, so start it again and unlock it with the new passphrase.
+
+```sh
+ghtkn agent start
+ghtkn agent unlock
+```
+
 The socket, the encryption key, and the encrypted access tokens are created with permission `0600`, so other users can't read them or connect to the socket.
+
+### Restart the agent after upgrading ghtkn
+
+Upgrading the `ghtkn` binary does not update an agent that is already running: the running process keeps executing the old binary, so a bug fix or a new feature (for example refresh-token support) does not take effect until the agent restarts.
+A client that needs behavior the running agent is too old for even refuses to talk to it and asks you to restart it.
+
+So after you upgrade ghtkn, restart the agent and unlock it again.
+`ghtkn agent start` refuses to start while another agent is still running, so stop the old one first:
+
+```sh
+ghtkn agent stop
+ghtkn agent start &
+ghtkn agent unlock
+```
 
 ### Running the agent as a service
 

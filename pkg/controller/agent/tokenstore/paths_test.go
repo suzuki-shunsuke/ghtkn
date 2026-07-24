@@ -1,8 +1,10 @@
-package tokenstore
+package tokenstore_test
 
 import (
 	"path/filepath"
 	"testing"
+
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
 )
 
 func TestTokenDir(t *testing.T) {
@@ -42,7 +44,7 @@ func TestTokenDir(t *testing.T) {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
 			getEnv := func(k string) string { return d.env[k] }
-			got, err := TokenDir(getEnv, d.goos)
+			got, err := tokenstore.TokenDir(getEnv, d.goos)
 			if err != nil {
 				t.Fatal(err)
 			}

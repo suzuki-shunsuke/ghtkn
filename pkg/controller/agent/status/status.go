@@ -29,9 +29,21 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	case resp.Locked:
 		logger.Info("ghtkn agent is running but locked", "socket", path)
 	default:
-		logger.Info("ghtkn agent is running and unlocked", "cached_tokens", resp.Count, "socket", path)
+		logger.Info("ghtkn agent is running and unlocked", "cached_tokens", resp.Count, "refresh_token_enabled", resp.RefreshTokenEnabled, "socket", path)
 	}
 	return nil
+}
+
+// Query resolves the agent socket path from getEnv and asks the agent for its status.
+// The bool result is false (with a nil response and nil error) when no agent is
+// listening. It lets other commands (e.g. `ghtkn info`) read the agent status without
+// duplicating the socket-path resolution and the not-running handling.
+func Query(ctx context.Context, getEnv func(string) string) (*agentapi.Response, bool, error) {
+	path, err := agentapi.SocketPath(getEnv, runtime.GOOS)
+	if err != nil {
+		return nil, false, err //nolint:wrapcheck
+	}
+	return queryStatus(ctx, path)
 }
 
 // queryStatus asks the agent at path for its status. The bool result is false (with

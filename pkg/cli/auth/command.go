@@ -1,12 +1,14 @@
 // Package auth implements the 'ghtkn auth' command.
 // It authenticates to GitHub and caches a GitHub App User Access Token without
-// printing it to stdout. It always runs the OAuth device flow to regenerate the
-// token, regardless of any cached token, so that running it proactively refreshes
-// the cached token before it expires. Unlike 'ghtkn get', the device flow is
-// always allowed, regardless of GHTKN_ENABLE_DEVICE_FLOW, because authentication
-// is inherently interactive. Unlike 'ghtkn get', it does not accept the
-// -min-expiration flag nor read GHTKN_MIN_EXPIRATION; that knob is reserved for
-// 'ghtkn get'.
+// printing it to stdout. It regenerates the token regardless of any cached token,
+// so that running it proactively refreshes the cached token before it expires.
+// Regeneration normally runs the OAuth device flow; with the agent backend and
+// refresh enabled it is a silent refresh using the stored refresh token when one
+// is available, and the device flow runs only when no usable refresh token exists.
+// Unlike 'ghtkn get', the device flow is always allowed, regardless of
+// GHTKN_ENABLE_DEVICE_FLOW, because authentication is inherently interactive.
+// Unlike 'ghtkn get', it does not accept the -min-expiration flag nor read
+// GHTKN_MIN_EXPIRATION; that knob is reserved for 'ghtkn get'.
 package auth
 
 import (
@@ -23,9 +25,11 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-// alwaysRenewMinExpiration forces 'ghtkn auth' to always regenerate the token via
-// the device flow. It must exceed GitHub's 8h User Access Token TTL so the cached
-// token is always treated as expired (see checkExpired in the SDK).
+// alwaysRenewMinExpiration forces 'ghtkn auth' to always regenerate the token. It
+// must exceed GitHub's 8h User Access Token TTL so the cached access token is always
+// treated as expiring (see checkExpired in the SDK), which triggers regeneration:
+// the device flow normally, or a silent refresh from the stored refresh token on the
+// agent backend when refresh is enabled and a valid refresh token exists.
 const alwaysRenewMinExpiration = 9 * time.Hour
 
 // Args holds the flag and argument values for the auth command.
@@ -47,11 +51,13 @@ func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
 		Usage: "Authenticate to GitHub and cache an access token without outputting it",
 		Description: `Authenticate to GitHub and cache an access token without printing it.
 
-Unlike 'ghtkn get', this always runs the OAuth device flow and regenerates the
-token regardless of any cached token, so running it proactively refreshes the
-cached token before it expires. The device flow is always allowed here, even when
-GHTKN_ENABLE_DEVICE_FLOW is false, because authentication is interactive. It does
-not accept -min-expiration. Use -clipboard to copy the one-time code to the
+Unlike 'ghtkn get', this regenerates the token regardless of any cached token, so
+running it proactively refreshes the cached token before it expires. Regeneration
+normally runs the OAuth device flow; with the agent backend and refresh enabled, a
+valid stored refresh token is used to refresh silently and the device flow runs
+only when no usable refresh token exists. The device flow is always allowed here,
+even when GHTKN_ENABLE_DEVICE_FLOW is false, because authentication is interactive.
+It does not accept -min-expiration. Use -clipboard to copy the one-time code to the
 clipboard. If an app name is omitted, GHTKN_APP or the default app is used.
 
 $ ghtkn auth

@@ -3,6 +3,7 @@
 package flag
 
 import (
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 	"github.com/urfave/cli/v3"
 )
 
@@ -19,7 +20,7 @@ func LogLevel(dest *string) *cli.StringFlag {
 	return &cli.StringFlag{
 		Name:        "log-level",
 		Usage:       "Log level (debug, info, warn, error)",
-		Sources:     cli.EnvVars("GHTKN_LOG_LEVEL"),
+		Sources:     cli.EnvVars(env.LogLevel),
 		Destination: dest,
 	}
 }
@@ -32,7 +33,7 @@ func Config(dest *string) *cli.StringFlag {
 		Name:        "config",
 		Aliases:     []string{"c"},
 		Usage:       "configuration file path",
-		Sources:     cli.EnvVars("GHTKN_CONFIG"),
+		Sources:     cli.EnvVars(env.Config),
 		Destination: dest,
 	}
 }
@@ -46,7 +47,7 @@ func Format(dest *string) *cli.StringFlag {
 		Name:        "format",
 		Aliases:     []string{"f"},
 		Usage:       "output format (json)",
-		Sources:     cli.EnvVars("GHTKN_OUTPUT_FORMAT"),
+		Sources:     cli.EnvVars(env.OutputFormat),
 		Destination: dest,
 	}
 }

@@ -7,7 +7,7 @@ ghtkn stores access tokens in a backend, selected with `GHTKN_BACKEND` or `backe
 
 - `keyring`: OS keyring (default).
 - `text`: plaintext files (`0600`) - useful where the keyring is hard to use.
-- `agent`: tokens encrypted (AES-256-GCM) via the ghtkn agent; the agent holds the passphrase only in memory after `ghtkn agent unlock`. Intended for local use, not CI.
+- `agent`: tokens encrypted (AES-256-GCM) via the ghtkn agent; after `ghtkn agent unlock` the agent holds the decryption key in memory only, never the passphrase. Intended for local use, not CI.
 
 Pick `text` or `agent` for containers and microVMs where the OS keyring is unavailable.
 

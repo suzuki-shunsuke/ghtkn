@@ -12,13 +12,17 @@ package agent
 import (
 	"context"
 	"fmt"
+	"runtime"
 
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/lock"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/reset"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/status"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/stop"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/unlock"
+	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/urfave/cli/v3"
 )
@@ -48,6 +52,7 @@ Tokens are encrypted at rest with AES-256-GCM.`,
 			r.stopCommand(),
 			r.statusCommand(),
 			r.unlockCommand(),
+			r.lockCommand(),
 			r.resetCommand(),
 		},
 	}
@@ -57,6 +62,42 @@ Tokens are encrypted at rest with AES-256-GCM.`,
 type runner struct {
 	logger *slogutil.Logger
 	flags  *flag.GlobalFlags
+}
+
+// unlockArgs holds the flag values for the 'agent unlock' subcommand.
+// The other subcommands have no flags of their own, so they read the global flags
+// from the runner directly.
+type unlockArgs struct {
+	*flag.GlobalFlags
+
+	EnableRefresh   bool
+	RefreshTokenTTL string
+}
+
+// warnIfBackendNotAgent logs a warning when the resolved storage backend is not the
+// agent. Running any 'ghtkn agent' subcommand implies the user means to use the agent
+// backend; if it is not selected, 'ghtkn get'/'auth' silently use another backend (the
+// OS keyring by default) and never touch this agent. It is best-effort: a resolution
+// error is logged at debug and does not fail the command. It reflects this process's
+// environment and config, which can differ from the environment a later 'ghtkn get'/
+// 'auth' runs in.
+func (r *runner) warnIfBackendNotAgent() {
+	// The global --config flag selects the config file; when it is empty the SDK falls
+	// back to GHTKN_CONFIG and then the default path.
+	cfg, err := ghtkn.LoadConfig(&ghtkn.InputLoadConfig{ConfigFilePath: r.flags.Config})
+	if err != nil {
+		slogerr.WithError(r.logger.Logger, err).Debug("resolve the backend for the agent-usage check")
+		return
+	}
+	backend := "keyring"
+	if cfg.Backend != nil && cfg.Backend.Type != "" {
+		backend = cfg.Backend.Type
+	}
+	if backend != "agent" {
+		r.logger.Warn(`the configured backend is not "agent", so ghtkn get/auth will not use the ghtkn agent. `+
+			`Set GHTKN_BACKEND=agent or backend.type: agent to use it.`,
+			"backend", backend)
+	}
 }
 
 // startCommand returns the CLI command definition for the 'agent start' subcommand.
@@ -83,6 +124,7 @@ func (r *runner) start(ctx context.Context, _ *cli.Command) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
+	r.warnIfBackendNotAgent()
 	return agent.New().Start(ctx, r.logger.Logger) //nolint:wrapcheck
 }
 
@@ -106,6 +148,7 @@ func (r *runner) stop(ctx context.Context, _ *cli.Command) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
+	r.warnIfBackendNotAgent()
 	return stop.New().Run(ctx, r.logger.Logger) //nolint:wrapcheck
 }
 
@@ -130,11 +173,15 @@ func (r *runner) status(ctx context.Context, _ *cli.Command) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
+	r.warnIfBackendNotAgent()
 	return status.New().Run(ctx, r.logger.Logger) //nolint:wrapcheck
 }
 
 // unlockCommand returns the CLI command definition for the 'agent unlock' subcommand.
 func (r *runner) unlockCommand() *cli.Command {
+	args := &unlockArgs{
+		GlobalFlags: r.flags,
+	}
 	return &cli.Command{
 		Name:  "unlock",
 		Usage: "Unlock the running ghtkn agent by entering the passphrase",
@@ -144,18 +191,85 @@ The agent starts locked. This command prompts for the passphrase on the terminal
 and sends it to the agent over the socket so it can decrypt cached tokens. On first
 use it asks for a new passphrase twice to confirm it.
 
+Pass --enable-refresh to let the agent refresh an expiring access token with a
+stored refresh token instead of re-running the device flow. This is bound to the
+passphrase on purpose: it cannot be enabled without unlocking the agent. It is
+unsupported on Windows, where --enable-refresh is rejected, because the file
+permissions and process hardening that protect a stored refresh token are
+POSIX-specific.
+
+With refresh enabled, the agent periodically discards tokens left unused for longer
+than --refresh-token-ttl (default 3 days) so an unused refresh token does not linger.
+The TTL takes a number with a d (day), w (week), or m (30-day month) suffix, e.g.
+7d, 4w, 2m, and must be less than 6 months.
+
 $ ghtkn agent unlock`,
-		Action: r.unlock,
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:        "enable-refresh",
+				Usage:       "Enable refreshing expiring access tokens with stored refresh tokens",
+				Destination: &args.EnableRefresh,
+			},
+			&cli.StringFlag{
+				// No default value: an empty value means the flag was not given, which
+				// lets the agent apply its own default (three days) instead of duplicating
+				// it here, and lets this command tell "not given" from an explicit value
+				// it must reject without --enable-refresh.
+				Name:        "refresh-token-ttl",
+				Usage:       "How long a stored token may sit unused before the agent discards it, e.g. 7d/4w/2m (default 3d; only with --enable-refresh)",
+				Destination: &args.RefreshTokenTTL,
+			},
+		},
+		Action: func(ctx context.Context, _ *cli.Command) error {
+			return r.unlock(ctx, args)
+		},
 	}
 }
 
 // unlock executes the 'agent unlock' command logic.
 // It configures the log level and unlocks the running agent.
-func (r *runner) unlock(ctx context.Context, _ *cli.Command) error {
+func (r *runner) unlock(ctx context.Context, args *unlockArgs) error {
+	if err := r.logger.SetLevel(args.LogLevel); err != nil {
+		return fmt.Errorf("set log level: %w", err)
+	}
+	r.warnIfBackendNotAgent()
+	if err := checkRefreshTokenSupported(args.EnableRefresh, runtime.GOOS); err != nil {
+		return err
+	}
+	ttl, err := refreshTokenTTL(args.EnableRefresh, args.RefreshTokenTTL)
+	if err != nil {
+		return err
+	}
+	return unlock.New().Run(ctx, r.logger.Logger, args.EnableRefresh, ttl) //nolint:wrapcheck
+}
+
+// lockCommand returns the CLI command definition for the 'agent lock' subcommand.
+func (r *runner) lockCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "lock",
+		Usage: "Lock the running ghtkn agent by discarding its in-memory data key",
+		Description: `Lock the running ghtkn agent.
+
+It asks the agent to discard the data key it holds in memory and return to the
+locked state, without stopping the process or deleting the key file. Cached tokens
+become unreadable until you run 'ghtkn agent unlock' again with the same passphrase.
+Unlike 'ghtkn agent stop', the process and socket keep running, and unlike 'unlock',
+locking needs no passphrase, so it can be wired to a screen-lock or logout hook to
+shrink the window in which the agent holds decrypted tokens.
+
+$ ghtkn agent lock`,
+		Action: r.lock,
+	}
+}
+
+// lock executes the 'agent lock' command logic.
+// It configures the log level and asks the running agent to discard its data key.
+func (r *runner) lock(ctx context.Context, _ *cli.Command) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
-	return unlock.New().Run(ctx, r.logger.Logger) //nolint:wrapcheck
+	r.warnIfBackendNotAgent()
+	return lock.New().Run(ctx, r.logger.Logger) //nolint:wrapcheck
 }
 
 // resetCommand returns the CLI command definition for the 'agent reset' subcommand.
@@ -170,7 +284,12 @@ token files, and creates a new key from a freshly entered passphrase. The old
 passphrase is not needed and the cached tokens are discarded (they are reminted from
 GitHub on the next 'ghtkn get'). It asks for confirmation first.
 
-$ ghtkn agent reset`,
+It leaves the agent stopped, so start it again and unlock it with the new passphrase
+afterwards; until then every 'ghtkn get' fails.
+
+$ ghtkn agent reset
+$ ghtkn agent start
+$ ghtkn agent unlock`,
 		Action: r.reset,
 	}
 }
@@ -181,5 +300,6 @@ func (r *runner) reset(ctx context.Context, _ *cli.Command) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
+	r.warnIfBackendNotAgent()
 	return reset.New().Run(ctx, r.logger.Logger) //nolint:wrapcheck
 }

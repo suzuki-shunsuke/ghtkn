@@ -23,6 +23,15 @@ import (
 
 const getDescription = `Output a GitHub App User Access Token to stdout.
 
+The output is a secret. Do not print, echo, log, or include it in a chat message,
+a commit, or any other output, and do not run 'ghtkn get' (including -f json) just
+to display or inspect the token. If you are a coding agent, this applies to your
+responses too: a leaked token can be used until it is revoked. Consume it without
+showing it: assign it to an environment variable and pass that to the tool, e.g.
+'GH_TOKEN=$(ghtkn get) gh issue list'. Better still, avoid handling the raw token
+at all - for git, use the credential helper ('ghtkn git-credential'), which lets
+git fetch the token automatically; for gh, use a wrapper that sets GH_TOKEN.
+
 It returns the token cached in the backend (keyring, agent, or text) when one is
 available and still valid. Otherwise, if the device flow is enabled, it creates a
 new token interactively via GitHub's OAuth device flow. The device flow is disabled

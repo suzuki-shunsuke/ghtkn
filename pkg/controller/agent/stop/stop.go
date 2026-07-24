@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"runtime"
 
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
@@ -16,7 +15,7 @@ import (
 // an error only when the agent is reachable but reports a failure, or on an
 // unexpected protocol error.
 func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
-	path, err := agentapi.SocketPath(os.Getenv, runtime.GOOS)
+	path, err := agentapi.SocketPath(c.getEnv, runtime.GOOS)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}

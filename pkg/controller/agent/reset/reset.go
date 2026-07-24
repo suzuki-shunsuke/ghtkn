@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/harden"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keyfile"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/stop"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tokenstore"
@@ -22,11 +23,16 @@ import (
 // It asks for confirmation first because the operation is destructive, and requires
 // a terminal both for that confirmation and for the new passphrase.
 func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
-	keyFile, err := keyfile.KeyPath(os.Getenv, runtime.GOOS)
+	// Best-effort, before the new passphrase is read: block same-user memory reads and
+	// core dumps of this process (Linux-only, no-op elsewhere). It holds the passphrase
+	// from the prompt until the new key file is written.
+	harden.Process(logger)
+
+	keyFile, err := keyfile.KeyPath(c.getEnv, runtime.GOOS)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
-	dir, err := tokenstore.TokenDir(os.Getenv, runtime.GOOS)
+	dir, err := tokenstore.TokenDir(c.getEnv, runtime.GOOS)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
@@ -43,7 +49,7 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	// Stop a running agent first so it does not keep using the old data key or
 	// write tokens after the files are deleted. Stop is a no-op (nil) when no agent
 	// is running.
-	if err := stop.New().Run(ctx, logger); err != nil {
+	if err := stop.NewWithEnv(c.getEnv).Run(ctx, logger); err != nil {
 		return err //nolint:wrapcheck
 	}
 	if err := deleteAgentFiles(keyFile, dir); err != nil {
@@ -53,7 +59,9 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 		return err
 	}
 
-	logger.Info("ghtkn agent has been reset", "key", keyFile)
+	// The agent was stopped above and reset does not start it again, so say so: until it
+	// is started and unlocked with the new passphrase, every `ghtkn get` fails.
+	logger.Info("ghtkn agent has been reset; it is stopped, so start it again with `ghtkn agent start` and unlock it with `ghtkn agent unlock` using the new passphrase", "key", keyFile)
 	return nil
 }
 

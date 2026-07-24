@@ -4,19 +4,24 @@ go 1.26.5
 
 // replace github.com/suzuki-shunsuke/ghtkn-go-sdk v0.4.1 => ../ghtkn-go-sdk
 
+// replace github.com/suzuki-shunsuke/ghtkn-go-sdk => ../ghtkn-go-sdk
+
+// replace github.com/suzuki-shunsuke/go-github-device-flow v0.0.1 => ../go-github-device-flow
+
 require (
 	github.com/google/go-cmp v0.7.0
 	github.com/lmittmann/tint v1.1.3
-	github.com/spf13/afero v1.15.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
-	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.4.1
-	github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.1
+	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.4.2-0.20260724041608-4a7e304abbdb
+	github.com/suzuki-shunsuke/go-github-device-flow v0.0.2-0.20260723200608-b91d9018984b
+	github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.2-0.20260723202049-b59e884ad0ce
 	github.com/suzuki-shunsuke/slog-error v0.2.2
 	github.com/suzuki-shunsuke/slog-util v0.3.2
 	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.3
 	github.com/urfave/cli/v3 v3.10.1
 	golang.design/x/clipboard v0.8.0
 	golang.org/x/crypto v0.54.0
+	golang.org/x/sys v0.47.0
 	golang.org/x/term v0.45.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -39,6 +44,4 @@ require (
 	golang.org/x/image v0.28.0 // indirect
 	golang.org/x/mobile v0.0.0-20250606033058-a2a15c67f36f // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
 )

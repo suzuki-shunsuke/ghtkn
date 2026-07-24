@@ -1,4 +1,4 @@
-package keyfile
+package keyfile_test
 
 import (
 	"bytes"
@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keyfile"
 )
 
 func TestLoadOrCreateDataKey(t *testing.T) {
@@ -13,26 +15,29 @@ func TestLoadOrCreateDataKey(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "key")
 	pass := []byte("correct horse")
 
-	key, created, err := LoadOrCreateDataKey(path, pass)
+	key, created, err := keyfile.LoadOrCreateDataKey(path, pass)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !created {
 		t.Fatal("first call must report created=true")
 	}
-	if len(key) != dataKeyLen {
-		t.Fatalf("data key len = %d, want %d", len(key), dataKeyLen)
+	// 32 bytes (AES-256) and 0600 below are spelled out rather than read from the
+	// package: they are the contract the agent depends on, not whatever the constants
+	// happen to say.
+	if len(key) != 32 {
+		t.Fatalf("data key len = %d, want %d", len(key), 32)
 	}
 
 	info, err := os.Stat(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if perm := info.Mode().Perm(); perm != keyFilePerm {
-		t.Fatalf("key file perm = %o, want %o", perm, keyFilePerm)
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Fatalf("key file perm = %o, want %o", perm, 0o600)
 	}
 
-	again, created, err := LoadOrCreateDataKey(path, pass)
+	again, created, err := keyfile.LoadOrCreateDataKey(path, pass)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,11 +52,11 @@ func TestLoadOrCreateDataKey(t *testing.T) {
 func TestLoadOrCreateDataKey_wrongPassphrase(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "key")
-	if _, _, err := LoadOrCreateDataKey(path, []byte("right")); err != nil {
+	if _, _, err := keyfile.LoadOrCreateDataKey(path, []byte("right")); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := LoadOrCreateDataKey(path, []byte("wrong")); !errors.Is(err, ErrIncorrectPassphrase) {
-		t.Fatalf("err = %v, want ErrIncorrectPassphrase", err)
+	if _, _, err := keyfile.LoadOrCreateDataKey(path, []byte("wrong")); !errors.Is(err, keyfile.ErrIncorrectPassphrase) {
+		t.Fatalf("err = %v, want keyfile.ErrIncorrectPassphrase", err)
 	}
 }
 
@@ -92,7 +97,7 @@ func TestKeyPath(t *testing.T) {
 		t.Run(d.name, func(t *testing.T) {
 			t.Parallel()
 			getEnv := func(k string) string { return d.env[k] }
-			got, err := KeyPath(getEnv, d.goos)
+			got, err := keyfile.KeyPath(getEnv, d.goos)
 			if err != nil {
 				t.Fatal(err)
 			}
