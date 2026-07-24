@@ -6,7 +6,7 @@
 // This package provides the 'start', 'stop', 'status', 'unlock', and 'reset'
 // subcommands. The agent starts locked and is unlocked with a passphrase via
 // 'unlock'; tokens are encrypted at rest. The agent server lives in
-// pkg/controller/agent.
+// pkg/agent/server.
 package agent
 
 import (
@@ -15,8 +15,8 @@ import (
 	"runtime"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/server"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/lock"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/reset"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/status"
@@ -125,7 +125,7 @@ func (r *runner) start(ctx context.Context, _ *cli.Command) error {
 		return fmt.Errorf("set log level: %w", err)
 	}
 	r.warnIfBackendNotAgent()
-	return agent.New().Start(ctx, r.logger.Logger) //nolint:wrapcheck
+	return server.New().Start(ctx, r.logger.Logger) //nolint:wrapcheck
 }
 
 // stopCommand returns the CLI command definition for the 'agent stop' subcommand.

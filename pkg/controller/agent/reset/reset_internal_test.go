@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/keyfile"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/keyfile"
 )
 
 // resetEnv isolates the agent's key/token/socket paths under temp dirs and points

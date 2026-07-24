@@ -1,7 +1,7 @@
 // Package lock implements the 'ghtkn agent lock' command: it connects to a running
 // agent over its Unix domain socket and asks it to discard its in-memory data key,
 // returning to the locked state without stopping the process. The agent server lives
-// in pkg/controller/agent.
+// in pkg/agent/server.
 package lock
 
 import "os"

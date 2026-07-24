@@ -10,3 +10,7 @@ Please read the following document.
 - Don't use `testify` for writing tests. Use `google/go-cmp` instead.
 - Internal test files: append `_internal_test.go` for internal testing
 - Logging: Use slog and [slog-error](https://github.com/suzuki-shunsuke/slog-error).
+- Package layout under `pkg/`:
+  - `cli/<name>` — the CLI interface and DI (flags, args, wiring).
+  - `controller/<name>` — the core logic behind a command. The agent's subcommands are controllers too: `controller/agent/{stop,status,unlock,lock,reset}`, each of which talks to the agent server over the socket (or reads the passphrase).
+  - `config`, `clipboard`, `log`, `agent`, ... — supporting packages / subsystems that the controllers call into. `agent` is the agent subsystem: the long-running server in `agent/server`, plus its at-rest-crypto primitives (`crypt`, `keyfile`, `tokenstore`, `harden`, `tty`). The controllers (and `cli/agent`, for `start`) depend on it, not the other way around.

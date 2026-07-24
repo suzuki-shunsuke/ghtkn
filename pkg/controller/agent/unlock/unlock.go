@@ -8,8 +8,8 @@ import (
 	"time"
 
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/harden"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tty"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/harden"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/tty"
 )
 
 // Run prompts for the agent passphrase on the terminal and sends it to a running

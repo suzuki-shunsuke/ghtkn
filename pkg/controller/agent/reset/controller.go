@@ -2,14 +2,14 @@
 // forgotten passphrase by stopping the agent, deleting the key file and cached
 // tokens, and recreating the key from a freshly entered passphrase. Unlike the other
 // client commands it manipulates the key file and token store on disk directly (see
-// pkg/controller/agent/keyfile and pkg/controller/agent/tokenstore) rather than
+// pkg/agent/keyfile and pkg/agent/tokenstore) rather than
 // talking to the agent over the socket.
 package reset
 
 import (
 	"os"
 
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/tty"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/tty"
 )
 
 // Controller backs the 'ghtkn agent reset' command.

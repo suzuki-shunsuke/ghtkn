@@ -1,6 +1,6 @@
 // Package stop implements the 'ghtkn agent stop' command: it connects to a running
 // agent over its Unix domain socket and asks it to shut down. The agent server lives
-// in pkg/controller/agent.
+// in pkg/agent/server.
 package stop
 
 import "os"
