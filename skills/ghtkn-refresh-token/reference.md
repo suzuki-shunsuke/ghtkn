@@ -35,13 +35,13 @@ Everything here applies only while the agent is unlocked. While it is unlocked, 
 
 For an app you are actively using, it does not change much. `ghtkn get` returns the cached access token when one is still valid (on average four hours of its eight-hour life remain), so an attacker that simply reads what `ghtkn get` returns gets the same short-lived token whether or not refresh is enabled. The token's life is only extended if the attacker deliberately forces a renewal (for example by running `ghtkn auth`), which is a targeted attack against ghtkn specifically; then it gains on average four and at most eight more hours.
 
-For an app you have not used within the last eight hours, it changes more. Without refresh, that app's cached access token has expired, and renewing it needs the interactive device flow, so an attacker cannot obtain one. With refresh, the attacker can obtain a fresh access token as long as a valid refresh token is still stored, which is up to `--refresh-token-ttl` (three days by default, longer if you raise it). That TTL is therefore the window in which an idle app's token is reachable.
+For an app you have not used within the last eight hours, it changes more. Without refresh, that app's cached access token has expired, and renewing it needs the interactive device flow, so an attacker cannot obtain one. With refresh, the attacker can obtain a fresh access token as long as a valid refresh token is still stored, which is up to `--refresh-token-ttl` (seven days by default, longer if you raise it). That TTL is therefore the window in which an idle app's token is reachable.
 
-The default three-day TTL already keeps this window short, so for most people it needs no further action. If you want to reduce it further, you have a few options:
+The one-week default is meant to keep an app you genuinely stopped using from holding a refresh token for anything close to the six months it is otherwise valid for, not to bound the window for apps you use regularly: an app you touch every few days keeps its token indefinitely either way. So for most people the default needs no further action, and if you want a smaller window you have a few options:
 
-- Shorten `--refresh-token-ttl` below the three-day default. It leaves apps you use every few days untouched, because a token refreshed recently is not swept (see [refresh-token-ttl](#refresh-token-ttl-automatically-remove-unused-refresh-tokens-from-the-backend) below).
+- Shorten `--refresh-token-ttl` below the one-week default. It leaves apps you use every few days untouched, because a token refreshed recently is not swept (see [refresh-token-ttl](#refresh-token-ttl-automatically-remove-unused-refresh-tokens-from-the-backend) below).
 - Lock the agent when you will not need a token for a while, with `ghtkn agent lock`, which closes the window entirely until you unlock again. Because it needs no passphrase, it can be wired to a screen-lock or logout hook; re-enabling refresh on the next unlock needs `ghtkn agent unlock --enable-refresh` and the passphrase (see [Lock the agent to shrink the exposure window](../ghtkn-backend/reference.md#lock-the-agent-to-shrink-the-exposure-window)).
-- If you want to close a particular app's window immediately instead of waiting for the TTL, you can revoke its token with `ghtkn revoke <app name>`, which revokes and deletes it so no refresh token is left to mint from (see [ghtkn revoke](../ghtkn-revoke-tokens/reference.md)). With the short default TTL this is rarely worth the trouble, and it sends you a notification email from GitHub, so treat it as an option for the extra-cautious rather than a routine step.
+- If you want to close a particular app's window immediately instead of waiting for the TTL, you can revoke its token with `ghtkn revoke <app name>`, which revokes and deletes it so no refresh token is left to mint from (see [ghtkn revoke](../ghtkn-revoke-tokens/reference.md)). Since the sweep removes an unused token within the TTL anyway, this is rarely worth the trouble, and it sends you a notification email from GitHub, so treat it as an option for the extra-cautious rather than a routine step.
 
 ## Usage
 
@@ -103,8 +103,9 @@ A refresh token is valid for six months.
 Even though they are encrypted, holding on to long-lived refresh tokens carries some risk.
 For an access token you use infrequently, authenticating with the device flow each time is good enough without a refresh token.
 So the agent periodically (every 24 hours) deletes access tokens and refresh tokens that have gone unused for a certain period, removing the whole file from the backend.
-The period before deletion defaults to three days, and can be changed with the `--refresh-token-ttl` option of `ghtkn agent unlock`.
-The value is a number followed by a `d` (day), `w` (week), or `m` (30-day month) suffix, e.g. `7d`, `4w`, `2m`.
+The period before deletion defaults to seven days, and can be changed with the `--refresh-token-ttl` option of `ghtkn agent unlock`.
+A week is long enough that a long weekend or a short break does not send you back through the device flow when you return, and short enough that a token you really have stopped using is gone long before its refresh token would expire on its own.
+The value is a number followed by a `d` (day), `w` (week), or `m` (30-day month) suffix, e.g. `14d`, `4w`, `2m`.
 Only these three units are accepted: a TTL is naturally measured in days, weeks, or months, so `m` always means a 30-day month here, and units that `time.ParseDuration` would otherwise accept, such as `h`/`m`/`s` (e.g. `720h` or `1m30s`), are rejected rather than silently reinterpreted (`m` as a minute).
 Because a refresh token is valid for six months, you cannot specify a longer period.
 
