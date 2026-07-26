@@ -10,6 +10,7 @@ ghtkn stores access tokens in a backend, selected with `GHTKN_BACKEND` or `backe
 - `agent`: tokens encrypted (AES-256-GCM) via the ghtkn agent; after `ghtkn agent unlock` the agent holds the decryption key in memory only, never the passphrase. Intended for local use, not CI.
 
 Pick `text` or `agent` for containers and microVMs where the OS keyring is unavailable.
+On desktop environments the default keyring still works fine, but since v0.3.4 the `agent` backend is worth considering there too, because it's the only backend that supports refresh tokens (see the ghtkn-refresh-token skill).
 
 If this overview is enough, you don't need to read further.
 
