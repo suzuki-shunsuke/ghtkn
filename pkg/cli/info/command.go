@@ -64,7 +64,8 @@ With the agent backend it also reports the running agent's state, including the
 ghtkn version it was built from and the agent protocol versions it speaks. The
 agent keeps running the binary it was started with, so an agent version older than
 the ghtkn version above it means the agent must be restarted; that case is called
-out with a warning on stderr, which leaves the JSON on stdout untouched.
+out with a warning printed on stderr after the JSON, which leaves the output on
+stdout untouched.
 
 $ ghtkn info
 $ ghtkn info my-app
@@ -113,8 +114,12 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args
 	// info is a troubleshooting command and must never fail because the agent is down.
 	agentBackend := cfg != nil && cfg.Backend != nil && cfg.Backend.Type == "agent"
 	agent := buildAgentStatus(ctx, agentBackend, logger)
+	err = info.New(os.Stdout, os.Getenv).Info(configPath, args.AppName, args.Version, cfg, agent)
+	// After the output, not before: the JSON runs to dozens of lines, and a warning
+	// scrolled off the top of it is a warning nobody reads. It is emitted even when the
+	// output failed, since a stale agent is worth knowing about either way.
 	warnStaleAgent(logger, agent, args.Version)
-	return info.New(os.Stdout, os.Getenv).Info(configPath, args.AppName, args.Version, cfg, agent) //nolint:wrapcheck
+	return err //nolint:wrapcheck
 }
 
 // warnStaleAgent warns when the running agent was built from a different ghtkn version
@@ -123,7 +128,9 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args
 // read past: the output looks healthy, the tokens come back fine, they just come from the
 // binary the agent was started with.
 //
-// The warning goes to the logger, i.e. stderr, so it never mixes into the JSON on stdout.
+// The warning goes to the logger, i.e. stderr, so it never mixes into the JSON on stdout,
+// and it is emitted after the output so it is the last thing on screen rather than the
+// first line scrolled away by the JSON.
 func warnStaleAgent(logger *slogutil.Logger, agent *info.AgentStatus, version string) {
 	if agent == nil || !agent.Running || !staleAgent(agent.Version, version) {
 		return
