@@ -16,7 +16,7 @@ import (
 // off, so it reports neither).
 func TestServer_handleStatus_refreshTTL(t *testing.T) {
 	t.Parallel()
-	c := New()
+	c := New("")
 	c.store = tokenstore.New(testDataKey(t), t.TempDir()) // unlocked
 	c.enableRefreshToken = true
 	c.refreshTokenTTL = 3 * 24 * time.Hour
@@ -24,9 +24,33 @@ func TestServer_handleStatus_refreshTTL(t *testing.T) {
 		t.Fatalf("unlocked+refresh STATUS must report the TTL, got %+v", resp)
 	}
 
-	locked := New() // locked: no store, refresh off
+	locked := New("") // locked: no store, refresh off
 	if resp := locked.handleStatus(); resp.RefreshTokenEnabled || resp.RefreshTokenTTL != 0 {
 		t.Fatalf("a locked agent must not report a refresh TTL, got %+v", resp)
+	}
+}
+
+// TestServer_handleStatus_version verifies that STATUS reports the agent's own ghtkn
+// version and the oldest protocol version it serves, and that it does so while locked
+// too: a user comparing their ghtkn with the running agent must not have to unlock it
+// first. An agent built without version information reports "unknown" rather than an
+// empty version, which on the wire would mean an agent too old to report one at all.
+func TestServer_handleStatus_version(t *testing.T) {
+	t.Parallel()
+	locked := New("v1.2.3") // locked: no store
+	resp := locked.handleStatus()
+	if !resp.Locked {
+		t.Fatal("a freshly created agent must be locked")
+	}
+	if resp.Version != "v1.2.3" {
+		t.Fatalf("resp.Version = %q, want v1.2.3", resp.Version)
+	}
+	if resp.MinProtocolVersion != agentapi.MinProtocolVersion {
+		t.Fatalf("resp.MinProtocolVersion = %d, want %d", resp.MinProtocolVersion, agentapi.MinProtocolVersion)
+	}
+
+	if resp := New("").handleStatus(); resp.Version != "unknown" {
+		t.Fatalf("resp.Version = %q, want unknown for an agent built without a version", resp.Version)
 	}
 }
 
@@ -35,7 +59,7 @@ func TestServer_handleStatus_refreshTTL(t *testing.T) {
 func TestServe_status_locked(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "agent.sock")
-	c := New() // starts locked: no store
+	c := New("") // starts locked: no store
 	listener, err := listen(t.Context(), path)
 	if err != nil {
 		t.Fatal(err)
@@ -60,7 +84,7 @@ func TestServe_status_locked(t *testing.T) {
 func TestServe_status_unlocked(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "agent.sock")
-	c := New()
+	c := New("")
 	// Unlock by installing a disk store before serving so the serve goroutine never
 	// observes a concurrent write to c.store. Seed a token directly so STATUS reports
 	// a non-zero count.
@@ -95,7 +119,7 @@ func TestServe_status_unlocked(t *testing.T) {
 func TestServe_protoVersion(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "a.sock")
-	c := New()
+	c := New("")
 	listener, err := listen(t.Context(), path)
 	if err != nil {
 		t.Fatal(err)

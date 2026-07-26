@@ -27,11 +27,24 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger) error {
 	case !running:
 		logger.Info("ghtkn agent is not running")
 	case resp.Locked:
-		logger.Info("ghtkn agent is running but locked", "socket", path)
+		logger.Info("ghtkn agent is running but locked", append(versionAttrs(resp), "socket", path)...)
 	default:
-		logger.Info("ghtkn agent is running and unlocked", "cached_tokens", resp.Count, "refresh_token_enabled", resp.RefreshTokenEnabled, "socket", path)
+		logger.Info("ghtkn agent is running and unlocked",
+			append(versionAttrs(resp), "cached_tokens", resp.Count, "refresh_token_enabled", resp.RefreshTokenEnabled, "socket", path)...)
 	}
 	return nil
+}
+
+// versionAttrs returns the log attributes describing which binary the running agent
+// runs: the ghtkn version it was built from and the agent protocol version it speaks.
+// The agent keeps running the binary it was started with, so this is how a user sees
+// that an agent predates the ghtkn that talks to it. An agent too old to report its
+// version contributes no attributes rather than an empty or made-up one.
+func versionAttrs(resp *agentapi.Response) []any {
+	if resp.Version == "" {
+		return nil
+	}
+	return []any{"agent_version", resp.Version, "protocol_version", resp.ProtocolVersion}
 }
 
 // Query resolves the agent socket path from getEnv and asks the agent for its status.

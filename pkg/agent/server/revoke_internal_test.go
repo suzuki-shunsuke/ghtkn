@@ -83,7 +83,7 @@ func TestServer_handleRevoke_revokeFails(t *testing.T) {
 // TestServer_handleRevoke_locked verifies that a locked agent refuses REVOKE.
 func TestServer_handleRevoke_locked(t *testing.T) {
 	t.Parallel()
-	c := New() // locked: no store
+	c := New("") // locked: no store
 	got := c.handleRevoke(t.Context(), &agentapi.Request{Command: agentapi.CommandRevoke, ClientIDs: []string{"Iv1.x"}})
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, got); diff != "" {
 		t.Fatalf("REVOKE while locked (-want +got):\n%s", diff)

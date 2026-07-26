@@ -37,7 +37,7 @@ func TestServer_handle_delete(t *testing.T) {
 // TestServer_handle_delete_locked verifies that a locked agent refuses DELETE.
 func TestServer_handle_delete_locked(t *testing.T) {
 	t.Parallel()
-	c := New() // locked: no store
+	c := New("") // locked: no store
 	del, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"DELETE","client_id":"Iv1.x"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, del); diff != "" {
 		t.Fatalf("DELETE while locked (-want +got):\n%s", diff)

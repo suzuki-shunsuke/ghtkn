@@ -84,7 +84,18 @@ type Server struct {
 	// the refresh-token feature (see refreshtoken.Supported); it is read-only after New,
 	// so it needs no lock.
 	goos string
+	// version is the ghtkn version this agent was built from, reported in the STATUS
+	// response so clients can see that a long-running agent predates the ghtkn that
+	// queries it. It is never empty: New falls back to unknownVersion. It is read-only
+	// after New, so it needs no lock.
+	version string
 }
+
+// unknownVersion is reported instead of an empty version when the agent binary carries
+// no version information (e.g. built with `go install` rather than by a release). It is
+// deliberately not an empty string: on the wire an absent version means an agent too old
+// to report one at all, and that is a different situation.
+const unknownVersion = "unknown"
 
 // refreshEnabled reports whether refreshing expiring access tokens with stored refresh
 // tokens is enabled. It is set at unlock time.
@@ -104,12 +115,16 @@ func (s *Server) refreshState() (bool, time.Duration) {
 }
 
 // New creates a new agent Server. The server starts locked (no token store);
-// it is unlocked later via the UNLOCK command.
+// it is unlocked later via the UNLOCK command. version is the ghtkn version the agent
+// reports in its STATUS response; an empty version becomes unknownVersion.
 //
 // The controller reads the clock with time.Now rather than an injectable hook: tests
 // that need a controlled clock run inside a testing/synctest bubble, where the time
 // package itself is fake.
-func New() *Server {
+func New(version string) *Server {
+	if version == "" {
+		version = unknownVersion
+	}
 	// One HTTP client, shared by the device-flow and revoke clients, with a per-request
 	// timeout so no GitHub call can block a handler goroutine indefinitely.
 	httpClient := &http.Client{Timeout: githubHTTPTimeout}
@@ -118,5 +133,6 @@ func New() *Server {
 		client:  deviceflow.New(&deviceflow.Input{HTTPClient: httpClient}),
 		revoker: revoke.New(httpClient),
 		goos:    runtime.GOOS,
+		version: version,
 	}
 }

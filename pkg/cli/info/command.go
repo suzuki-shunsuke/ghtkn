@@ -59,6 +59,11 @@ related environment variables (with token values redacted), the selected backend
 the target app, and the resolved configuration file path. It does not authenticate
 or modify any state.
 
+With the agent backend it also reports the running agent's state, including the
+ghtkn version it was built from and the agent protocol versions it speaks. The
+agent keeps running the binary it was started with, so an agent version older than
+the ghtkn version above it means the agent must be restarted.
+
 $ ghtkn info
 $ ghtkn info my-app
 $ ghtkn info | jq .envs`,
@@ -128,11 +133,20 @@ func buildAgentStatus(ctx context.Context, agentBackend bool, logger *slogutil.L
 // section. Locked and RefreshToken describe the unlocked agent, so they are set only when
 // the agent is running (Locked) and unlocked (RefreshToken). It is a pure function so the
 // shaping is testable without a socket.
+//
+// The version fields describe the agent process, so they are set whenever it is running,
+// locked or not. An agent too old to report its version leaves Version empty, which drops
+// it from the output; its protocol versions are still reported, because both fields
+// decode to a value that is true of such an agent (0, i.e. pre-versioning, for the one it
+// speaks and the minimum it accepts).
 func agentStatusFromResponse(running bool, resp *agentapi.Response) *info.AgentStatus {
 	if !running {
 		return &info.AgentStatus{Running: false}
 	}
-	st := &info.AgentStatus{Running: true, Locked: new(resp.Locked)}
+	st := &info.AgentStatus{
+		Running: true, Locked: new(resp.Locked), Version: resp.Version,
+		ProtocolVersion: new(resp.ProtocolVersion), MinProtocolVersion: new(resp.MinProtocolVersion),
+	}
 	if !resp.Locked {
 		// enabled/ttl describe the unlocked, refresh-enabled state; TTL is present only
 		// when the agent reports one (an older agent omits it).

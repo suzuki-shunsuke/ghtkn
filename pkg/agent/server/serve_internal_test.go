@@ -40,7 +40,8 @@ var handleTestCases = []handleTestCase{ //nolint:gochecknoglobals // test fixtur
 	{
 		name:     "status empty",
 		requests: []string{`{"protocol_version":1,"command":"STATUS"}`},
-		want:     []*agentapi.Response{{OK: true}},
+		// The test servers are built with New(""), so they report unknownVersion.
+		want: []*agentapi.Response{{OK: true, Version: unknownVersion}},
 	},
 	{
 		name:     "get missing",
@@ -74,7 +75,7 @@ var handleTestCases = []handleTestCase{ //nolint:gochecknoglobals // test fixtur
 // around c.store is needed.
 func newUnlockedServer(t *testing.T) *Server {
 	t.Helper()
-	c := New()
+	c := New("")
 	c.store = tokenstore.New(testDataKey(t), t.TempDir())
 	return c
 }
@@ -119,7 +120,7 @@ func TestServer_handle_statusCounts(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"STATUS"}`+"\n"))
-	if diff := cmp.Diff(&agentapi.Response{OK: true, Count: 1}, got); diff != "" {
+	if diff := cmp.Diff(&agentapi.Response{OK: true, Count: 1, Version: unknownVersion}, got); diff != "" {
 		t.Fatalf("STATUS (-want +got):\n%s", diff)
 	}
 }
@@ -232,14 +233,14 @@ func TestServer_handle_obsoleteAgent(t *testing.T) {
 // locked in STATUS.
 func TestServer_handle_locked(t *testing.T) {
 	t.Parallel()
-	c := New() // locked: no store
+	c := New("") // locked: no store
 
 	get, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.x"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, get); diff != "" {
 		t.Fatalf("GET while locked (-want +got):\n%s", diff)
 	}
 	status, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"STATUS"}`+"\n"))
-	if diff := cmp.Diff(&agentapi.Response{OK: true, Locked: true}, status); diff != "" {
+	if diff := cmp.Diff(&agentapi.Response{OK: true, Locked: true, Version: unknownVersion}, status); diff != "" {
 		t.Fatalf("STATUS while locked (-want +got):\n%s", diff)
 	}
 }
@@ -271,7 +272,7 @@ func TestServer_handle_undecryptable(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Unlock the agent with a different key over the same directory.
-	c := New()
+	c := New("")
 	c.store = tokenstore.New(make([]byte, 32), dir)
 
 	get, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"GET","client_id":"Iv1.abc"}`+"\n"))
@@ -283,7 +284,7 @@ func TestServer_handle_undecryptable(t *testing.T) {
 // TestServer_handle_stop verifies the STOP command requests shutdown.
 func TestServer_handle_stop(t *testing.T) {
 	t.Parallel()
-	c := New()
+	c := New("")
 	got, shutdown := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"STOP"}`+"\n"))
 	if diff := cmp.Diff(&agentapi.Response{OK: true}, got); diff != "" {
 		t.Fatalf("response (-want +got):\n%s", diff)
@@ -316,7 +317,7 @@ func (f *fakeRevoker) Revoke(_ context.Context, tokens []string) error {
 func TestServe_oversized(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "agent.sock")
-	c := New()
+	c := New("")
 	listener, err := listen(t.Context(), path)
 	if err != nil {
 		t.Fatal(err)
