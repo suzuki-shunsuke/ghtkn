@@ -7,6 +7,8 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/refreshtoken"
 )
 
 // seedToken stores a token expiring at expiration. It must be called from within a
@@ -16,6 +18,31 @@ func seedToken(t *testing.T, c *Server, id string, expiration time.Time) {
 	tok := fmt.Sprintf(`{"access_token":"x","expiration_date":"%s"}`, expiration.Format(time.RFC3339))
 	if err := c.store.Set(id, json.RawMessage(tok)); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestServer_resolveRefreshTokenTTL verifies the three branches of the TTL resolution:
+// an unset (non-positive) TTL falls back to the seven-day default, a TTL above the
+// six-month maximum is capped, and anything in between is used as given.
+func TestServer_resolveRefreshTokenTTL(t *testing.T) {
+	t.Parallel()
+	data := []struct {
+		name string
+		ttl  time.Duration
+		want time.Duration
+	}{
+		{name: "unset falls back to the default", ttl: 0, want: 7 * 24 * time.Hour},
+		{name: "negative falls back to the default", ttl: -time.Hour, want: 7 * 24 * time.Hour},
+		{name: "over the maximum is capped", ttl: refreshtoken.MaxTTL + time.Hour, want: refreshtoken.MaxTTL},
+		{name: "in range is used as given", ttl: 14 * 24 * time.Hour, want: 14 * 24 * time.Hour},
+	}
+	for _, d := range data {
+		t.Run(d.name, func(t *testing.T) {
+			t.Parallel()
+			if got := New("").resolveRefreshTokenTTL(d.ttl); got != d.want {
+				t.Fatalf("resolveRefreshTokenTTL(%s) = %s, want %s", d.ttl, got, d.want)
+			}
+		})
 	}
 }
 

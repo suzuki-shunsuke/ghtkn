@@ -12,11 +12,13 @@ import (
 
 const (
 	// defaultRefreshTokenTTL is how long a stored token may sit unused before the sweep
-	// discards it, when the unlock request does not specify one. Three days keeps the
-	// window in which a rarely used app's refresh token lingers (and can be minted from)
-	// short, while leaving apps used every few days untouched; use --refresh-token-ttl to
-	// trade convenience for a longer window.
-	defaultRefreshTokenTTL = 3 * 24 * time.Hour
+	// discards it, when the unlock request does not specify one. A week covers a long
+	// weekend or a short break, which a shorter default would turn into a device flow on
+	// every return, and it still keeps the window in which a rarely used app's refresh
+	// token lingers (and can be minted from) to roughly a twenty-fifth of the six months
+	// that refresh token is otherwise valid for. Use --refresh-token-ttl to trade
+	// convenience for a shorter or longer window.
+	defaultRefreshTokenTTL = 7 * 24 * time.Hour
 	// refreshTokenSweepInterval is how often the sweep runs while the agent is unlocked.
 	// Checking every stored token's expiration daily is cheap relative to the risk of an
 	// unused refresh token lingering.
