@@ -15,6 +15,7 @@ import (
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/server"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/status"
@@ -62,7 +63,8 @@ or modify any state.
 With the agent backend it also reports the running agent's state, including the
 ghtkn version it was built from and the agent protocol versions it speaks. The
 agent keeps running the binary it was started with, so an agent version older than
-the ghtkn version above it means the agent must be restarted.
+the ghtkn version above it means the agent must be restarted; that case is called
+out with a warning on stderr, which leaves the JSON on stdout untouched.
 
 $ ghtkn info
 $ ghtkn info my-app
@@ -111,7 +113,45 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args
 	// info is a troubleshooting command and must never fail because the agent is down.
 	agentBackend := cfg != nil && cfg.Backend != nil && cfg.Backend.Type == "agent"
 	agent := buildAgentStatus(ctx, agentBackend, logger)
+	warnStaleAgent(logger, agent, args.Version)
 	return info.New(os.Stdout, os.Getenv).Info(configPath, args.AppName, args.Version, cfg, agent) //nolint:wrapcheck
+}
+
+// warnStaleAgent warns when the running agent was built from a different ghtkn version
+// than this one. The two versions are already in the JSON output, but info is the command
+// people run when something is off, and a stale agent is the kind of thing that is easy to
+// read past: the output looks healthy, the tokens come back fine, they just come from the
+// binary the agent was started with.
+//
+// The warning goes to the logger, i.e. stderr, so it never mixes into the JSON on stdout.
+func warnStaleAgent(logger *slogutil.Logger, agent *info.AgentStatus, version string) {
+	if agent == nil || !agent.Running || !staleAgent(agent.Version, version) {
+		return
+	}
+	logger.Warn(`the running ghtkn agent was built from a different ghtkn version than this one, `+
+		`so it serves tokens from that other binary. Restart it with 'ghtkn agent stop', then start `+
+		`and unlock it again to run this version.`,
+		"agent_version", agent.Version, "ghtkn_version", version)
+}
+
+// staleAgent reports whether the running agent was built from a different ghtkn version
+// than the one talking to it. It is a plain inequality rather than an ordering: either
+// direction means the agent is not running this ghtkn's code, and a restart is the fix
+// either way. Ordering would need semantic version parsing to say which side is older,
+// which buys nothing here.
+//
+// The check is disabled unless both versions are known. An empty agentVersion is an agent
+// too old to report one, and server.UnknownVersion on either side is a binary built
+// without version information (e.g. with `go install`), where the two are usually the same
+// working tree anyway.
+func staleAgent(agentVersion, ghtknVersion string) bool {
+	if agentVersion == "" || ghtknVersion == "" {
+		return false
+	}
+	if agentVersion == server.UnknownVersion || ghtknVersion == server.UnknownVersion {
+		return false
+	}
+	return agentVersion != ghtknVersion
 }
 
 // buildAgentStatus queries the running agent and builds the info output's agent section,

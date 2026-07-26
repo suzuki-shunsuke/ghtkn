@@ -84,7 +84,6 @@ func New(logger *slogutil.Logger, env *urfave.Env, isGitCredential bool, gFlags 
 		isGitCredential: isGitCredential,
 		stdin:           env.Stdin,
 		getEnv:          env.Getenv,
-		version:         env.Version,
 	}
 	return r.Command(logger, args)
 }
@@ -94,9 +93,6 @@ type runner struct {
 	isGitCredential bool
 	stdin           io.Reader
 	getEnv          func(string) string
-	// version is this ghtkn's version, compared with the running agent's so a stale
-	// agent can be reported (see warnStaleAgent).
-	version string
 }
 
 // Command returns the CLI command definition for either the get or git-credential subcommand.
@@ -186,11 +182,6 @@ func (r *runner) action(ctx context.Context, cmd *cli.Command, logger *slogutil.
 	inputGet.ConfigFilePath = p
 	if err := input.Validate(); err != nil {
 		return err //nolint:wrapcheck
-	}
-	// git-credential is skipped on purpose: git runs it several times per operation, so
-	// the same warning would be repeated on every fetch and push.
-	if !r.isGitCredential {
-		r.warnStaleAgent(ctx, logger, p)
 	}
 	return get.New(input).Run(ctx, logger.Logger, &get.InputRun{ //nolint:wrapcheck
 		InputGet: inputGet,
