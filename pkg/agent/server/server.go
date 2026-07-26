@@ -86,16 +86,18 @@ type Server struct {
 	goos string
 	// version is the ghtkn version this agent was built from, reported in the STATUS
 	// response so clients can see that a long-running agent predates the ghtkn that
-	// queries it. It is never empty: New falls back to unknownVersion. It is read-only
+	// queries it. It is never empty: New falls back to UnknownVersion. It is read-only
 	// after New, so it needs no lock.
 	version string
 }
 
-// unknownVersion is reported instead of an empty version when the agent binary carries
+// UnknownVersion is reported instead of an empty version when the agent binary carries
 // no version information (e.g. built with `go install` rather than by a release). It is
 // deliberately not an empty string: on the wire an absent version means an agent too old
-// to report one at all, and that is a different situation.
-const unknownVersion = "unknown"
+// to report one at all, and that is a different situation. It is exported so clients that
+// compare the agent's version with their own can tell "a different build" from "no idea
+// which build".
+const UnknownVersion = "unknown"
 
 // refreshEnabled reports whether refreshing expiring access tokens with stored refresh
 // tokens is enabled. It is set at unlock time.
@@ -116,14 +118,14 @@ func (s *Server) refreshState() (bool, time.Duration) {
 
 // New creates a new agent Server. The server starts locked (no token store);
 // it is unlocked later via the UNLOCK command. version is the ghtkn version the agent
-// reports in its STATUS response; an empty version becomes unknownVersion.
+// reports in its STATUS response; an empty version becomes UnknownVersion.
 //
 // The controller reads the clock with time.Now rather than an injectable hook: tests
 // that need a controlled clock run inside a testing/synctest bubble, where the time
 // package itself is fake.
 func New(version string) *Server {
 	if version == "" {
-		version = unknownVersion
+		version = UnknownVersion
 	}
 	// One HTTP client, shared by the device-flow and revoke clients, with a per-request
 	// timeout so no GitHub call can block a handler goroutine indefinitely.

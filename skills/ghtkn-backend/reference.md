@@ -146,6 +146,9 @@ ghtkn info | jq '{ghtkn: .version, agent: .agent.version}'
 }
 ```
 
+`ghtkn get` warns on its own when the two differ, so you don't have to check by hand.
+It stays quiet when either side reports no version, and `ghtkn git-credential` doesn't warn at all, because git runs it several times per fetch or push.
+
 An agent version older than the ghtkn version means the agent is still running the old binary.
 `unknown` means the agent binary carries no version information (for example one built with `go install`), and a missing `agent.version` means the agent predates this report and is certainly out of date.
 

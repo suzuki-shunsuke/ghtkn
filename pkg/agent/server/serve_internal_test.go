@@ -40,8 +40,8 @@ var handleTestCases = []handleTestCase{ //nolint:gochecknoglobals // test fixtur
 	{
 		name:     "status empty",
 		requests: []string{`{"protocol_version":1,"command":"STATUS"}`},
-		// The test servers are built with New(""), so they report unknownVersion.
-		want: []*agentapi.Response{{OK: true, Version: unknownVersion}},
+		// The test servers are built with New(""), so they report UnknownVersion.
+		want: []*agentapi.Response{{OK: true, Version: UnknownVersion}},
 	},
 	{
 		name:     "get missing",
@@ -120,7 +120,7 @@ func TestServer_handle_statusCounts(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"STATUS"}`+"\n"))
-	if diff := cmp.Diff(&agentapi.Response{OK: true, Count: 1, Version: unknownVersion}, got); diff != "" {
+	if diff := cmp.Diff(&agentapi.Response{OK: true, Count: 1, Version: UnknownVersion}, got); diff != "" {
 		t.Fatalf("STATUS (-want +got):\n%s", diff)
 	}
 }
@@ -240,7 +240,7 @@ func TestServer_handle_locked(t *testing.T) {
 		t.Fatalf("GET while locked (-want +got):\n%s", diff)
 	}
 	status, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"STATUS"}`+"\n"))
-	if diff := cmp.Diff(&agentapi.Response{OK: true, Locked: true, Version: unknownVersion}, status); diff != "" {
+	if diff := cmp.Diff(&agentapi.Response{OK: true, Locked: true, Version: UnknownVersion}, status); diff != "" {
 		t.Fatalf("STATUS while locked (-want +got):\n%s", diff)
 	}
 }
