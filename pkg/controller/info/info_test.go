@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 
+	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/info"
 )
@@ -229,13 +231,18 @@ func TestController_Info(t *testing.T) { //nolint:funlen
 }
 
 // TestController_Info_agent verifies that a passed-in agent status is rendered in the
-// output's `agent` section, and that a nil agent omits the section.
+// output's `agent` section, that the client's own protocol version accompanies it, and
+// that a nil agent omits both. A zero protocol version must survive the encoding: 0 is a
+// real version (a pre-versioning agent), not a missing value.
 func TestController_Info_agent(t *testing.T) {
 	t.Parallel()
 	agent := &info.AgentStatus{
-		Running:      true,
-		Locked:       new(false),
-		RefreshToken: &info.AgentRefreshToken{Enabled: true, TTL: "3d"},
+		Running:            true,
+		Version:            "v0.3.1",
+		ProtocolVersion:    new(1),
+		MinProtocolVersion: new(0),
+		Locked:             new(false),
+		RefreshToken:       &info.AgentRefreshToken{Enabled: true, TTL: "3d"},
 	}
 
 	buf := &bytes.Buffer{}
@@ -249,17 +256,31 @@ func TestController_Info_agent(t *testing.T) {
 	if !reflect.DeepEqual(got.Agent, agent) {
 		t.Errorf("agent section mismatch\n got: %+v\nwant: %+v", got.Agent, agent)
 	}
+	if !strings.Contains(buf.String(), `"min_protocol_version": 0`) {
+		t.Errorf("a zero minimum protocol version must stay in the output, got:\n%s", buf)
+	}
+	if got.ProtocolVersion == nil || *got.ProtocolVersion != agentapi.ProtocolVersion {
+		t.Errorf("protocol_version = %v, want %d", got.ProtocolVersion, agentapi.ProtocolVersion)
+	}
+}
 
-	// A nil agent omits the section entirely.
-	buf.Reset()
+// TestController_Info_noAgent verifies that a nil agent omits the `agent` section, and
+// with it the client's own protocol version: it is meaningful only against a running
+// agent.
+func TestController_Info_noAgent(t *testing.T) {
+	t.Parallel()
+	buf := &bytes.Buffer{}
 	if err := info.New(buf, fakeEnv(nil)).Info("/x/ghtkn.yaml", "", "", nil, nil); err != nil {
 		t.Fatal(err)
 	}
-	got2 := &info.Output{}
-	if err := json.Unmarshal(buf.Bytes(), got2); err != nil {
+	got := &info.Output{}
+	if err := json.Unmarshal(buf.Bytes(), got); err != nil {
 		t.Fatal(err)
 	}
-	if got2.Agent != nil {
-		t.Errorf("a nil agent must be omitted, got %+v", got2.Agent)
+	if got.Agent != nil {
+		t.Errorf("a nil agent must be omitted, got %+v", got.Agent)
+	}
+	if got.ProtocolVersion != nil {
+		t.Errorf("the protocol version must be omitted without an agent, got %d", *got.ProtocolVersion)
 	}
 }

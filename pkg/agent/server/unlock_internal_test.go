@@ -20,7 +20,7 @@ import (
 // the agent.
 func TestServer_handle_unlock(t *testing.T) {
 	t.Parallel()
-	c := New()
+	c := New("")
 	c.keyFile = filepath.Join(t.TempDir(), "key")
 	c.tokenDir = t.TempDir()
 
@@ -40,7 +40,7 @@ func TestServer_handle_unlock(t *testing.T) {
 // the response and STATUS, and an already-unlocked re-unlock cannot flip it.
 func TestServer_handle_unlock_enableRefresh(t *testing.T) {
 	t.Parallel()
-	c := New()
+	c := New("")
 	c.keyFile = filepath.Join(t.TempDir(), "key")
 	c.tokenDir = t.TempDir()
 
@@ -75,7 +75,7 @@ func TestServer_handle_unlock_enableRefresh(t *testing.T) {
 // other client. An UNLOCK that doesn't ask for refresh still works there.
 func TestServer_handle_unlock_refreshUnsupportedOS(t *testing.T) {
 	t.Parallel()
-	c := New()
+	c := New("")
 	c.keyFile = filepath.Join(t.TempDir(), "key")
 	c.tokenDir = t.TempDir()
 	c.goos = "windows"
@@ -106,7 +106,7 @@ func TestServer_handle_unlock_capsRefreshTokenTTL(t *testing.T) {
 	// The unlock starts the background sweep; t.Context is canceled when the test ends,
 	// so the goroutine stops with it.
 	ctx := t.Context()
-	c := New()
+	c := New("")
 	c.keyFile = filepath.Join(t.TempDir(), "key")
 	c.tokenDir = t.TempDir()
 
@@ -133,7 +133,7 @@ func TestServer_handle_unlock_orphanTokens(t *testing.T) {
 		t.Fatal(err)
 	}
 	var buf bytes.Buffer
-	c := New()
+	c := New("")
 	c.logger = slog.New(slog.NewTextHandler(&buf, nil))
 	c.keyFile = filepath.Join(t.TempDir(), "key") // absent: a new key is generated
 	c.tokenDir = dir
@@ -158,7 +158,7 @@ func TestServer_handle_unlock_stripsRefreshWhenDisabled(t *testing.T) {
 	tokenDir := t.TempDir()
 
 	// First unlock with refresh enabled, then seed a token carrying a refresh token.
-	c1 := New()
+	c1 := New("")
 	c1.keyFile = keyFile
 	c1.tokenDir = tokenDir
 	// Use a cancellable context: a refresh-enabled unlock starts the sweep goroutine,
@@ -172,7 +172,7 @@ func TestServer_handle_unlock_stripsRefreshWhenDisabled(t *testing.T) {
 	}
 
 	// Restart: a new controller unlocks over the same key/dir with refresh disabled.
-	c2 := New()
+	c2 := New("")
 	c2.keyFile = keyFile
 	c2.tokenDir = tokenDir
 	unlock, _ := c2.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","confirm_refresh_token_removal":true}`+"\n"))
@@ -204,7 +204,7 @@ func TestServer_handle_unlock_stripsRefreshWhenDisabled(t *testing.T) {
 // passphrase-derived key) so a caller can read the token back without re-deriving the key.
 func seedRefreshToken(t *testing.T, keyFile, tokenDir, refreshExp string) *tokenstore.Store {
 	t.Helper()
-	c1 := New()
+	c1 := New("")
 	c1.keyFile = keyFile
 	c1.tokenDir = tokenDir
 	if resp, _ := c1.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","enable_refresh_token":true}`+"\n")); !resp.OK {
@@ -226,7 +226,7 @@ func TestServer_handle_unlock_pendingRefreshRemoval(t *testing.T) {
 	tokenDir := t.TempDir()
 	store := seedRefreshToken(t, keyFile, tokenDir, "2999-06-01T00:00:00Z")
 
-	c := New()
+	c := New("")
 	c.keyFile = keyFile
 	c.tokenDir = tokenDir
 	unlock, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))
@@ -254,7 +254,7 @@ func TestServer_handle_unlock_confirmedRefreshRemoval(t *testing.T) {
 	tokenDir := t.TempDir()
 	seedRefreshToken(t, keyFile, tokenDir, "2999-06-01T00:00:00Z")
 
-	c := New()
+	c := New("")
 	c.keyFile = keyFile
 	c.tokenDir = tokenDir
 	unlock, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw","confirm_refresh_token_removal":true}`+"\n"))
@@ -278,7 +278,7 @@ func TestServer_handle_unlock_noPromptWhenRefreshExpired(t *testing.T) {
 	tokenDir := t.TempDir()
 	seedRefreshToken(t, keyFile, tokenDir, "2000-01-01T00:00:00Z") // already expired
 
-	c := New()
+	c := New("")
 	c.keyFile = keyFile
 	c.tokenDir = tokenDir
 	unlock, _ := c.handle(t.Context(), strings.NewReader(`{"protocol_version":1,"command":"UNLOCK","passphrase":"pw"}`+"\n"))

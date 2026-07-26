@@ -19,7 +19,7 @@ import (
 // dispatch routing of LOCK.
 func TestServer_handle_lock(t *testing.T) {
 	t.Parallel()
-	c := New()
+	c := New("")
 	c.keyFile = filepath.Join(t.TempDir(), "key")
 	c.tokenDir = t.TempDir()
 
@@ -49,7 +49,7 @@ func TestServer_handle_lock(t *testing.T) {
 // lock decrypts again.
 func TestServer_handle_lock_reunlock(t *testing.T) {
 	t.Parallel()
-	c := New()
+	c := New("")
 	c.keyFile = filepath.Join(t.TempDir(), "key")
 	c.tokenDir = t.TempDir()
 
@@ -77,7 +77,7 @@ func TestServer_handle_lock_reunlock(t *testing.T) {
 // no-op success.
 func TestServer_handleLock_idempotent(t *testing.T) {
 	t.Parallel()
-	c := New() // locked: no store
+	c := New("") // locked: no store
 	if diff := cmp.Diff(&agentapi.Response{OK: true, Locked: true}, c.handleLock()); diff != "" {
 		t.Fatalf("LOCK on a locked agent (-want +got):\n%s", diff)
 	}
@@ -91,7 +91,7 @@ func TestServer_handleLock_idempotent(t *testing.T) {
 func TestServer_handleLock_stopsSweep(t *testing.T) {
 	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
-		c := New()
+		c := New("")
 		c.keyFile = filepath.Join(t.TempDir(), "key")
 		c.tokenDir = t.TempDir()
 

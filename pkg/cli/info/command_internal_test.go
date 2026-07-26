@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/server"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/info"
 )
 
@@ -26,7 +27,69 @@ func TestFormatTTLDays(t *testing.T) {
 	}
 }
 
-func TestAgentStatusFromResponse(t *testing.T) {
+func TestStaleAgent(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		agentVersion string
+		ghtknVersion string
+		want         bool
+	}{
+		{
+			name:         "same version",
+			agentVersion: "v0.3.4",
+			ghtknVersion: "v0.3.4",
+		},
+		{
+			name:         "older agent",
+			agentVersion: "v0.3.1",
+			ghtknVersion: "v0.3.4",
+			want:         true,
+		},
+		{
+			// Not an ordering: a newer agent is just as much "not this ghtkn's code".
+			name:         "newer agent",
+			agentVersion: "v0.4.0",
+			ghtknVersion: "v0.3.4",
+			want:         true,
+		},
+		{
+			name:         "agent too old to report a version",
+			agentVersion: "",
+			ghtknVersion: "v0.3.4",
+		},
+		{
+			name:         "agent built without version information",
+			agentVersion: server.UnknownVersion,
+			ghtknVersion: "v0.3.4",
+		},
+		{
+			name:         "ghtkn built without version information",
+			agentVersion: "v0.3.4",
+			ghtknVersion: server.UnknownVersion,
+		},
+		{
+			name:         "both built without version information",
+			agentVersion: server.UnknownVersion,
+			ghtknVersion: server.UnknownVersion,
+		},
+		{
+			name:         "no ghtkn version",
+			agentVersion: "v0.3.4",
+			ghtknVersion: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := staleAgent(tt.agentVersion, tt.ghtknVersion); got != tt.want {
+				t.Errorf("staleAgent(%q, %q) = %v, want %v", tt.agentVersion, tt.ghtknVersion, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAgentStatusFromResponse(t *testing.T) { //nolint:funlen
 	t.Parallel()
 	tests := []struct {
 		name    string
@@ -41,22 +104,58 @@ func TestAgentStatusFromResponse(t *testing.T) {
 			want:    &info.AgentStatus{Running: false},
 		},
 		{
+			// A locked agent still reports which binary it runs, so the version fields
+			// are set even though the unlocked-state fields are not.
 			name:    "running and locked omits refresh_token",
 			running: true,
-			resp:    &agentapi.Response{Locked: true},
-			want:    &info.AgentStatus{Running: true, Locked: new(true)},
+			resp:    &agentapi.Response{Locked: true, Version: "v0.3.1", ProtocolVersion: 1, MinProtocolVersion: 0},
+			want: &info.AgentStatus{
+				Running: true, Version: "v0.3.1", ProtocolVersion: new(1), MinProtocolVersion: new(0),
+				Locked: new(true),
+			},
 		},
 		{
 			name:    "unlocked with a TTL",
 			running: true,
-			resp:    &agentapi.Response{RefreshTokenEnabled: true, RefreshTokenTTL: 3 * 24 * time.Hour},
-			want:    &info.AgentStatus{Running: true, Locked: new(false), RefreshToken: &info.AgentRefreshToken{Enabled: true, TTL: "3d"}},
+			resp: &agentapi.Response{
+				Version: "v0.3.4", ProtocolVersion: 1, MinProtocolVersion: 1,
+				RefreshTokenEnabled: true, RefreshTokenTTL: 3 * 24 * time.Hour,
+			},
+			want: &info.AgentStatus{
+				Running: true, Version: "v0.3.4", ProtocolVersion: new(1), MinProtocolVersion: new(1),
+				Locked: new(false), RefreshToken: &info.AgentRefreshToken{Enabled: true, TTL: "3d"},
+			},
 		},
 		{
 			name:    "unlocked without a TTL (older agent) omits ttl",
 			running: true,
-			resp:    &agentapi.Response{RefreshTokenEnabled: false},
-			want:    &info.AgentStatus{Running: true, Locked: new(false), RefreshToken: &info.AgentRefreshToken{Enabled: false}},
+			resp:    &agentapi.Response{RefreshTokenEnabled: false, Version: "v0.3.4", ProtocolVersion: 1},
+			want: &info.AgentStatus{
+				Running: true, Version: "v0.3.4", ProtocolVersion: new(1), MinProtocolVersion: new(0),
+				Locked: new(false), RefreshToken: &info.AgentRefreshToken{Enabled: false},
+			},
+		},
+		{
+			// An agent too old to report its version: the version is left empty so it is
+			// dropped from the output, but the protocol versions it decoded to (0, i.e.
+			// pre-versioning) are true of such an agent and are reported.
+			name:    "running agent that does not report its version",
+			running: true,
+			resp:    &agentapi.Response{RefreshTokenEnabled: true},
+			want: &info.AgentStatus{
+				Running: true, ProtocolVersion: new(0), MinProtocolVersion: new(0),
+				Locked: new(false), RefreshToken: &info.AgentRefreshToken{Enabled: true},
+			},
+		},
+		{
+			// An agent that knows its protocol but not which binary it was built from.
+			name:    "running agent with an unknown version",
+			running: true,
+			resp:    &agentapi.Response{Locked: true, Version: "unknown", ProtocolVersion: 1},
+			want: &info.AgentStatus{
+				Running: true, Version: "unknown", ProtocolVersion: new(1), MinProtocolVersion: new(0),
+				Locked: new(true),
+			},
 		},
 	}
 	for _, tt := range tests {

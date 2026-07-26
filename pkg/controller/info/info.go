@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"runtime"
 
+	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/config"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 )
@@ -25,26 +26,45 @@ type ConfigView struct {
 
 // Output is the troubleshooting information printed by the info command as JSON.
 type Output struct {
-	OS         string            `json:"os"`
-	Arch       string            `json:"arch"`
-	Version    string            `json:"version"`
-	Envs       map[string]string `json:"envs"`
-	App        string            `json:"app"`
-	ConfigPath string            `json:"config_path"`
-	Config     *ConfigView       `json:"config,omitempty"`
+	OS      string `json:"os"`
+	Arch    string `json:"arch"`
+	Version string `json:"version"`
+	// ProtocolVersion is the agent protocol version this ghtkn speaks. It is set only
+	// when the resolved backend is the agent (like Agent below), because it is
+	// meaningless otherwise; it is there to be compared with the running agent's
+	// versions, which tells an out-of-date agent from an out-of-date client.
+	ProtocolVersion *int              `json:"protocol_version,omitempty"`
+	Envs            map[string]string `json:"envs"`
+	App             string            `json:"app"`
+	ConfigPath      string            `json:"config_path"`
+	Config          *ConfigView       `json:"config,omitempty"`
 	// Agent reports the ghtkn agent's state; it is set only when the resolved backend is
 	// the agent (the caller queries the agent and passes it in). It is nil otherwise.
 	Agent *AgentStatus `json:"agent,omitempty"`
 }
 
-// AgentStatus is the ghtkn agent's state as reported in the info output. Locked and
-// RefreshToken describe the unlocked agent, so they are present only when it is running:
-// Locked is nil (omitted) when the agent is not running, and RefreshToken is nil when the
-// agent is not running or is locked.
+// AgentStatus is the ghtkn agent's state as reported in the info output. Every field but
+// Running describes a running agent, so all of them are omitted when it is not running:
+// the version fields and Locked are nil then, and RefreshToken is nil when the agent is
+// not running or is locked.
+//
+// The protocol versions are pointers rather than plain ints because 0 is a meaningful
+// value for both of them (see the agent protocol), so it must never be dropped from the
+// output; only "no running agent to report it" is.
 type AgentStatus struct {
-	Running      bool               `json:"running"`
-	Locked       *bool              `json:"locked,omitempty"`
-	RefreshToken *AgentRefreshToken `json:"refresh_token,omitempty"`
+	Running bool `json:"running"`
+	// Version is the ghtkn version the running agent was built from. It is empty (and
+	// omitted) for an agent too old to report it, and "unknown" when the agent itself
+	// does not know which version it was built from.
+	Version string `json:"version,omitempty"`
+	// ProtocolVersion is the newest agent protocol version the running agent speaks.
+	ProtocolVersion *int `json:"protocol_version,omitempty"`
+	// MinProtocolVersion is the oldest agent protocol version the running agent still
+	// serves. An agent too old to report it is reported as 0, which is what every such
+	// agent accepts.
+	MinProtocolVersion *int               `json:"min_protocol_version,omitempty"`
+	Locked             *bool              `json:"locked,omitempty"`
+	RefreshToken       *AgentRefreshToken `json:"refresh_token,omitempty"`
 }
 
 // AgentRefreshToken reports the refresh-token settings of an unlocked agent: whether
@@ -68,6 +88,11 @@ func (c *Controller) Info(configPath, appName, version string, cfg *config.Confi
 		Version:    version,
 		ConfigPath: configPath,
 		Agent:      agent,
+	}
+	if agent != nil {
+		// The agent protocol version is reported only for the agent backend, where it can
+		// be compared with the versions the running agent reports.
+		output.ProtocolVersion = new(agentapi.ProtocolVersion)
 	}
 	// The caller resolves the effective config via ghtkn.LoadConfig (file plus env) and
 	// passes it in, so the controller stays free of config-file and environment lookups.

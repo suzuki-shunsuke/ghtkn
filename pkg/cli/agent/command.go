@@ -24,16 +24,18 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/unlock"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
+	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
 )
 
 // New creates the 'agent' parent command for the CLI application.
 // The parent command groups the agent subcommands (currently only 'start').
 // The returned command can be added to the CLI application's command list.
-func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
+func New(logger *slogutil.Logger, env *urfave.Env, gFlags *flag.GlobalFlags) *cli.Command {
 	r := &runner{
-		logger: logger,
-		flags:  gFlags,
+		logger:  logger,
+		flags:   gFlags,
+		version: env.Version,
 	}
 	return &cli.Command{
 		Name:  "agent",
@@ -62,6 +64,9 @@ Tokens are encrypted at rest with AES-256-GCM.`,
 type runner struct {
 	logger *slogutil.Logger
 	flags  *flag.GlobalFlags
+	// version is the ghtkn version, handed to the agent server so it can report which
+	// binary the long-running process runs (see the STATUS response and 'ghtkn info').
+	version string
 }
 
 // unlockArgs holds the flag values for the 'agent unlock' subcommand.
@@ -125,7 +130,7 @@ func (r *runner) start(ctx context.Context, _ *cli.Command) error {
 		return fmt.Errorf("set log level: %w", err)
 	}
 	r.warnIfBackendNotAgent()
-	return server.New().Start(ctx, r.logger.Logger) //nolint:wrapcheck
+	return server.New(r.version).Start(ctx, r.logger.Logger) //nolint:wrapcheck
 }
 
 // stopCommand returns the CLI command definition for the 'agent stop' subcommand.
@@ -160,7 +165,10 @@ func (r *runner) statusCommand() *cli.Command {
 		Description: `Show whether the ghtkn agent is running.
 
 It connects to the agent's Unix domain socket and reports the number of cached
-access tokens. It exits 0 whether or not the agent is running.
+access tokens, along with the ghtkn version the running agent was built from and
+the agent protocol version it speaks. The agent keeps running the binary it was
+started with, so an agent version older than 'ghtkn --version' means the agent
+must be restarted. It exits 0 whether or not the agent is running.
 
 $ ghtkn agent status`,
 		Action: r.status,

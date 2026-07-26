@@ -133,6 +133,25 @@ ghtkn agent start &
 ghtkn agent unlock
 ```
 
+`ghtkn agent status` and `ghtkn info` report the version the running agent was built from, so you can tell whether it still needs a restart:
+
+```sh
+ghtkn info | jq '{ghtkn: .version, agent: .agent.version}'
+```
+
+```json
+{
+  "ghtkn": "v0.3.4",
+  "agent": "v0.3.1"
+}
+```
+
+`ghtkn info` also warns on stderr when the two differ, so you don't have to compare them yourself.
+It stays quiet when either side reports no version.
+
+An agent version older than the ghtkn version means the agent is still running the old binary.
+`unknown` means the agent binary carries no version information (for example one built with `go install`), and a missing `agent.version` means the agent predates this report and is certainly out of date.
+
 ### Running the agent as a service
 
 `ghtkn agent start &` runs the agent for the current shell session.

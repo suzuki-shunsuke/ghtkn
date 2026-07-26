@@ -10,6 +10,9 @@ ghtkn info [<app name>]
 
 If `ghtkn info` command isn't found or the version isn't latest, please upgrade ghtkn to the latest version.
 
+With the agent backend, `ghtkn info` also reports the agent's own version under `agent.version`, plus the agent protocol versions both sides speak.
+Upgrading ghtkn doesn't upgrade a running agent, so if `agent.version` is older than the top level `version`, restart the agent: `ghtkn agent stop`, then start and unlock it again.
+
 2. Check the token and expiration date.
 
 ```sh
