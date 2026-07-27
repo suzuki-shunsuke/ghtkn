@@ -16,4 +16,4 @@ If this overview is enough, you don't need to read further.
 
 ## Reference
 
-For details (storage locations, running the agent as a systemd service or in a container, socket paths, and a full Docker example), read [reference.md](reference.md) in this skill directory.
+For details (storage locations, running the agent as a systemd service or in a container, using the host's agent from a container, socket paths, and a full Docker example), read [reference.md](reference.md) in this skill directory.

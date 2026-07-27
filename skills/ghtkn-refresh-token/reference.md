@@ -27,6 +27,8 @@ Do not use this feature in an environment where intruding malware can easily esc
 A normal desktop environment usually requires a password, but development containers and VMs often run as root in the first place, or allow escalation to root via passwordless sudo.
 Do not use it in such environments.
 
+To use refresh tokens while working in such a container, run the agent on the host instead of in the container and let the container talk to it as a client, so the refresh token and the key never enter the container. See [Using the host's agent from a container](../ghtkn-backend/reference.md#using-the-hosts-agent-from-a-container).
+
 ## The window enabling refresh widens, and how to limit it
 
 Enabling refresh is a tradeoff worth understanding before you turn it on.
