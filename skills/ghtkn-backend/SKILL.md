@@ -16,4 +16,7 @@ If this overview is enough, you don't need to read further.
 
 ## Reference
 
-For details (storage locations, running the agent as a systemd service or in a container, using the host's agent from a container, socket paths, and a full Docker example), read [reference.md](reference.md) in this skill directory.
+Read the following files in this skill directory for the details:
+
+- [reference.md](reference.md): read it to choose a backend, to drive the agent (`start`, `unlock`, `lock`, `stop`, `reset`), or to look up where the socket, the tokens, and the encryption key are stored.
+- [agent_deployment.md](agent_deployment.md): read it to run the agent as a long-lived process - a systemd user service, a container entrypoint, or an agent on the host that containers use as a client (needed for refresh tokens, which shouldn't be enabled inside a container).
