@@ -155,7 +155,7 @@ gh skill install suzuki-shunsuke/ghtkn --all
 
 ## Documentation and skills
 
-Detailed documentation is split by topic. Each topic lives in a skill directory under [`skills/`](skills) and contains an agent-facing `SKILL.md` and a shared reference document (`reference.md`). The reference documents below are the single source of truth, shared between this README and the skills, so there's no duplicated maintenance.
+Detailed documentation is split by topic. Each topic lives in a skill directory under [`skills/`](skills) and contains an agent-facing `SKILL.md` and a shared reference document (`reference.md`, plus further files when a topic needs them). The reference documents below are the single source of truth, shared between this README and the skills, so there's no duplicated maintenance.
 
 - [Install](skills/ghtkn-install/reference.md) - install the ghtkn CLI and verify release assets.
 - [Git Credential Helper](skills/ghtkn-git-credential-helper/reference.md) - use ghtkn as a Git credential helper and switch apps by repository owner.
