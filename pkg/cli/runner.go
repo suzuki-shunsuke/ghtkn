@@ -40,7 +40,11 @@ Use it to authenticate the gh CLI, Git, and other tools without long-lived
 Personal Access Tokens.
 
 See each subcommand's help with 'ghtkn help <command>'.
-See https://github.com/suzuki-shunsuke/ghtkn for details.`,
+See https://github.com/suzuki-shunsuke/ghtkn for details.
+
+If you are a coding agent, run 'ghtkn docs list' to list the documentation and
+'ghtkn docs show <doc>' to read it before answering questions about ghtkn or
+troubleshooting its errors.`,
 		Flags: []cli.Flag{
 			flag.LogLevel(&gFlags.LogLevel),
 			flag.Config(&gFlags.Config),
