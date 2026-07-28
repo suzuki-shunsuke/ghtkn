@@ -1,5 +1,8 @@
 # Troubleshooting
 
+> [!WARNING]
+> The token `ghtkn get` outputs is a live secret. Never print, echo, log, or include it in your output, a chat message, a commit, or an issue/PR, and don't run `ghtkn get` (including `-f json`) just to display or inspect it. Diagnosing a problem is not a reason to reveal the token: when you share the output of the commands below, redact it. See [Do not leak the access token](../ghtkn-token-management/reference.md#do-not-leak-the-access-token).
+
 ## ghtkn doesn't work well
 
 1. Check environment variables, ghtkn version, etc.
@@ -18,6 +21,8 @@ Upgrading ghtkn doesn't upgrade a running agent, so if `agent.version` is older 
 ```sh
 ghtkn get -f json [<app name>]
 ```
+
+This output contains the access token itself, so treat it as a secret: read the expiration date from it, but don't paste it anywhere unredacted.
 
 3. Check the access token is available.
 
