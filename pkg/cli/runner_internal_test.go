@@ -37,6 +37,12 @@ func TestHintDocsOnVersion(t *testing.T) {
 			wantHint: true,
 		},
 		{
+			name:     "long version flag",
+			args:     []string{program, "--version"},
+			stdout:   "ghtkn version v1.0.0\n",
+			wantHint: true,
+		},
+		{
 			name:     "version command",
 			args:     []string{program, "version"},
 			stdout:   "v1.0.0\n",
@@ -66,6 +72,13 @@ func TestHintDocsOnVersion(t *testing.T) {
 
 func testHintDocsOnVersion(t *testing.T, tt *hintDocsOnVersionCase) {
 	t.Helper()
+	// hintDocsOnVersion replaces the process global cli.VersionPrinter with a
+	// closure over this case's logger, whose output file is gone once the case
+	// ends. Restore it so that it doesn't leak into the other cases or tests.
+	printer := cli.VersionPrinter
+	t.Cleanup(func() {
+		cli.VersionPrinter = printer
+	})
 	getenv := tt.getenv
 	if getenv == nil {
 		getenv = func(string) string { return "" }

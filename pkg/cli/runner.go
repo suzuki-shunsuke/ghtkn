@@ -7,6 +7,7 @@ package cli
 
 import (
 	"context"
+	"fmt"
 
 	sdkenv "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/agent"
@@ -104,7 +105,7 @@ func hintDocsOnVersion(cmd *cli.Command, logger *slogutil.Logger, env *urfave.En
 		action := sub.Action
 		sub.Action = func(ctx context.Context, c *cli.Command) error {
 			if err := action(ctx, c); err != nil {
-				return err
+				return fmt.Errorf("run the version command: %w", err)
 			}
 			hint()
 			return nil
