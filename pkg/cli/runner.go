@@ -8,6 +8,7 @@ package cli
 import (
 	"context"
 
+	sdkenv "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/auth"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs"
@@ -56,9 +57,57 @@ See https://github.com/suzuki-shunsuke/ghtkn for details.`,
 			docs.New(logger, gFlags),
 		},
 	})
+	hintDocsOnVersion(cmd, logger, env, gFlags)
 	if err := cmd.Run(ctx, env.Args); err != nil {
 		return slogerr.With(err, "help", //nolint:wrapcheck
 			"Run `ghtkn docs list` to see documentation and `ghtkn docs show <name>` to read it; this may help resolve the error.")
 	}
 	return nil
+}
+
+// docsHint points coding agents at `ghtkn docs`.
+// ghtkn appends a similar hint to command errors, but an agent that only asks
+// about ghtkn without reproducing a failure never sees that one.
+const docsHint = "If you are a coding agent, run `ghtkn docs list` to list the documentation and `ghtkn docs show <name>` to read it before answering questions about ghtkn or troubleshooting its errors."
+
+// hintDocsOnVersion makes `ghtkn -v`, `ghtkn --version`, and `ghtkn version` log
+// docsHint. Checking the version is often the only ghtkn command a coding agent
+// runs before it starts answering, so without this it never learns that
+// `ghtkn docs` exists and reads the source code or the website instead.
+//
+// The hint goes to stderr as a log rather than to stdout so that it doesn't break
+// scripts that parse the version, and it's logged at the info level so that
+// `--log-level warn` silences it.
+func hintDocsOnVersion(cmd *cli.Command, logger *slogutil.Logger, env *urfave.Env, gFlags *flag.GlobalFlags) {
+	hint := func() {
+		level := gFlags.LogLevel
+		if level == "" {
+			// cli handles -v before it applies the flags' environment variable
+			// sources, so GHTKN_LOG_LEVEL has to be read directly here.
+			level = env.Getenv(sdkenv.LogLevel)
+		}
+		// An invalid log level is ignored here because the version output must
+		// succeed regardless. Subcommands report it when they set the level.
+		_ = logger.SetLevel(level)
+		logger.Info(docsHint)
+	}
+	// -v and --version run no action, so they need cli's printer hook.
+	cli.VersionPrinter = func(c *cli.Command) {
+		cli.DefaultPrintVersion(c)
+		hint()
+	}
+	// The `version` subcommand comes from urfave-cli-v3-util, so wrap its action.
+	for _, sub := range cmd.Commands {
+		if sub.Name != "version" {
+			continue
+		}
+		action := sub.Action
+		sub.Action = func(ctx context.Context, c *cli.Command) error {
+			if err := action(ctx, c); err != nil {
+				return err
+			}
+			hint()
+			return nil
+		}
+	}
 }
