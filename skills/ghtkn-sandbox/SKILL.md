@@ -3,7 +3,7 @@ name: ghtkn-sandbox
 description: Configure a coding agent's sandbox (Claude Code, Codex) to run ghtkn. Use when ghtkn fails inside the sandbox, e.g. the agent socket is "operation not permitted", a token can't be stored, or TLS fails with OSStatus -26276.
 ---
 
-ghtkn doesn't work inside a coding agent's OS-level sandbox with the default settings. What it needs depends on the backend:
+What ghtkn needs inside a coding agent's OS-level sandbox depends on the backend, and on which tool: reading a cached token can need nothing at all, while the agent socket and every token write are blocked by default.
 
 - `agent` (`>= 0.3.4`): allow the agent socket, and nothing else. The agent owns the token lifecycle and runs outside the sandbox, so no allowed domains and no write access are needed. Before v0.3.4 the client minted tokens itself, so minting from the sandbox also needs network access.
 - `keyring` / `text`: reading a cached token needs little or nothing. Storing one needs write access to the keychain or the token directory, but that only happens via the interactive device flow, so run `ghtkn auth` outside the sandbox instead.
@@ -18,4 +18,4 @@ Both tools read their settings at startup: restart after changing them.
 Read the following files in this skill directory for the details:
 
 - [claude_code.md](claude_code.md): read it to configure [Claude Code's sandbox](https://code.claude.com/docs/en/sandboxing) (`sandbox.enabled` in `settings.json`) - per-backend settings, why the agent backend needs so little, and the macOS TLS issue.
-- [codex.md](codex.md): read it to configure [Codex](https://developers.openai.com/codex/security) (permissions profiles in `config.toml`) - per-backend settings, the difference between enabling a profile's network policy and allowlisting with the network proxy, what gates a project-scoped `.codex/config.toml`, and why `codex doctor` can't validate any of it.
+- [codex.md](codex.md): read it to configure [Codex](https://developers.openai.com/codex/security) (permissions profiles in `config.toml`) - per-backend settings, and why a project-scoped `.codex/config.toml` is ignored unless the project is trusted.

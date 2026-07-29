@@ -1,7 +1,7 @@
 # Claude Code Sandbox Configuration
 
 [Claude Code](https://code.claude.com/docs/en/sandboxing) can run Bash commands inside an OS-level sandbox that restricts filesystem and network access.
-ghtkn doesn't work inside it with the default settings.
+ghtkn needs extra settings inside it with every backend, except for reading a cached token with the `text` backend or, on macOS, the `keyring` backend.
 This page describes the minimum settings ghtkn needs, per backend.
 
 > [!NOTE]
@@ -37,7 +37,6 @@ ERR ghtkn failed error="query the agent status: connect to the ghtkn agent: dial
 ```
 
 Allow the path the agent actually uses (see [Socket path](../ghtkn-backend/reference.md#socket-path)); `~/` is expanded.
-If you set `GHTKN_AGENT_SOCKET` or `XDG_RUNTIME_DIR`, allow that path instead.
 
 On Linux, allow Unix sockets entirely:
 
@@ -145,7 +144,6 @@ Allow the directory, not the file.
 The text backend writes a token by creating a temporary file next to it and renaming it into place, so allowing only `<dir>/<client-id>` isn't enough.
 
 Allow the path the backend actually resolves (see [text Backend](../ghtkn-backend/reference.md#text-backend)).
-If you set `GHTKN_TEXT_BACKEND_DIR` or `XDG_CACHE_HOME`, allow that path instead.
 
 As with the keyring backend, writes only happen when a token is minted, so read-only use needs no settings.
 
