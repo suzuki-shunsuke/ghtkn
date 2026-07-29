@@ -1,14 +1,70 @@
 package info
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/server"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/info"
+	"github.com/suzuki-shunsuke/slog-util/slogutil"
 )
+
+// TestHintDocs checks that a successful info run points coding agents at
+// `ghtkn docs`, that the log level silences the hint, and that a failed run leaves
+// it to the error's own hint instead of saying it twice.
+func TestHintDocs(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		logLevel string
+		err      error
+		wantHint bool
+	}{
+		{
+			name:     "successful run",
+			wantHint: true,
+		},
+		{
+			name:     "the log level silences the hint",
+			logLevel: "warn",
+		},
+		{
+			name: "failed run",
+			err:  errors.New("output the information"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			logFile, err := os.Create(filepath.Join(t.TempDir(), "stderr"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer logFile.Close()
+
+			logger := slogutil.New(&slogutil.InputNew{Name: "ghtkn", Version: "v1.0.0", Out: logFile})
+			if err := logger.SetLevel(tt.logLevel); err != nil {
+				t.Fatal(err)
+			}
+			hintDocs(logger, tt.err)
+
+			logs, err := os.ReadFile(logFile.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if gotHint := strings.Contains(string(logs), docs.Hint); gotHint != tt.wantHint {
+				t.Errorf("the docs hint is logged = %v, want %v: %s", gotHint, tt.wantHint, logs)
+			}
+		})
+	}
+}
 
 func TestFormatTTLDays(t *testing.T) {
 	t.Parallel()

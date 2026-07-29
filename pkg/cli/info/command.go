@@ -16,6 +16,7 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/server"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/status"
@@ -115,11 +116,32 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args
 	agentBackend := cfg != nil && cfg.Backend != nil && cfg.Backend.Type == "agent"
 	agent := buildAgentStatus(ctx, agentBackend, logger)
 	err = info.New(os.Stdout, os.Getenv).Info(configPath, args.AppName, args.Version, cfg, agent)
-	// After the output, not before: the JSON runs to dozens of lines, and a warning
-	// scrolled off the top of it is a warning nobody reads. It is emitted even when the
-	// output failed, since a stale agent is worth knowing about either way.
+	// After the output, not before: the JSON runs to dozens of lines, and a message
+	// scrolled off the top of it is a message nobody reads. The docs hint comes first so
+	// that a stale-agent warning, which is about this machine rather than about ghtkn in
+	// general, stays the last thing on screen.
+	hintDocs(logger, err)
+	// Emitted even when the output failed, since a stale agent is worth knowing about
+	// either way.
 	warnStaleAgent(logger, agent, args.Version)
 	return err //nolint:wrapcheck
+}
+
+// hintDocs points coding agents at `ghtkn docs`. info is the command run when something
+// is wrong with ghtkn, so it is a likely place for an agent to arrive without knowing
+// that ghtkn ships its documentation in the binary; without this it troubleshoots from
+// the source code or the website instead.
+//
+// The hint goes to the logger, i.e. stderr, so it never mixes into the JSON on stdout,
+// and it is logged at the info level so that `--log-level warn` silences it.
+//
+// A failed run is skipped: the error carries the same pointer to `ghtkn docs` (see
+// cli.Run), and printing both would say it twice.
+func hintDocs(logger *slogutil.Logger, err error) {
+	if err != nil {
+		return
+	}
+	logger.Info(docs.Hint)
 }
 
 // warnStaleAgent warns when the running agent was built from a different ghtkn version

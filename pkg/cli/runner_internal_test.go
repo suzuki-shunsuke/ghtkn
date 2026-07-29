@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	sdkenv "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
@@ -110,7 +111,7 @@ func testHintDocsOnVersion(t *testing.T, tt *hintDocsOnVersionCase) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if gotHint := strings.Contains(string(logs), docsHint); gotHint != tt.wantHint {
+	if gotHint := strings.Contains(string(logs), docs.Hint); gotHint != tt.wantHint {
 		t.Errorf("the docs hint is logged = %v, want %v: %s", gotHint, tt.wantHint, logs)
 	}
 }

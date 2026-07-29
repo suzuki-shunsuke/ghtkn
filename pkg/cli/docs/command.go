@@ -8,6 +8,15 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// Hint points coding agents at `ghtkn docs`. It lives here, next to the command it
+// advertises, because several commands emit it: an agent that never makes ghtkn fail
+// only learns that these documents exist if a command it does run says so.
+//
+// Callers log it to stderr rather than writing it to stdout, so that it doesn't break
+// scripts that parse the output, and at the info level so that `--log-level warn`
+// silences it.
+const Hint = "If you are a coding agent, run `ghtkn docs list` to list the documentation and `ghtkn docs show <name>` to read it before answering questions about ghtkn or troubleshooting its errors."
+
 // Args holds the flag and argument values for the info command.
 type Args struct {
 	*flag.GlobalFlags
