@@ -4,7 +4,7 @@
 
 > [!NOTE]
 > If you are a coding agent and ghtkn is installed, run `ghtkn docs list` to list the documentation and `ghtkn docs show <name>` to read it before answering questions about ghtkn or troubleshooting its errors.
-> The embedded documentation matches the installed version. If ghtkn isn't installed, read the reference documents under [`skills/`](skills).
+> The embedded documentation matches the installed version. If ghtkn isn't installed, read the documents listed in [Documentation and skills](README.md#documentation-and-skills).
 
 ```console
 $ ghtkn --help
