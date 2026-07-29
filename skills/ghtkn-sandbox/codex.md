@@ -5,7 +5,6 @@ ghtkn needs extra settings inside it with every backend, except for reading a ca
 This page describes the minimum settings ghtkn needs, per backend.
 
 > [!NOTE]
-> Verified against Codex 0.145.0 on macOS by running `codex sandbox ghtkn agent status` under each configuration.
 > Named permission profiles are still labelled beta in Codex's documentation, so check the settings here against your own version.
 > Codex reads the configuration at startup, so restart it after editing.
 
