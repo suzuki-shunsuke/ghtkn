@@ -7,7 +7,7 @@ go 1.26.5
 require (
 	github.com/google/go-cmp v0.7.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
-	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.4.2-0.20260726153319-6c8e1ef16913
+	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.5.0
 	github.com/suzuki-shunsuke/go-github-device-flow v0.0.2
 	github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.2
 	github.com/suzuki-shunsuke/slog-error v0.2.2
