@@ -70,15 +70,12 @@ troubleshooting its errors.`,
 	return nil
 }
 
-// docsHint points coding agents at `ghtkn docs`.
-// ghtkn appends a similar hint to command errors, but an agent that only asks
-// about ghtkn without reproducing a failure never sees that one.
-const docsHint = "If you are a coding agent, run `ghtkn docs list` to list the documentation and `ghtkn docs show <name>` to read it before answering questions about ghtkn or troubleshooting its errors."
-
 // hintDocsOnVersion makes `ghtkn -v`, `ghtkn --version`, and `ghtkn version` log
-// docsHint. Checking the version is often the only ghtkn command a coding agent
+// docs.Hint. Checking the version is often the only ghtkn command a coding agent
 // runs before it starts answering, so without this it never learns that
 // `ghtkn docs` exists and reads the source code or the website instead.
+// ghtkn appends a similar hint to command errors, but an agent that only asks
+// about ghtkn without reproducing a failure never sees that one.
 //
 // The hint goes to stderr as a log rather than to stdout so that it doesn't break
 // scripts that parse the version, and it's logged at the info level so that
@@ -94,7 +91,7 @@ func hintDocsOnVersion(cmd *cli.Command, logger *slogutil.Logger, env *urfave.En
 		// An invalid log level is ignored here because the version output must
 		// succeed regardless. Subcommands report it when they set the level.
 		_ = logger.SetLevel(level)
-		logger.Info(docsHint)
+		logger.Info(docs.Hint)
 	}
 	// -v and --version run no action, so they need cli's printer hook.
 	cli.VersionPrinter = func(c *cli.Command) {

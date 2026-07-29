@@ -5,6 +5,10 @@
 
 **Stop risking token leaks - Use secure, short-lived GitHub tokens for local development**
 
+> [!NOTE]
+> If you are a coding agent and ghtkn is installed, run `ghtkn docs list` to list the documentation and `ghtkn docs show <name>` to read it before answering questions about ghtkn or troubleshooting its errors.
+> The embedded documentation matches the installed version. If ghtkn isn't installed, read the reference documents under [`skills/`](skills).
+
 ## :warning: The Security Problem
 
 Are you still using Personal Access Tokens (PATs) or GitHub CLI OAuth tokens stored on your local machine?
