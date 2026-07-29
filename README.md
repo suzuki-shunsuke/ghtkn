@@ -155,14 +155,15 @@ gh skill install suzuki-shunsuke/ghtkn --all
 
 ## Documentation and skills
 
-Detailed documentation is split by topic. Each topic lives in a skill directory under [`skills/`](skills) and contains an agent-facing `SKILL.md` and a shared reference document (`reference.md`, plus further files when a topic needs them). The reference documents below are the single source of truth, shared between this README and the skills, so there's no duplicated maintenance.
+Detailed documentation is split by topic. Each topic lives in a skill directory under [`skills/`](skills) and contains an agent-facing `SKILL.md` and one or more shared reference documents (usually `reference.md`, plus further files when a topic needs them). The reference documents below are the single source of truth, shared between this README and the skills, so there's no duplicated maintenance.
 
 - [Install](skills/ghtkn-install/reference.md) - install the ghtkn CLI and verify release assets.
 - [Git Credential Helper](skills/ghtkn-git-credential-helper/reference.md) - use ghtkn as a Git credential helper and switch apps by repository owner.
 - [Using Multiple Apps](skills/ghtkn-multiple-apps/reference.md) - configure multiple GitHub Apps and switch between them per command, env var, or directory.
 - [Token Management](skills/ghtkn-token-management/reference.md) - token regeneration, `ghtkn auth`, the automatic device flow, and clipboard.
 - [Backend](skills/ghtkn-backend/reference.md) - where tokens are stored (`keyring`, `text`, `agent`); useful for containers and microVMs.
-- [Sandbox Configuration](skills/ghtkn-sandbox/reference.md) - settings ghtkn needs to run inside Claude Code's sandbox, per backend.
+- [Sandbox Configuration: Claude Code](skills/ghtkn-sandbox/claude_code.md) - settings ghtkn needs to run inside Claude Code's sandbox, per backend.
+- [Sandbox Configuration: Codex](skills/ghtkn-sandbox/codex.md) - settings ghtkn needs to run inside Codex's sandbox, per backend.
 - [Configuration](skills/ghtkn-configuration/reference.md) - configuration priority, browser open, account picker, enterprise sharing, and one-off PAT use.
 - [Design](skills/ghtkn-design/reference.md) - how ghtkn works, a comparison with other access tokens, and API rate limits.
 - [Refreshing Tokens](skills/ghtkn-refresh-token/reference.md) - automatically refresh expiring GitHub access tokens with refresh tokens.

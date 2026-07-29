@@ -1,9 +1,7 @@
-# Sandbox Configuration
-
-## Claude Code Settings
+# Claude Code Sandbox Configuration
 
 [Claude Code](https://code.claude.com/docs/en/sandboxing) can run Bash commands inside an OS-level sandbox that restricts filesystem and network access.
-ghtkn doesn't work inside it with the default settings.
+ghtkn needs extra settings inside it with every backend, except for reading a cached token with the `text` backend or, on macOS, the `keyring` backend.
 This page describes the minimum settings ghtkn needs, per backend.
 
 > [!NOTE]
@@ -13,7 +11,7 @@ This page describes the minimum settings ghtkn needs, per backend.
 What you need depends on the backend, and the difference is large.
 The `agent` backend needs the least: the agent process runs outside the sandbox and does the network access and the file writes on the sandboxed client's behalf.
 
-### agent Backend
+## agent Backend
 
 Allow the agent socket.
 On ghtkn v0.3.4 or later, that is all you need; older versions need more when a token has to be minted (see [Older versions](#older-versions-of-ghtkn)).
@@ -39,7 +37,6 @@ ERR ghtkn failed error="query the agent status: connect to the ghtkn agent: dial
 ```
 
 Allow the path the agent actually uses (see [Socket path](../ghtkn-backend/reference.md#socket-path)); `~/` is expanded.
-If you set `GHTKN_AGENT_SOCKET` or `XDG_RUNTIME_DIR`, allow that path instead.
 
 On Linux, allow Unix sockets entirely:
 
@@ -60,7 +57,7 @@ Weigh that before turning it on. Claude Code's documentation warns that allowing
 
 The Linux seccomp filter is also optional: it ships with `@anthropic-ai/sandbox-runtime`, and the Dependencies tab of `/sandbox` shows whether it is present. Without it Unix sockets aren't blocked at all, so the agent backend works with no settings, but nothing else is blocked either.
 
-#### Why the agent backend needs nothing else
+### Why the agent backend needs nothing else
 
 `>= 0.3.4`
 
@@ -74,7 +71,7 @@ No allowed domains, no write access, and none of the settings that weaken the sa
 This assumes the agent is already running and unlocked outside the sandbox.
 `ghtkn agent unlock` needs a terminal, so run it in your own shell rather than through a coding agent.
 
-#### Older versions of ghtkn
+### Older versions of ghtkn
 
 Before v0.3.4 the client, not the agent, ran the device flow and then stored the minted token in the agent over the socket.
 There was no token refresh either, so a new token had to be minted through the device flow every 8 hours.
@@ -85,11 +82,11 @@ But minting a token from inside the sandbox reaches GitHub from the client, so i
 The simpler answer is the same as for the other backends: run `ghtkn auth` in your own terminal, and let the sandboxed commands read what it cached.
 Upgrading to v0.3.4 or later removes the question entirely.
 
-### keyring Backend
+## keyring Backend
 
 The keyring backend reaches the OS keyring in a completely different way on each platform, so what the sandbox allows differs too.
 
-#### macOS
+### macOS
 
 Reading a cached token works with no settings.
 
@@ -119,13 +116,13 @@ To let a sandboxed command store tokens, allow the keychain directory:
 
 This lets every sandboxed command modify your login keychain, not just ghtkn, so prefer running `ghtkn auth` outside the sandbox.
 
-#### Linux
+### Linux
 
 Nothing works without settings. The keyring backend talks to the Secret Service over the D-Bus session bus, which is a Unix socket, and the sandbox blocks those, so even reading a cached token fails. Allowing it means `network.allowAllUnixSockets: true`, with the caveats described in the agent backend section above.
 
 In the environments where the Linux keyring is a problem to begin with (containers, microVMs), use the `agent` or `text` backend instead.
 
-### text Backend
+## text Backend
 
 Reading a cached token works with no settings, on both macOS and Linux. The sandbox is asymmetric: writes are an allowlist that starts at the working directory and `$TMPDIR`, while reads are a denylist that starts at the whole machine. The token directory isn't on the default deny list, so it's readable.
 
@@ -147,11 +144,10 @@ Allow the directory, not the file.
 The text backend writes a token by creating a temporary file next to it and renaming it into place, so allowing only `<dir>/<client-id>` isn't enough.
 
 Allow the path the backend actually resolves (see [text Backend](../ghtkn-backend/reference.md#text-backend)).
-If you set `GHTKN_TEXT_BACKEND_DIR` or `XDG_CACHE_HOME`, allow that path instead.
 
 As with the keyring backend, writes only happen when a token is minted, so read-only use needs no settings.
 
-### Network
+## Network
 
 The `agent` backend on v0.3.4 or later needs no allowed domains, as explained above.
 
@@ -179,7 +175,7 @@ On macOS, allowing the hosts isn't enough. See below.
 Note that ghtkn working in the sandbox doesn't make `git push` or `gh` work: they reach GitHub themselves and need these hosts regardless of the backend.
 `gh` is a Go program, so it hits the same macOS problem described next.
 
-### TLS verification fails on macOS
+## TLS verification fails on macOS
 
 This section is macOS-only, and applies only when the client itself reaches GitHub, so the `agent` backend on v0.3.4 or later never hits it.
 
