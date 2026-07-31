@@ -2,6 +2,8 @@ package cli
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,12 +13,72 @@ import (
 	sdkenv "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
+	"github.com/suzuki-shunsuke/go-error-with-exit-code/ecerror"
+	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
 )
 
 const program = "ghtkn"
+
+// TestWithHelp checks that the exit code of an error survives the hint added to it.
+// The root command disables cli.HandleExitCoder, so this is the only thing applying
+// the exit codes of 'ghtkn exec' and of urfave/cli itself.
+func TestWithHelp(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name       string
+		err        error
+		wantCode   int
+		wantSilent bool
+	}{
+		{
+			name:     "an error without an exit code exits 1",
+			err:      errors.New("something failed"),
+			wantCode: 1,
+		},
+		{
+			name:     "an exit code is kept",
+			err:      ecerror.Wrap(errors.New("something failed"), 111),
+			wantCode: 111,
+		},
+		{
+			// slogerr.With collapses the chain to the innermost error holding
+			// attributes, which drops the wrapper holding the exit code. The code has
+			// to be read before that happens.
+			name:     "an exit code survives an error holding attributes",
+			err:      ecerror.Wrap(fmt.Errorf("get an access token: %w", slogerr.With(errors.New("no app"), "app_name", "foo")), 111),
+			wantCode: 111,
+		},
+		{
+			// 'ghtkn exec' propagates the exit code of the command it ran without
+			// logging a failure of ghtkn's own.
+			name:       "a silent error stays silent",
+			err:        ecerror.Wrap(urfave.ErrSilent, 3),
+			wantCode:   3,
+			wantSilent: true,
+		},
+		{
+			// cli.Exit is what an unknown command fails with.
+			name:     "an exit code raised by urfave/cli is kept",
+			err:      cli.Exit("no such command", 3),
+			wantCode: 3,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := withHelp(tt.err)
+			if code := ecerror.GetExitCode(err); code != tt.wantCode {
+				t.Errorf("the exit code is %d, want %d", code, tt.wantCode)
+			}
+			if silent := err.Error() == ""; silent != tt.wantSilent {
+				t.Errorf("the error is silent = %v, want %v: %v", silent, tt.wantSilent, err)
+			}
+		})
+	}
+}
 
 type hintDocsOnVersionCase struct {
 	name     string

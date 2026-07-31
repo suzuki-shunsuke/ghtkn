@@ -7,17 +7,17 @@ The token `ghtkn get` writes to stdout is a live secret: anyone who sees it can 
 Rules:
 
 - Never print, echo, log, or include the token in your output, a response to the user, a chat message, a commit message, or an issue/PR. This applies to `ghtkn get` and `ghtkn get -f json` alike.
-- Do not run `ghtkn get` just to display or inspect the token. There is no reason to look at its value; if you need to check things, use `ghtkn info` or `env GH_TOKEN=$(ghtkn get) gh auth status`, neither of which prints the token.
-- Consume the token without showing it. Assign it to an environment variable and pass that to the tool that needs it:
+- Do not run `ghtkn get` just to display or inspect the token. There is no reason to look at its value; if you need to check things, use `ghtkn info` or `ghtkn exec -e GH_TOKEN -- gh auth status`, neither of which prints the token.
+- Don't handle the raw token at all. Run the tool with [`ghtkn exec`](../ghtkn-exec/reference.md), which puts the token in an environment variable of the command instead of writing it to stdout:
 
   ```sh
-  GH_TOKEN=$(ghtkn get) gh issue list
+  ghtkn exec -e GH_TOKEN -- gh issue list
   ```
 
-Better still, avoid handling the raw token at all:
+There is no reason to prefer `GH_TOKEN=$(ghtkn get) gh issue list`: it exposes the token to your shell and your output for no gain.
 
 - For `git`, configure the [git credential helper](../ghtkn-git-credential-helper/reference.md) (`ghtkn git-credential`). Git then fetches a token itself for each operation, so you never run `ghtkn get` or see the token.
-- For `gh` and similar tools, use a small wrapper that sets `GH_TOKEN=$(ghtkn get)` before invoking the tool (see the ghtkn-troubleshooting skill), so the token stays in an environment variable and never reaches your output.
+- For `gh` and similar tools, wrap the tool in `ghtkn exec` (see the ghtkn-exec skill), so that every invocation gets its token the same way.
 
 If a token is exposed, revoke it immediately with `ghtkn revoke` (see the ghtkn-revoke-tokens skill).
 

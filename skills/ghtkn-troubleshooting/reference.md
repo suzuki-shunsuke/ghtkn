@@ -27,7 +27,7 @@ This output contains the access token itself, so treat it as a secret: read the 
 3. Check the access token is available.
 
 ```sh
-env GH_TOKEN=$(ghtkn get) gh auth status
+ghtkn exec -e GH_TOKEN -- gh auth status
 ```
 
 Please confirm the prefix of the token is `ghu_`.
@@ -44,12 +44,14 @@ github.com
 4. Check the access token is valid using curl.
 
 ```sh
-curl -L \
+ghtkn exec -- sh -c 'curl -L \
   -H "Accept: application/vnd.github+json" \
-  -H "Authorization: Bearer $(ghtkn get)" \
+  -H "Authorization: Bearer $GITHUB_TOKEN" \
   -H "X-GitHub-Api-Version: 2026-03-10" \
-  https://api.github.com/user
+  https://api.github.com/user'
 ```
+
+The single quotes matter: `$GITHUB_TOKEN` has to be expanded by the command, not by your shell, so the token never becomes part of the command line.
 
 5. Check the configuration file is correct.
 
@@ -68,11 +70,12 @@ command -v gh
 e.g.
 
 ```sh
-if [ -z "${GH_TOKEN:-}" ] && [ -z "${GITHUB_TOKEN:-}" ]; then
+if [ -n "${GH_TOKEN:-}" ] || [ -n "${GITHUB_TOKEN:-}" ]; then
   echo "[WARN] skip ghtkn because GH_TOKEN or GITHUB_TOKEN is set" >&2 # Add the debug log
-  GH_TOKEN="$(ghtkn get)" 
-  export GH_TOKEN
+  exec /opt/homebrew/bin/gh "$@"
 fi
+
+exec ghtkn exec -e GH_TOKEN --log-level debug -- /opt/homebrew/bin/gh "$@" # ghtkn logs which app it uses
 ```
 
 ## ghtkn returns an expired token (401)

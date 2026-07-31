@@ -82,11 +82,13 @@ ghtkn get
 
 A user access token starting with `ghu_` is outputted.
 
+Day to day you shouldn't need to look at the token at all: [`ghtkn exec`](skills/ghtkn-exec/reference.md) runs a command with the token in an environment variable, so it doesn't pass through your shell, your terminal output, or an agent's transcript. The step above is only here to show you what ghtkn issues.
+
 6. Run `gh issue create` using the access token
 
 ```sh
 REPO=suzuki-shunsuke/ghtkn # Please change this to your public repository
-env GH_TOKEN=$(ghtkn get) gh issue create -R "$REPO" --title "Hello, ghtkn" --body "This is created by ghtkn"
+ghtkn exec -e GH_TOKEN -- gh issue create -R "$REPO" --title "Hello, ghtkn" --body "This is created by ghtkn"
 ```
 
 Then it fails due to the permission error even if you have the permission.
@@ -102,6 +104,18 @@ At this time, the issue creator will be you, not the App.
 The permissions (Permissions and Repositories) of a user access token are held by both the authorized user (i.e. you) and the GitHub App.
 Therefore, as shown above, the GitHub App cannot perform operations that it is not permitted to perform, and conversely, the user cannot perform operations that they are not authorized to perform.
 
+## Running commands with an access token
+
+[`ghtkn exec`](skills/ghtkn-exec/reference.md) runs a command with the access token in its environment:
+
+```sh
+ghtkn exec -- gh pr view
+ghtkn exec -e GH_TOKEN -- gh pr view
+ghtkn exec -e PINACT_GITHUB_TOKEN:suzuki-shunsuke/read -e GH_TOKEN:suzuki-shunsuke/write -- bash foo.sh
+```
+
+The token goes to `GITHUB_TOKEN` by default, or to the variables given with `-e`, one per app. Unlike `ghtkn get`, ghtkn writes the token nowhere, so it can't land in your terminal output, a log, or a coding agent's transcript by accident. The command still receives it, so one that prints its own environment exposes it. The `--` is required: everything after it belongs to the command, flags included.
+
 ## Wrapping commands
 
 You can wrap commands using shell functions or scripts.
@@ -110,7 +124,7 @@ Shell functions:
 
 ```sh
 gh() {
-    env GH_TOKEN=$(ghtkn get) command gh "$@" # Be careful to use 'command' to avoid infinite loops
+    ghtkn exec -e GH_TOKEN -- gh "$@" # No infinite loop: ghtkn runs the gh executable, which the shell function doesn't shadow
 }
 ```
 
@@ -126,13 +140,12 @@ e.g. ~/.local/bin/gh:
 set -eu
 
 # If GH_TOKEN or GITHUB_TOKEN is set, use it.
-if [ -z "${GH_TOKEN:-}" ] && [ -z "${GITHUB_TOKEN:-}" ]; then
+if [ -n "${GH_TOKEN:-}" ] || [ -n "${GITHUB_TOKEN:-}" ]; then
   # echo "[WARN] skip ghtkn because GH_TOKEN or GITHUB_TOKEN is set" >&2
-  GH_TOKEN="$(ghtkn get)" 
-  export GH_TOKEN
+  exec /opt/homebrew/bin/gh "$@" # Specify the absolute path to avoid infinite loop
 fi
 
-exec /opt/homebrew/bin/gh "$@" # Specify the absolute path to avoid infinite loop
+exec ghtkn exec -e GH_TOKEN -- /opt/homebrew/bin/gh "$@"
 ```
 
 If the command is managed by [aqua](https://aquaproj.github.io/), `aqua exec` is useful:
@@ -162,6 +175,7 @@ gh skill install suzuki-shunsuke/ghtkn --all
 Detailed documentation is split by topic. Each topic lives in a skill directory under [`skills/`](skills) and contains an agent-facing `SKILL.md` and one or more shared reference documents (usually `reference.md`, plus further files when a topic needs them). The reference documents below are the single source of truth, shared between this README and the skills, so there's no duplicated maintenance.
 
 - [Install](skills/ghtkn-install/reference.md) - install the ghtkn CLI and verify release assets.
+- [Running Commands](skills/ghtkn-exec/reference.md) - run a command with access tokens in environment variables using `ghtkn exec`, without printing them.
 - [Git Credential Helper](skills/ghtkn-git-credential-helper/reference.md) - use ghtkn as a Git credential helper and switch apps by repository owner.
 - [Using Multiple Apps](skills/ghtkn-multiple-apps/reference.md) - configure multiple GitHub Apps and switch between them per command, env var, or directory.
 - [Token Management](skills/ghtkn-token-management/reference.md) - token regeneration, `ghtkn auth`, the automatic device flow, and clipboard.

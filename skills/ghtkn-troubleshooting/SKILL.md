@@ -7,7 +7,7 @@ Common checks when ghtkn doesn't work:
 
 - `ghtkn info [<app name>]` to check env vars and version; upgrade if not latest.
 - `ghtkn get -f json [<app name>]` to inspect the token and expiration.
-- `env GH_TOKEN=$(ghtkn get) gh auth status` and confirm the token prefix is `ghu_`.
+- `ghtkn exec -e GH_TOKEN -- gh auth status` and confirm the token prefix is `ghu_`.
 - Expired token (401): renew with `ghtkn auth`.
 - gh wrapper issues: verify `command -v gh`, that no other token is set, and add debug logging.
 
