@@ -14,7 +14,7 @@ ghtkn exec -e PINACT_GITHUB_TOKEN:suzuki-shunsuke/read -e GH_TOKEN:suzuki-shunsu
 
 ## Why not `ghtkn get`
 
-`ghtkn get` writes the token to stdout, from where it reaches terminal transcripts, logs, and chat messages. Coding agents have leaked tokens exactly that way. `ghtkn exec` never prints it: the token only exists in the environment of the command.
+`ghtkn get` writes the token to stdout, from where it reaches terminal transcripts, logs, and chat messages. Coding agents have leaked tokens exactly that way. With `ghtkn exec`, ghtkn prints it nowhere: the token only exists in the environment of the command.
 
 This prevents accidents rather than making the token secret. The command can still read the variable, `ghtkn exec -- env` prints it, and on Linux another process of the same user can read `/proc/<pid>/environ`. The exposure is the same as `GH_TOKEN=$(ghtkn get) gh ...`, minus the chance of the value landing in your output.
 

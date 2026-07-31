@@ -82,7 +82,7 @@ ghtkn get
 
 A user access token starting with `ghu_` is outputted.
 
-Day to day you shouldn't need to look at the token at all: [`ghtkn exec`](skills/ghtkn-exec/reference.md) runs a command with the token in an environment variable, so it never reaches your terminal, your shell history, or an agent's transcript. The step above is only here to show you what ghtkn issues.
+Day to day you shouldn't need to look at the token at all: [`ghtkn exec`](skills/ghtkn-exec/reference.md) runs a command with the token in an environment variable, so it doesn't pass through your shell, your terminal output, or an agent's transcript. The step above is only here to show you what ghtkn issues.
 
 6. Run `gh issue create` using the access token
 
@@ -114,7 +114,7 @@ ghtkn exec -e GH_TOKEN -- gh pr view
 ghtkn exec -e PINACT_GITHUB_TOKEN:suzuki-shunsuke/read -e GH_TOKEN:suzuki-shunsuke/write -- bash foo.sh
 ```
 
-The token goes to `GITHUB_TOKEN` by default, or to the variables given with `-e`, one per app. Unlike `ghtkn get`, it never writes the token to stdout, so the token can't end up in your terminal output, a log, or a coding agent's transcript. The `--` is required: everything after it belongs to the command, flags included.
+The token goes to `GITHUB_TOKEN` by default, or to the variables given with `-e`, one per app. Unlike `ghtkn get`, ghtkn writes the token nowhere, so it can't land in your terminal output, a log, or a coding agent's transcript by accident. The command still receives it, so one that prints its own environment exposes it. The `--` is required: everything after it belongs to the command, flags included.
 
 ## Wrapping commands
 

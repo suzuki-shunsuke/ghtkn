@@ -17,10 +17,20 @@ func signals() []os.Signal {
 	}
 }
 
-// escalates reports whether receiving sig a second time should kill the command.
-// As on Unix, os.Interrupt doesn't escalate so that a second Ctrl-C doesn't destroy
-// the work of an interactive command.
-func escalates(sig os.Signal) bool {
+// killsCommand reports whether receiving sig should kill the command rather than
+// forward it. Everything but an interrupt does, on the first occurrence.
+//
+// Windows reports CTRL_CLOSE_EVENT, CTRL_LOGOFF_EVENT and CTRL_SHUTDOWN_EVENT as
+// SIGTERM, and a process cannot decline them: the system terminates ghtkn moments
+// later. Waiting for a second occurrence to escalate on would therefore be waiting
+// for something that never comes, and ghtkn would be killed with the command still
+// running. Forwarding is no help either, because Process.Signal accepts nothing but a
+// kill here.
+//
+// os.Interrupt, which is how Ctrl-C and Ctrl-Break arrive, is excluded: the console
+// delivers those to the command itself, and killing an interactive command on the
+// first Ctrl-C would destroy work the user didn't mean to lose.
+func killsCommand(sig os.Signal, _ bool) bool {
 	return sig != os.Interrupt
 }
 

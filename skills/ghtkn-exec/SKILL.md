@@ -6,7 +6,7 @@ description: Run a command with ghtkn access tokens in environment variables usi
 > [!IMPORTANT]
 > If you are a coding agent, prefer `ghtkn exec` over `ghtkn get`. Tokens leaked by agents printing what `ghtkn get` returned are the reason this command exists.
 
-`ghtkn exec` runs a command with GitHub App User Access Tokens in its environment, so the token is never written to stdout:
+`ghtkn exec` runs a command with GitHub App User Access Tokens in its environment, so ghtkn never writes the token to stdout:
 
 ```sh
 ghtkn exec -- gh pr view

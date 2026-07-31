@@ -4,7 +4,7 @@ description: Manage the ghtkn access token lifecycle - regeneration, ghtkn auth,
 ---
 
 > [!WARNING]
-> The token `ghtkn get` outputs is a secret. Do not print, echo, log, or include it in your output, a chat message, or a commit, and do not run `ghtkn get` (including `-f json`) just to display or inspect it - a leaked token is usable until it is revoked. Don't handle the raw token at all: run the tool with [`ghtkn exec`](../ghtkn-exec/reference.md) (`ghtkn exec -e GH_TOKEN -- gh ...`), which never prints the token, or use the git credential helper (`ghtkn git-credential`) for git.
+> The token `ghtkn get` outputs is a secret. Do not print, echo, log, or include it in your output, a chat message, or a commit, and do not run `ghtkn get` (including `-f json`) just to display or inspect it - a leaked token is usable until it is revoked. Don't handle the raw token at all: run the tool with [`ghtkn exec`](../ghtkn-exec/reference.md) (`ghtkn exec -e GH_TOKEN -- gh ...`), which puts the token in the command's environment rather than printing it, or use the git credential helper (`ghtkn git-credential`) for git, which git runs and reads itself.
 
 ghtkn caches access tokens in the backend and regenerates them via Device Flow on expiry (8-hour validity). Key points:
 

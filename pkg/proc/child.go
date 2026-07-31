@@ -68,11 +68,9 @@ func (r *Runner) runChild(logger *slog.Logger, env []string, name string, args .
 	return waitExitCode(cmd.ProcessState), nil
 }
 
-// forward sends the signals ghtkn receives to the command until done is closed.
-//
-// Receiving the same signal a second time kills the command instead of forwarding it
-// again, so a command ignoring the signal doesn't leave ghtkn waiting forever. SIGINT
-// is excluded from that escalation; see escalates.
+// forward sends the signals ghtkn receives to the command until done is closed, and
+// kills the command instead when forwarding cannot end it; see killsCommand, which
+// decides that per platform.
 func forward(logger *slog.Logger, p signaler, ch <-chan os.Signal, done <-chan struct{}) {
 	// sent is read and written only by this goroutine, so it needs no lock.
 	sent := map[os.Signal]bool{}
@@ -81,10 +79,10 @@ func forward(logger *slog.Logger, p signaler, ch <-chan os.Signal, done <-chan s
 		case <-done:
 			return
 		case sig := <-ch:
-			if sent[sig] && escalates(sig) {
+			if killsCommand(sig, sent[sig]) {
 				logger.Warn("the command didn't exit, so kill it", "signal", sig.String())
-				// SIGKILL can't be ignored, so Wait returns and the exit code becomes
-				// 128 plus the signal number.
+				// A kill can't be declined, so Wait returns and the exit code becomes
+				// 128 plus the signal number where signals are reported.
 				_ = p.Kill()
 				continue
 			}

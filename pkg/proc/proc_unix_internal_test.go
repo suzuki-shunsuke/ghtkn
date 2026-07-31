@@ -30,15 +30,20 @@ func TestSignals(t *testing.T) {
 	}
 }
 
-func TestEscalates(t *testing.T) {
+func TestKillsCommand(t *testing.T) {
 	t.Parallel()
-	// Interactive commands treat Ctrl-C as "cancel the current line", so a second
-	// SIGINT must not kill them.
-	if escalates(syscall.SIGINT) {
-		t.Error("SIGINT must not escalate to a kill")
+	// A signal is forwarded before it kills anything, so that the command decides how
+	// to end.
+	if killsCommand(syscall.SIGTERM, false) {
+		t.Error("the first SIGTERM must be forwarded, not kill the command")
 	}
-	if !escalates(syscall.SIGTERM) {
-		t.Error("SIGTERM must escalate to a kill")
+	if !killsCommand(syscall.SIGTERM, true) {
+		t.Error("a second SIGTERM must kill the command that ignored the first")
+	}
+	// Interactive commands treat Ctrl-C as "cancel the current line", so no number of
+	// them may kill the command.
+	if killsCommand(syscall.SIGINT, true) {
+		t.Error("SIGINT must never kill the command")
 	}
 }
 

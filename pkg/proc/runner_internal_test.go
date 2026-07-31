@@ -31,6 +31,9 @@ const (
 	// runnerChildEnv makes the runner helper run the command as a child process
 	// rather than replacing itself with it.
 	runnerChildEnv = "GHTKN_TEST_RUNNER_CHILD"
+	// runnerPIDEnv holds the pid of the process that called Run, so that the command
+	// can report whether it is running as that same process.
+	runnerPIDEnv = "GHTKN_TEST_RUNNER_PID"
 )
 
 func TestMain(m *testing.M) {
@@ -52,7 +55,9 @@ func helperMain(mode string) int {
 		fmt.Fprintln(os.Stdout, os.Getenv(tokenEnv))
 		return 0
 	case "echo-pid":
-		fmt.Fprintln(os.Stdout, os.Getpid())
+		// The pid this command runs as, and the pid of the process that called Run.
+		// They are the same process exactly when Run replaced it with this command.
+		fmt.Fprintln(os.Stdout, os.Getpid(), os.Getenv(runnerPIDEnv))
 		return 0
 	case "runner":
 		return helperRunner()
@@ -81,7 +86,7 @@ func helperRunner() int {
 		}
 		env = append(env, e)
 	}
-	env = append(env, helperModeEnv+"="+os.Getenv(commandModeEnv))
+	env = append(env, helperModeEnv+"="+os.Getenv(commandModeEnv), runnerPIDEnv+"="+strconv.Itoa(os.Getpid()))
 	code, err := runner.Run(slog.New(slog.DiscardHandler), env, os.Getenv(runnerCommandEnv))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -230,9 +235,10 @@ func TestRunner_Run(t *testing.T) {
 // command rather than wrapping it, which is what makes the command's exit code, the
 // signals it receives and its terminal its own.
 //
-// The command reports the pid it runs as. Under execve(2) that is the pid of the
-// process that called Run, and under the child implementation it is a new one, so
-// comparing the two tells the implementations apart without knowing either pid.
+// The command reports the pid it runs as together with the pid of the process that
+// called Run. Comparing the two within one run is what makes this able to fail:
+// comparing pids across two runs could not, because separate processes never share a
+// pid whichever implementation ran them.
 func TestRunner_Run_replacesTheProcess(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
@@ -243,21 +249,21 @@ func TestRunner_Run_replacesTheProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	execed := runRunner(t, false, self, commandModeEnv+"=echo-pid")
-	child := runRunner(t, true, self, commandModeEnv+"=echo-pid")
-	execedPID := strings.TrimSpace(execed.stdout)
-	childPID := strings.TrimSpace(child.stdout)
-	if _, err := strconv.Atoi(execedPID); err != nil {
-		t.Fatalf("the command reported no pid: %q %q", execed.stdout, execed.stderr)
-	}
-	if _, err := strconv.Atoi(childPID); err != nil {
-		t.Fatalf("the command reported no pid: %q %q", child.stdout, child.stderr)
-	}
-	// The helper process is the one that called Run. Under execve(2) the command is
-	// that same process, so its pid is the lower of the two: the child implementation
-	// has to start one more process after it.
-	if execedPID == childPID {
-		t.Fatalf("both implementations reported the pid %q, so this can't tell them apart", execedPID)
+	for _, impl := range runnerImpls() {
+		t.Run(impl.name, func(t *testing.T) {
+			t.Parallel()
+			got := runRunner(t, impl.child, self, commandModeEnv+"=echo-pid")
+			commandPID, runnerPID, ok := strings.Cut(strings.TrimSpace(got.stdout), " ")
+			if !ok {
+				t.Fatalf("the command reported no pids: %q %q", got.stdout, got.stderr)
+			}
+			// The command is the process that called Run exactly when that process was
+			// replaced with it.
+			if replaced := commandPID == runnerPID; replaced == impl.child {
+				t.Errorf("the command runs as the process that called Run = %v, want %v (command %s, caller %s)",
+					replaced, !impl.child, commandPID, runnerPID)
+			}
+		})
 	}
 }
 

@@ -32,15 +32,21 @@ func signals() []os.Signal {
 	}
 }
 
-// escalates reports whether receiving sig a second time should kill the command
-// instead of forwarding the signal again.
+// killsCommand reports whether receiving sig should kill the command rather than
+// forward it. Only the second occurrence does, so that a command ignoring a signal
+// doesn't leave ghtkn waiting for it forever.
 //
-// SIGINT doesn't escalate. Interactive commands such as python, node and psql treat
+// SIGINT never kills it. Interactive commands such as python, node and psql treat
 // Ctrl-C as "cancel the current line" and keep running, so killing them on the second
-// Ctrl-C would destroy work the user didn't mean to lose. The terminal delivers
-// SIGINT to the command directly anyway, which makes forwarding it redundant.
-func escalates(sig os.Signal) bool {
-	return sig != syscall.SIGINT
+// Ctrl-C would destroy work the user didn't mean to lose.
+//
+// SIGINT is still forwarded, because ghtkn is not always signalled by a terminal:
+// 'kill -INT' aimed at ghtkn alone reaches the command only through the forwarding. A
+// terminal's Ctrl-C does reach the command on its own, since it shares ghtkn's process
+// group, so it arrives twice there. Delivering an interrupt twice is what a command
+// handling Ctrl-C already copes with, which is the cheaper of the two problems.
+func killsCommand(sig os.Signal, alreadySent bool) bool {
+	return alreadySent && sig != syscall.SIGINT
 }
 
 // forwardSignal sends sig to the command.

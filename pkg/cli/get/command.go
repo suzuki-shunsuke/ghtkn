@@ -21,10 +21,11 @@ import (
 
 const getDescription = `Output a GitHub App User Access Token to stdout.
 
-Prefer 'ghtkn exec', which runs a command with the token in its environment instead
-of printing it: 'ghtkn exec -e GH_TOKEN -- gh issue list'. For git, prefer the
-credential helper ('ghtkn git-credential'), which lets git fetch the token itself.
-Neither ever writes the token to stdout.
+Prefer 'ghtkn exec', which puts the token in the environment of a command instead of
+printing it: 'ghtkn exec -e GH_TOKEN -- gh issue list'. ghtkn then writes the token
+nowhere, though a command that prints its own environment still exposes it. For git,
+prefer the credential helper ('ghtkn git-credential'): git runs it and reads the
+credential itself, so the token never passes through your shell.
 
 The output is a secret. Do not print, echo, log, or include it in a chat message,
 a commit, or any other output, and do not run 'ghtkn get' (including -f json) just
