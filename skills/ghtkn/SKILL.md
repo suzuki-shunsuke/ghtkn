@@ -12,10 +12,17 @@ description: |
 > `ghtkn exec` (`ghtkn exec -e GH_TOKEN -- gh ...`), which never prints the token, or use
 > `ghtkn git-credential` for git.
 
-Don't answer from memory. Run `ghtkn docs list` to list the documentation, then
-`ghtkn docs show <name>` to read the relevant topics before answering questions about
-ghtkn or troubleshooting its errors. `ghtkn docs show` prints the whole topic; read it
-through before concluding.
+Don't answer from your training knowledge about ghtkn itself - its commands, flags,
+environment variables, configuration, or what its errors mean. Run `ghtkn docs list` to
+list the documentation, then `ghtkn docs show <name>` to read the relevant topics before
+answering questions about ghtkn or troubleshooting its errors. `ghtkn docs show` prints
+the whole topic; read it through before concluding. You don't need to re-read a topic you
+already read in this session.
+
+Organization-specific practice - which GitHub App to use, how a given repository switches
+apps, and so on - is outside what `ghtkn docs` covers, so answer that from the user's own
+documentation and the conversation. When the two disagree about how ghtkn itself behaves,
+`ghtkn docs` wins.
 
 If `ghtkn docs` is rejected as an unknown command, the installed ghtkn is older than v0.3.4.
 Tell the user to upgrade, and don't fall back to guessing.
