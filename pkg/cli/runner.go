@@ -7,17 +7,20 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	sdkenv "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/auth"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/exec"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/get"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/info"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/initcmd"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/revoke"
+	"github.com/suzuki-shunsuke/go-error-with-exit-code/ecerror"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
@@ -55,19 +58,45 @@ troubleshooting its errors.`,
 			initcmd.New(logger, gFlags),
 			get.New(logger, env, true, gFlags),
 			get.New(logger, env, false, gFlags),
+			exec.New(logger, env, gFlags),
 			auth.New(logger, gFlags),
 			agent.New(logger, env, gFlags),
 			revoke.New(logger, gFlags),
 			info.New(logger, env, gFlags),
 			docs.New(logger, gFlags),
 		},
+		// The default error handler, cli.HandleExitCoder, calls os.Exit from inside
+		// cmd.Run for any error carrying an exit code, which 'ghtkn exec' returns to
+		// propagate the exit code of the command it ran. That would print the error
+		// itself and skip both ghtkn's structured logging and the hint added below, so
+		// errors are handled here instead. See exitCode for what this gives up.
+		ExitErrHandler: func(context.Context, *cli.Command, error) {},
 	})
 	hintDocsOnVersion(cmd, logger, env, gFlags)
 	if err := cmd.Run(ctx, env.Args); err != nil {
-		return slogerr.With(err, "help", //nolint:wrapcheck
-			"Run `ghtkn docs list` to see documentation and `ghtkn docs show <name>` to read it; this may help resolve the error.")
+		return withHelp(err)
 	}
 	return nil
+}
+
+// withHelp adds the hint about the documentation to an error while keeping any exit
+// code it carries.
+//
+// The code has to be read before slogerr.With and attached again afterwards, because
+// slogerr.With collapses the chain to the innermost error holding attributes and
+// drops every wrapper around it, including the one holding the code. Exit codes come
+// from 'ghtkn exec', which propagates the exit code of the command it ran, and from
+// urfave/cli itself, such as the 3 an unknown command exits with; cli.HandleExitCoder
+// applied the latter until ExitErrHandler disabled it.
+func withHelp(err error) error {
+	var coder cli.ExitCoder
+	hasCode := errors.As(err, &coder)
+	err = slogerr.With(err, "help",
+		"Run `ghtkn docs list` to see documentation and `ghtkn docs show <name>` to read it; this may help resolve the error.")
+	if !hasCode {
+		return err //nolint:wrapcheck // The error is the command's own, only annotated.
+	}
+	return ecerror.Wrap(err, coder.ExitCode())
 }
 
 // hintDocsOnVersion makes `ghtkn -v`, `ghtkn --version`, and `ghtkn version` log

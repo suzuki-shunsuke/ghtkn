@@ -9,13 +9,11 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
-	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 	"github.com/urfave/cli/v3"
@@ -23,14 +21,15 @@ import (
 
 const getDescription = `Output a GitHub App User Access Token to stdout.
 
+Prefer 'ghtkn exec', which runs a command with the token in its environment instead
+of printing it: 'ghtkn exec -e GH_TOKEN -- gh issue list'. For git, prefer the
+credential helper ('ghtkn git-credential'), which lets git fetch the token itself.
+Neither ever writes the token to stdout.
+
 The output is a secret. Do not print, echo, log, or include it in a chat message,
 a commit, or any other output, and do not run 'ghtkn get' (including -f json) just
 to display or inspect the token. If you are a coding agent, this applies to your
-responses too: a leaked token can be used until it is revoked. Consume it without
-showing it: assign it to an environment variable and pass that to the tool, e.g.
-'GH_TOKEN=$(ghtkn get) gh issue list'. Better still, avoid handling the raw token
-at all - for git, use the credential helper ('ghtkn git-credential'), which lets
-git fetch the token automatically; for gh, use a wrapper that sets GH_TOKEN.
+responses too: a leaked token can be used until it is revoked.
 
 It returns the token cached in the backend (keyring, agent, or text) when one is
 available and still valid. Otherwise, if the device flow is enabled, it creates a
@@ -45,7 +44,7 @@ $ ghtkn get
 $ ghtkn get my-app
 $ ghtkn get -f json my-app
 $ ghtkn get -m 1h my-app
-$ GH_TOKEN=$(ghtkn get) gh issue list`
+$ ghtkn exec -e GH_TOKEN -- gh issue list`
 
 //nolint:gosec // This is the command's help text, not a hardcoded credential.
 const gitCredentialDescription = `Act as a Git credential helper that supplies GitHub App User Access Tokens.
@@ -156,8 +155,8 @@ func (r *runner) action(ctx context.Context, cmd *cli.Command, logger *slogutil.
 	inputGet := &ghtkn.InputGet{
 		ConfigFilePath: args.Config,
 	}
-	if err := setMinExpiration(inputGet, args.MinExpiration); err != nil {
-		return err
+	if err := flag.SetMinExpiration(inputGet, args.MinExpiration); err != nil {
+		return err //nolint:wrapcheck
 	}
 
 	input, err := get.NewInput()
@@ -202,20 +201,4 @@ func setupGet(cmd *cli.Command, args *Args, input *get.Input, inputGet *ghtkn.In
 	if cmd.IsSet("device-flow") {
 		inputGet.EnableDeviceFlow = &args.DeviceFlow
 	}
-}
-
-// setMinExpiration parses the -min-expiration flag value and sets it on inputGet.
-// When the flag is not set it leaves inputGet.MinExpiration nil, so the SDK falls
-// back to GHTKN_MIN_EXPIRATION and the config; an explicit value, including 0, takes
-// precedence over both.
-func setMinExpiration(inputGet *ghtkn.InputGet, s string) error {
-	if s == "" {
-		return nil
-	}
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		return fmt.Errorf("parse the min expiration: %w", slogerr.With(err, "min_expiration", s))
-	}
-	inputGet.MinExpiration = &d
-	return nil
 }

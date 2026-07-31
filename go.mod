@@ -8,6 +8,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
 	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.5.0
+	github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0
 	github.com/suzuki-shunsuke/go-github-device-flow v0.0.2
 	github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.2
 	github.com/suzuki-shunsuke/slog-error v0.2.2
@@ -32,7 +33,6 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/zalando/go-keyring v0.2.8 // indirect
 	golang.design/x/x11 v0.2.0 // indirect

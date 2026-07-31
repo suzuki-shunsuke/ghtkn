@@ -3,7 +3,12 @@
 package flag
 
 import (
+	"fmt"
+	"time"
+
+	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
+	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/urfave/cli/v3"
 )
 
@@ -11,6 +16,24 @@ import (
 type GlobalFlags struct {
 	LogLevel string
 	Config   string
+}
+
+// SetMinExpiration parses the -min-expiration flag value and sets it on inputGet.
+// It lives next to the flag definition because the two share the precedence the
+// comment on MinExpiration describes, and both 'get' and 'exec' accept the flag.
+// When the flag is not set it leaves inputGet.MinExpiration nil, so the SDK falls
+// back to GHTKN_MIN_EXPIRATION and the config; an explicit value, including 0, takes
+// precedence over both.
+func SetMinExpiration(inputGet *ghtkn.InputGet, s string) error {
+	if s == "" {
+		return nil
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return fmt.Errorf("parse the min expiration: %w", slogerr.With(err, "min_expiration", s))
+	}
+	inputGet.MinExpiration = &d
+	return nil
 }
 
 // LogLevel returns a flag for setting the logging level.

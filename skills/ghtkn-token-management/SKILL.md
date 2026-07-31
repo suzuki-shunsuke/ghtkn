@@ -4,10 +4,11 @@ description: Manage the ghtkn access token lifecycle - regeneration, ghtkn auth,
 ---
 
 > [!WARNING]
-> The token `ghtkn get` outputs is a secret. Do not print, echo, log, or include it in your output, a chat message, or a commit, and do not run `ghtkn get` (including `-f json`) just to display or inspect it - a leaked token is usable until it is revoked. Consume it without showing it: assign it to an environment variable (`GH_TOKEN=$(ghtkn get) gh ...`), or avoid the raw token entirely with the git credential helper (`ghtkn git-credential`) for git and a `GH_TOKEN` wrapper for gh.
+> The token `ghtkn get` outputs is a secret. Do not print, echo, log, or include it in your output, a chat message, or a commit, and do not run `ghtkn get` (including `-f json`) just to display or inspect it - a leaked token is usable until it is revoked. Don't handle the raw token at all: run the tool with [`ghtkn exec`](../ghtkn-exec/reference.md) (`ghtkn exec -e GH_TOKEN -- gh ...`), which never prints the token, or use the git credential helper (`ghtkn git-credential`) for git.
 
 ghtkn caches access tokens in the backend and regenerates them via Device Flow on expiry (8-hour validity). Key points:
 
+- `ghtkn exec` runs a command with the token in an environment variable instead of printing it. Prefer it over `ghtkn get`; see the ghtkn-exec skill.
 - `ghtkn get` returns a cached token; use `-min-expiration`/`-m` (or `GHTKN_MIN_EXPIRATION`, `min_expiration`) to force regeneration when too little validity remains.
 - `ghtkn auth` regenerates and caches the token without printing it. It normally runs the device flow, but with the agent backend and refresh enabled it silently refreshes from the stored refresh token when one is available, and runs the device flow only otherwise.
 - The automatic device flow is disabled by default (v0.3.0+); `ghtkn get` / `git-credential` fail fast instead of blocking. Run `ghtkn auth` interactively to authenticate.
