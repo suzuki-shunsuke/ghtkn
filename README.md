@@ -1,7 +1,7 @@
 # ghtkn (G-H Token)
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/suzuki-shunsuke/ghtkn)
-[Install](skills/ghtkn-install/reference.md) | [Usage](USAGE.md) | [Agent Skills](#installing-agent-skills)
+[Install](docs/install.md) | [Usage](USAGE.md) | [Agent Skills](#installing-agent-skills)
 
 **Stop risking token leaks - Use secure, short-lived GitHub tokens for local development**
 
@@ -25,13 +25,13 @@ ghtkn (pronounced `G-H Token`) generates **8-hour User Access Tokens** from GitH
 - **No secrets required** - Only needs a Client ID (which isn't secret), no Private Keys or Client Secrets
 - **User-attributed actions** - Operations are performed as you, not as an app
 - **Automatic token management** - Integrates with the backend (the default is OS keyring) for secure storage and reuse
-- [**Automatic token refresh** - Supports automatic token refresh](skills/ghtkn-refresh-token/reference.md)
+- [**Automatic token refresh** - Supports automatic token refresh](docs/refresh-token.md)
 
 ghtkn allows you to manage multiple GitHub Apps through configuration files and securely store tokens using OS keyring (Windows Credential Manager, macOS Keychain, or GNOME Keyring) or another backend.
 
 ## :rocket: Getting Started
 
-1. [Install ghtkn](skills/ghtkn-install/reference.md)
+1. [Install ghtkn](docs/install.md)
 2. [Create a GitHub App](https://github.com/settings/apps/new?url=https://github.com/suzuki-shunsuke/ghtkn&device_flow_enabled=true&webhook_active=false&public=false)
 
 - Enable Device Flow
@@ -82,7 +82,7 @@ ghtkn get
 
 A user access token starting with `ghu_` is outputted.
 
-Day to day you shouldn't need to look at the token at all: [`ghtkn exec`](skills/ghtkn-exec/reference.md) runs a command with the token in an environment variable, so it doesn't pass through your shell, your terminal output, or an agent's transcript. The step above is only here to show you what ghtkn issues.
+Day to day you shouldn't need to look at the token at all: [`ghtkn exec`](docs/exec.md) runs a command with the token in an environment variable, so it doesn't pass through your shell, your terminal output, or an agent's transcript. The step above is only here to show you what ghtkn issues.
 
 6. Run `gh issue create` using the access token
 
@@ -106,7 +106,7 @@ Therefore, as shown above, the GitHub App cannot perform operations that it is n
 
 ## Running commands with an access token
 
-[`ghtkn exec`](skills/ghtkn-exec/reference.md) runs a command with the access token in its environment:
+[`ghtkn exec`](docs/exec.md) runs a command with the access token in its environment:
 
 ```sh
 ghtkn exec -- gh pr view
@@ -164,29 +164,35 @@ It's useful to wrap `gh` using shell script as gh always requires GitHub access 
 
 ## Installing Agent Skills
 
+ghtkn ships a single skill. It holds no documentation of its own: it tells the coding agent to read the documentation embedded in the ghtkn binary with `ghtkn docs list` and `ghtkn docs show <name>`, so the agent always reads the documentation of the version it is actually running.
+
 [gh skill install](https://cli.github.com/manual/gh_skill_install):
 
 ```sh
-gh skill install suzuki-shunsuke/ghtkn --all
+gh skill install suzuki-shunsuke/ghtkn ghtkn
 ```
+
+> [!NOTE]
+> ghtkn used to ship one skill per topic (`ghtkn-backend`, `ghtkn-sandbox`, and so on). The single `ghtkn` skill replaces all of them, and installing it doesn't remove the old ones, so delete the `ghtkn-*` directories from your skills directory (`~/.claude/skills`, for instance) after upgrading. Left in place, they keep serving the documentation of whichever version you installed them from.
 
 ## Documentation and skills
 
-Detailed documentation is split by topic. Each topic lives in a skill directory under [`skills/`](skills) and contains an agent-facing `SKILL.md` and one or more shared reference documents (usually `reference.md`, plus further files when a topic needs them). The reference documents below are the single source of truth, shared between this README and the skills, so there's no duplicated maintenance.
+Detailed documentation is split by topic under [`docs/`](docs). These documents are embedded in the ghtkn binary, so `ghtkn docs list` and `ghtkn docs show <name>` serve exactly what is listed below. They are the single source of truth, shared between this README, the embedded documentation, and the skill, so there's no duplicated maintenance.
 
-- [Install](skills/ghtkn-install/reference.md) - install the ghtkn CLI and verify release assets.
-- [Running Commands](skills/ghtkn-exec/reference.md) - run a command with access tokens in environment variables using `ghtkn exec`, without printing them.
-- [Git Credential Helper](skills/ghtkn-git-credential-helper/reference.md) - use ghtkn as a Git credential helper and switch apps by repository owner.
-- [Using Multiple Apps](skills/ghtkn-multiple-apps/reference.md) - configure multiple GitHub Apps and switch between them per command, env var, or directory.
-- [Token Management](skills/ghtkn-token-management/reference.md) - token regeneration, `ghtkn auth`, the automatic device flow, and clipboard.
-- [Backend](skills/ghtkn-backend/reference.md) - where tokens are stored (`keyring`, `text`, `agent`); useful for containers and microVMs.
-- [Sandbox Configuration: Claude Code](skills/ghtkn-sandbox/claude_code.md) - settings ghtkn needs to run inside Claude Code's sandbox, per backend.
-- [Sandbox Configuration: Codex](skills/ghtkn-sandbox/codex.md) - settings ghtkn needs to run inside Codex's sandbox, per backend.
-- [Configuration](skills/ghtkn-configuration/reference.md) - configuration priority, browser open, account picker, enterprise sharing, and one-off PAT use.
-- [Design](skills/ghtkn-design/reference.md) - how ghtkn works, a comparison with other access tokens, and API rate limits.
-- [Refreshing Tokens](skills/ghtkn-refresh-token/reference.md) - automatically refresh expiring GitHub access tokens with refresh tokens.
-- [How To Revoke Access Tokens](skills/ghtkn-revoke-tokens/reference.md) - invalidate leaked or compromised tokens.
-- [Troubleshooting](skills/ghtkn-troubleshooting/reference.md) - diagnosing problems and known limitations.
+- [Install](docs/install.md) - install the ghtkn CLI and verify release assets.
+- [Running Commands](docs/exec.md) - run a command with access tokens in environment variables using `ghtkn exec`, without printing them.
+- [Git Credential Helper](docs/git-credential-helper.md) - use ghtkn as a Git credential helper and switch apps by repository owner.
+- [Using Multiple Apps](docs/multiple-apps.md) - configure multiple GitHub Apps and switch between them per command, env var, or directory.
+- [Token Management](docs/token-management.md) - token regeneration, `ghtkn auth`, the automatic device flow, and clipboard.
+- [Backend](docs/backend.md) - where tokens are stored (`keyring`, `text`, `agent`); useful for containers and microVMs.
+- [Running the agent](docs/agent-deployment.md) - run the agent as a systemd user service, from a container entrypoint, or on the host with containers as clients.
+- [Sandbox Configuration: Claude Code](docs/sandbox-claude-code.md) - settings ghtkn needs to run inside Claude Code's sandbox, per backend.
+- [Sandbox Configuration: Codex](docs/sandbox-codex.md) - settings ghtkn needs to run inside Codex's sandbox, per backend.
+- [Configuration](docs/configuration.md) - configuration priority, browser open, account picker, enterprise sharing, and one-off PAT use.
+- [Design](docs/design.md) - how ghtkn works, a comparison with other access tokens, and API rate limits.
+- [Refreshing Tokens](docs/refresh-token.md) - automatically refresh expiring GitHub access tokens with refresh tokens.
+- [How To Revoke Access Tokens](docs/revoke-tokens.md) - invalidate leaked or compromised tokens.
+- [Troubleshooting](docs/troubleshooting.md) - diagnosing problems and known limitations.
 
 ## Go SDK
 

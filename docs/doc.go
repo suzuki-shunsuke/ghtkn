@@ -1,8 +1,8 @@
-package skills
+package docs
 
 import (
 	"embed"
 )
 
-//go:embed */*.md
+//go:embed *.md
 var FS embed.FS

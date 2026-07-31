@@ -1,3 +1,3 @@
 # Install
 
-This document has moved to [skills/ghtkn-install/reference.md](skills/ghtkn-install/reference.md).
+This document has moved to [docs/install.md](docs/install.md).

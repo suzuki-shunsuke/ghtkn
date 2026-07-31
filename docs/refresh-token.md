@@ -1,3 +1,7 @@
+---
+description: Automatically refresh expiring GitHub access tokens with refresh tokens. Use when enabling refresh on the ghtkn agent, running ghtkn agent unlock --enable-refresh, setting --refresh-token-ttl, or reasoning about refresh-token removal and security.
+---
+
 # Refreshing tokens
 
 `>= 0.3.4`
@@ -27,7 +31,7 @@ Do not use this feature in an environment where intruding malware can easily esc
 A normal desktop environment usually requires a password, but development containers and VMs often run as root in the first place, or allow escalation to root via passwordless sudo.
 Do not use it in such environments.
 
-To use refresh tokens while working in such a container, run the agent on the host instead of in the container and let the container talk to it as a client, so the refresh token and the key never enter the container. See [Using the host's agent from a container](../ghtkn-backend/agent_deployment.md#using-the-hosts-agent-from-a-container).
+To use refresh tokens while working in such a container, run the agent on the host instead of in the container and let the container talk to it as a client, so the refresh token and the key never enter the container. See [Using the host's agent from a container](agent-deployment.md#using-the-hosts-agent-from-a-container).
 
 ## The window enabling refresh widens, and how to limit it
 
@@ -42,8 +46,8 @@ For an app you have not used within the last eight hours, it changes more. Witho
 The one-week default is meant to keep an app you genuinely stopped using from holding a refresh token for anything close to the six months it is otherwise valid for, not to bound the window for apps you use regularly: an app you touch every few days keeps its token indefinitely either way. So for most people the default needs no further action, and if you want a smaller window you have a few options:
 
 - Shorten `--refresh-token-ttl` below the one-week default. It leaves apps you use every few days untouched, because a token refreshed recently is not swept (see [refresh-token-ttl](#refresh-token-ttl-automatically-remove-unused-refresh-tokens-from-the-backend) below).
-- Lock the agent when you will not need a token for a while, with `ghtkn agent lock`, which closes the window entirely until you unlock again. Because it needs no passphrase, it can be wired to a screen-lock or logout hook; re-enabling refresh on the next unlock needs `ghtkn agent unlock --enable-refresh` and the passphrase (see [Lock the agent to shrink the exposure window](../ghtkn-backend/reference.md#lock-the-agent-to-shrink-the-exposure-window)).
-- If you want to close a particular app's window immediately instead of waiting for the TTL, you can revoke its token with `ghtkn revoke <app name>`, which revokes and deletes it so no refresh token is left to mint from (see [ghtkn revoke](../ghtkn-revoke-tokens/reference.md)). Since the sweep removes an unused token within the TTL anyway, this is rarely worth the trouble, and it sends you a notification email from GitHub, so treat it as an option for the extra-cautious rather than a routine step.
+- Lock the agent when you will not need a token for a while, with `ghtkn agent lock`, which closes the window entirely until you unlock again. Because it needs no passphrase, it can be wired to a screen-lock or logout hook; re-enabling refresh on the next unlock needs `ghtkn agent unlock --enable-refresh` and the passphrase (see [Lock the agent to shrink the exposure window](backend.md#lock-the-agent-to-shrink-the-exposure-window)).
+- If you want to close a particular app's window immediately instead of waiting for the TTL, you can revoke its token with `ghtkn revoke <app name>`, which revokes and deletes it so no refresh token is left to mint from (see [ghtkn revoke](revoke-tokens.md)). Since the sweep removes an unused token within the TTL anyway, this is rarely worth the trouble, and it sends you a notification email from GitHub, so treat it as an option for the extra-cautious rather than a routine step.
 
 ## Usage
 

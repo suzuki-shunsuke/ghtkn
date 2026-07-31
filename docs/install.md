@@ -1,3 +1,7 @@
+---
+description: Install the ghtkn CLI and verify downloaded release assets. Use when installing ghtkn via Homebrew, Scoop, aqua, go install, or GitHub Releases, or verifying assets with gh / slsa-verifier / Cosign.
+---
+
 # Install
 
 ghtkn is written in Go. So you only have to install a binary in your `PATH`.

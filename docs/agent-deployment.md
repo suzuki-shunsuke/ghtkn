@@ -1,7 +1,11 @@
+---
+description: Run the ghtkn agent as a long-lived process. Use to set it up as a systemd user service, to start it from a container entrypoint, or to run it on the host so that containers use it as a client, which is what refresh tokens need.
+---
+
 # Running the agent
 
 Where to run the ghtkn agent process: under a service manager, inside a container, or on the host with containers talking to it as clients.
-See [reference.md](reference.md) for what the agent backend is, how it encrypts tokens, and how to drive it with `ghtkn agent`.
+See [backend.md](backend.md) for what the agent backend is, how it encrypts tokens, and how to drive it with `ghtkn agent`.
 
 ## Running the agent as a service
 
@@ -73,7 +77,7 @@ A microVM (Firecracker, Cloud Hypervisor, Kata Containers, Lima, etc.) fits one 
 
 ## Using the host's agent from a container
 
-Giving a container its own agent puts the key file and the encrypted tokens inside the container, which rules out [refresh tokens](../ghtkn-refresh-token/reference.md): they shouldn't be enabled where malware can escalate to root without a password, and development containers usually allow exactly that.
+Giving a container its own agent puts the key file and the encrypted tokens inside the container, which rules out [refresh tokens](refresh-token.md): they shouldn't be enabled where malware can escalate to root without a password, and development containers usually allow exactly that.
 
 Running the agent on the host and letting the container talk to it as a client avoids this. Only access tokens cross the socket; the refresh token, the key file, and the passphrase stay on the host, so a container whose user can become root still can't reach them.
 

@@ -1,3 +1,7 @@
+---
+description: Configure ghtkn as a Git credential helper and switch GitHub Apps by repository owner. Use when setting up git authentication via ghtkn, handling fork repos, or troubleshooting the credential helper on macOS.
+---
+
 # Git Credential Helper
 
 `version >= v0.1.2`
@@ -20,7 +24,7 @@ git config --global credential.helper '!ghtkn git-credential'
 > > If credential.helper is configured to the empty string, this resets the helper list to empty
 > > (so you may override a helper set by a lower-priority config file by configuring the empty-string helper, followed by whatever set of helpers you would like).
 
-Beyond convenience, the credential helper is the safest way to use ghtkn with git: git invokes `ghtkn git-credential` itself for each operation, so you never run `ghtkn get` and the token never reaches your shell output or a script variable you might print. This is the recommended pattern for automation and coding agents, which have leaked tokens by printing what `ghtkn get` returned (see the ghtkn-token-management skill). Note this covers git only; `gh` does not use git credential helpers, so run it with [`ghtkn exec`](../ghtkn-exec/reference.md) (`ghtkn exec -e GH_TOKEN -- gh ...`) instead.
+Beyond convenience, the credential helper is the safest way to use ghtkn with git: git invokes `ghtkn git-credential` itself for each operation, so you never run `ghtkn get` and the token never reaches your shell output or a script variable you might print. This is the recommended pattern for automation and coding agents, which have leaked tokens by printing what `ghtkn get` returned (see [Token Management](token-management.md)). Note this covers git only; `gh` does not use git credential helpers, so run it with [`ghtkn exec`](exec.md) (`ghtkn exec -e GH_TOKEN -- gh ...`) instead.
 
 ## Switching GitHub Apps by repository owner
 
@@ -61,7 +65,7 @@ Unfortunately, `.apps[].git_owner` doesn't match when accessing fork repositorie
 For instance, when you checkout a pull request from a fork repository by [gh pr checkout](https://cli.github.com/manual/gh_pr_checkout) command and push commits to the fork repository, `.apps[].git_owner` doesn't work unless you configure fork repositories in `ghtkn.yaml`.
 
 As of ghtkn v0.2.6, the environment variable `GHTKN_GIT_APP` is useful.
-`GHTKN_GIT_APP` is similar to `GHTKN_APP` (see the multiple apps reference) but it's used for Git Credential Helper.
+`GHTKN_GIT_APP` is similar to `GHTKN_APP` (see [Using Multiple Apps](multiple-apps.md)) but it's used for Git Credential Helper.
 
 e.g.
 

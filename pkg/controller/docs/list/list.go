@@ -3,10 +3,9 @@ package list
 import (
 	"encoding/json"
 	"fmt"
-	"io/fs"
 
+	docsfs "github.com/suzuki-shunsuke/ghtkn/docs"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/docs"
-	"github.com/suzuki-shunsuke/ghtkn/skills"
 )
 
 type Results struct {
@@ -15,26 +14,23 @@ type Results struct {
 }
 
 func (c *Controller) List() error {
-	results := []*docs.Result{}
-	if err := fs.WalkDir(skills.FS, ".", func(path string, d fs.DirEntry, err error) error {
+	names, err := docs.Names(docsfs.FS)
+	if err != nil {
+		return fmt.Errorf("list documents: %w", err)
+	}
+	results := make([]*docs.Result, 0, len(names))
+	for _, name := range names {
+		b, err := docsfs.FS.ReadFile(name + docs.Ext)
 		if err != nil {
-			return err
+			return fmt.Errorf("read a document file: %w", err)
 		}
-		if d.IsDir() || d.Name() != "SKILL.md" {
-			return nil
+		result := &docs.Result{
+			Name: name,
 		}
-		b, err := skills.FS.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("read a SKILL.md file: %w", err)
-		}
-		result := &docs.Result{}
 		if err := docs.Parse(b, result); err != nil {
-			return fmt.Errorf("parse a SKILL.md frontmatter: %w", err)
+			return fmt.Errorf("parse the frontmatter of the document %s: %w", name, err)
 		}
 		results = append(results, result)
-		return nil
-	}); err != nil {
-		return fmt.Errorf("walk the skills directory: %w", err)
 	}
 	encoder := json.NewEncoder(c.stdout)
 	encoder.SetIndent("", "  ")

@@ -1,3 +1,7 @@
+---
+description: Revoke leaked or compromised ghtkn access tokens. Use during incident response, when a token leaks, or to revoke an app stored token via ghtkn revoke or the GitHub REST API.
+---
+
 # How To Revoke Access Tokens
 
 If an access token is leaked, it must be immediately invalidated.
