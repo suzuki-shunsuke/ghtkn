@@ -44,8 +44,7 @@ when the cached token expires within the given duration.
 $ ghtkn get
 $ ghtkn get my-app
 $ ghtkn get -f json my-app
-$ ghtkn get -m 1h my-app
-$ ghtkn exec -e GH_TOKEN -- gh issue list`
+$ ghtkn get -m 1h my-app`
 
 //nolint:gosec // This is the command's help text, not a hardcoded credential.
 const gitCredentialDescription = `Act as a Git credential helper that supplies GitHub App User Access Tokens.
