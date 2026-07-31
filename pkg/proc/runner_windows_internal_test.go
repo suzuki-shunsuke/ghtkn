@@ -1,6 +1,6 @@
 //go:build windows
 
-package proc_test
+package proc
 
 // helperOS runs the helper modes that only exist on some platforms. There are none on
 // Windows, which reports neither termination by a signal nor a missing execute

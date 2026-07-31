@@ -1,15 +1,12 @@
 //go:build !windows
 
-package proc_test
+package proc
 
 import (
-	"log/slog"
 	"os"
 	"syscall"
 	"testing"
 	"time"
-
-	"github.com/suzuki-shunsuke/ghtkn/pkg/proc"
 )
 
 // helperOS runs the helper modes that only exist on Unix.
@@ -27,22 +24,23 @@ func helperOS(mode string) int {
 }
 
 // TestRunner_Run_signaled checks the exit code of a command killed by a signal, which
-// ProcessState reports as -1 rather than as a code of its own.
+// a process reports as -1 rather than as a code of its own.
 func TestRunner_Run_signaled(t *testing.T) {
 	t.Parallel()
 	self, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
-	stdin, stdout, stderr := stdio(t)
-	code, err := proc.New(stdin, stdout, stderr).Run(
-		slog.New(slog.DiscardHandler), helperEnvs("self-sigterm"), self,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// The shell convention: 128 plus the number of the signal that killed it.
-	if want := 128 + int(syscall.SIGTERM); code != want {
-		t.Errorf("the exit code is %d, want %d", code, want)
+	for _, impl := range runnerImpls() {
+		t.Run(impl.name, func(t *testing.T) {
+			t.Parallel()
+			got := runRunner(t, impl.child, self, commandModeEnv+"=self-sigterm")
+			// The shell convention: 128 plus the number of the signal that killed it.
+			// Under execve(2) the shell derives it from the command itself; the child
+			// implementation has to compute it, which is what waitExitCode does.
+			if want := signalExitCodeBase + int(syscall.SIGTERM); got.code != want {
+				t.Errorf("the exit code is %d, want %d: %s", got.code, want, got.stderr)
+			}
+		})
 	}
 }

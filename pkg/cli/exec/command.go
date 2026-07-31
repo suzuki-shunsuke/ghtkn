@@ -4,9 +4,9 @@
 // transcript, a log or a chat message the way the output of 'ghtkn get' can.
 // The '--' in front of the command is required, which is what keeps the command's own
 // flags from being parsed by ghtkn.
-// Signals ghtkn receives are forwarded to the command, and the exit code is the
-// command's own, so wrapping a command with 'ghtkn exec' doesn't change how it
-// behaves.
+// Where the platform allows it, ghtkn then replaces its own process with the command
+// rather than wrapping it, so the command's exit code, signals and terminal are the
+// ones it would have if it had been run directly.
 package exec
 
 import (
@@ -48,14 +48,20 @@ The device flow behaves as in 'ghtkn get': it is disabled by default, so an app 
 no valid cached token fails instead of prompting. Enable it with -device-flow or
 GHTKN_ENABLE_DEVICE_FLOW=true, or run 'ghtkn auth' beforehand.
 
+On Linux and macOS, ghtkn doesn't stay around while the command runs: it replaces its
+own process with the command, which therefore keeps ghtkn's process id, process group
+and terminal. Signals, job control and 'wait' behave as if the command had been run
+directly, because it is the process you started. Windows has no such call, so there
+the command runs as a child, the signals ghtkn receives are forwarded to it, and the
+same signal twice kills it (except Ctrl-C, so that a second one doesn't kill an
+interactive command).
+
 The exit code is the command's exit code, or 128 plus the signal number when it is
 killed by a signal. 127 means the command was not found and 126 that it could not be
 executed. If an access token can't be created or read, the command is not run and
 ghtkn exits 111; with -continue-on-error it is run anyway, the environment variables
 whose tokens were acquired are still set, and the others keep the values inherited
-from ghtkn's environment. SIGINT, SIGTERM, SIGHUP, SIGQUIT, SIGUSR1 and SIGUSR2 are
-forwarded to the command; receiving the same signal twice kills it, except for SIGINT
-so that a second Ctrl-C doesn't kill an interactive command.
+from ghtkn's environment.
 
 $ ghtkn exec -- gh pr view
 $ ghtkn exec -e GH_TOKEN -- gh pr view

@@ -77,17 +77,25 @@ With `-continue-on-error` the command runs anyway and a warning is logged. The e
 
 Nothing distinguishes a `111`, `126` or `127` produced by ghtkn from the same code returned by the command itself. The codes follow the shell's convention so that the usual scripts around them keep working.
 
-## Signals
+## Signals and the process
 
-The signals ghtkn receives are forwarded to the command as they are, so putting `ghtkn exec` in front of a command doesn't change how it is terminated. SIGINT, SIGTERM, SIGHUP, SIGQUIT, SIGUSR1 and SIGUSR2 are forwarded; SIGTSTP, SIGCONT and SIGWINCH keep their default behavior, which is what they need since the command runs in ghtkn's process group and the terminal delivers them to it directly. Ctrl-C and Ctrl-Z therefore work as usual.
+On Linux and macOS, ghtkn does not stay around while the command runs. Once the tokens are in place it replaces its own process with the command through `execve(2)`, so there is no wrapper process at all:
 
-Receiving the same signal a second time kills the command instead of forwarding the signal again, so a command ignoring SIGTERM doesn't leave ghtkn waiting forever. SIGINT is the exception: interactive commands such as `python`, `node` and `psql` treat Ctrl-C as "cancel the current line" and keep running, so a second Ctrl-C is forwarded like the first.
+```console
+$ ghtkn exec -- sleep 30 &
+$ ps -o comm= -p $!
+sleep
+```
+
+The command therefore keeps ghtkn's process id, process group, session and terminal. Its exit code, the signals it receives and its job control are the ones it would have if you had run it directly, because it *is* the process you started. Nothing has to be forwarded or translated: Ctrl-C, Ctrl-Z, `kill`, `wait` and `$!` all behave as usual, and no wrapper can be left holding a command that ignores a signal.
+
+Windows has no `execve(2)`, so there the command runs as a child of ghtkn and ghtkn waits for it. The signals ghtkn receives are forwarded to the command so that it is terminated the way it would be otherwise, and receiving the same signal a second time kills the command rather than leaving ghtkn waiting for one that ignores it. Ctrl-C is excluded from that escalation, since interactive commands such as `python` and `node` treat it as "cancel the current line" and keep running.
 
 ## Windows
 
-Three things differ on Windows, because the operating system does:
+Beyond running the command as a child rather than replacing ghtkn with it, three things differ on Windows, because the operating system does:
 
-- Signals aren't forwarded. The console delivers Ctrl-C and Ctrl-Break to the command itself, and `os.Process.Signal` accepts nothing but a kill there. The escalation doesn't apply either, because Ctrl-C is excluded from it and Windows delivers nothing else to ghtkn, so a command that ignores Ctrl-C has to be killed by other means.
+- Signals aren't really forwarded. The console delivers Ctrl-C and Ctrl-Break to the command itself, and `os.Process.Signal` accepts nothing but a kill there. The escalation doesn't apply either, because Ctrl-C is excluded from it and Windows delivers nothing else to ghtkn, so a command that ignores Ctrl-C has to be killed by other means.
 - A command killed that way doesn't report a signal, so there is no 128 + signal number; the exit code Windows reports is used as is.
 - There is no execute permission bit, so 126 doesn't occur.
 
