@@ -41,8 +41,8 @@ ghtkn selects automatically, the same way 'ghtkn get' does, and
 tools their own token. A token is created or read once per app, and an environment
 variable inherited from ghtkn's environment is replaced rather than duplicated.
 Everything else is inherited unchanged: the rest of the environment, the working
-directory, and stdin, stdout and stderr. ghtkn's own logs go to stderr, so they
-don't pollute the command's stdout.
+directory, and stdin, stdout and stderr. Nothing ghtkn writes goes to stdout, so
+the command's stdout carries the command's output alone.
 
 The device flow behaves as in 'ghtkn get': it is disabled by default, so an app with
 no valid cached token fails instead of prompting. Enable it with -device-flow or

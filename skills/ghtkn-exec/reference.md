@@ -50,9 +50,7 @@ Without `-e`, the access token of the app ghtkn selects automatically is set to 
 
 An access token is created or read once per app, however many environment variables are bound to it, so several `-e` of one app never run the device flow twice. Tokens are acquired one at a time, in the order the `-e` were given.
 
-An environment variable inherited from ghtkn's own environment is replaced rather than duplicated. Everything else is inherited unchanged: the rest of the environment, the working directory, and stdin, stdout and stderr. ghtkn's own logs go to stderr, so they don't pollute the command's stdout.
-
-One thing can still write to stdout before the command starts: when the device flow opens a browser, the SDK runs the browser command with ghtkn's stdout attached, so whatever that command prints goes there. It only happens with `-device-flow`, and running `ghtkn auth` beforehand avoids it entirely.
+An environment variable inherited from ghtkn's own environment is replaced rather than duplicated. Everything else is inherited unchanged: the rest of the environment, the working directory, and stdin, stdout and stderr. Nothing ghtkn does writes to stdout, not even while running the device flow, so the command's stdout carries the command's output alone.
 
 ## The device flow
 
