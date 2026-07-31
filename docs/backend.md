@@ -1,3 +1,7 @@
+---
+description: Choose and configure where ghtkn stores access tokens (keyring, text, agent). Use when the OS keyring is unavailable (containers, microVMs), when setting up the ghtkn agent backend, or to look up where the socket, the tokens, and the encryption key are stored.
+---
+
 # Backend
 
 By default ghtkn stores access tokens in the OS keyring.
@@ -31,10 +35,10 @@ $ ghtkn get
 The default is the OS keyring, and where it is available it stays a secure choice that needs no setup, so leaving the backend alone is perfectly reasonable.
 
 Since v0.3.4, though, the `agent` backend is no longer just a workaround for environments without a keyring.
-Only the agent backend supports [refresh tokens](../ghtkn-refresh-token/reference.md), which spare you the device flow every eight hours, and for security reasons there is no plan to support them on the other backends.
+Only the agent backend supports [refresh tokens](refresh-token.md), which spare you the device flow every eight hours, and for security reasons there is no plan to support them on the other backends.
 So the agent backend is worth considering on desktop environments too, and it may become the mainstream choice going forward.
 It does take some effort in exchange: you need to keep the agent running and manage a passphrase.
-Note also that refresh tokens are supported only on macOS and Linux, and shouldn't be enabled where malware can easily escalate to root; see the refresh-token document for the caveats and the tradeoff involved.
+Note also that refresh tokens are supported only on macOS and Linux, and shouldn't be enabled where malware can easily escalate to root; see [Refreshing tokens](refresh-token.md) for the caveats and the tradeoff involved.
 
 In environments where the OS keyring is unavailable and you want to prioritize security, the `agent` backend, which encrypts access tokens with AES-256-GCM, is a good choice.
 If you prefer simplicity over encryption at rest and don't need refresh tokens, the `text` backend, which needs neither an agent nor a passphrase, is a good choice.
@@ -168,7 +172,7 @@ An agent version older than the ghtkn version means the agent is still running t
 ### Where to run the agent
 
 `ghtkn agent start &` runs the agent for the current shell session, which is enough while you are trying it out.
-For a long-lived agent, read [agent_deployment.md](agent_deployment.md): it covers running the agent as a systemd user service, starting it from a container's entrypoint, and running it on the host so that containers use it as a client instead of holding their own key and tokens.
+For a long-lived agent, read [agent-deployment.md](agent-deployment.md): it covers running the agent as a systemd user service, starting it from a container's entrypoint, and running it on the host so that containers use it as a client instead of holding their own key and tokens.
 
 ### Socket path
 

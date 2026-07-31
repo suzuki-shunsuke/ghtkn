@@ -1,3 +1,7 @@
+---
+description: Run a command with ghtkn access tokens in environment variables using ghtkn exec. Use to keep tokens out of your output instead of ghtkn get, to give one command tokens of several apps, or to understand its exit codes and signal handling.
+---
+
 # Running Commands with `ghtkn exec`
 
 `ghtkn exec` runs an external command with GitHub App User Access Tokens in its environment.
@@ -18,7 +22,7 @@ ghtkn exec -e PINACT_GITHUB_TOKEN:suzuki-shunsuke/read -e GH_TOKEN:suzuki-shunsu
 
 This prevents accidents rather than making the token secret. The command can still read the variable, `ghtkn exec -- env` prints it, and on Linux another process of the same user can read `/proc/<pid>/environ`. The exposure is the same as `GH_TOKEN=$(ghtkn get) gh ...`, minus the chance of the value landing in your output.
 
-For git there is something better still: the [Git credential helper](../ghtkn-git-credential-helper/reference.md) lets git ask ghtkn for the token itself, so no token passes through your shell at all.
+For git there is something better still: the [Git credential helper](git-credential-helper.md) lets git ask ghtkn for the token itself, so no token passes through your shell at all.
 
 ## `--` is required
 
@@ -37,7 +41,7 @@ ghtkn exec -- git log -- README.md
 
 ## Choosing environment variables and apps
 
-Without `-e`, the access token of the app ghtkn selects automatically is set to `GITHUB_TOKEN`. App selection follows the same rules as `ghtkn get` and `ghtkn auth`: the `GHTKN_APP` environment variable, otherwise the first app in the configuration file. See [Using Multiple Apps](../ghtkn-multiple-apps/reference.md).
+Without `-e`, the access token of the app ghtkn selects automatically is set to `GITHUB_TOKEN`. App selection follows the same rules as `ghtkn get` and `ghtkn auth`: the `GHTKN_APP` environment variable, otherwise the first app in the configuration file. See [Using Multiple Apps](multiple-apps.md).
 
 `-e` replaces that default entirely, so `GITHUB_TOKEN` is no longer set once any `-e` is given:
 

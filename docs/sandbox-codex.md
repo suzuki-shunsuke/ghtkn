@@ -1,3 +1,7 @@
+---
+description: Configure the Codex sandbox to run ghtkn, per backend. Use when ghtkn fails inside the Codex sandbox, for instance the agent socket cannot be reached or a token cannot be stored, or when a project-scoped .codex/config.toml seems to be ignored.
+---
+
 # Codex Sandbox Configuration
 
 [Codex](https://developers.openai.com/codex/security) runs commands inside an OS-level sandbox that restricts filesystem and network access.
@@ -42,7 +46,7 @@ enabled = true
 # "api.github.com" = "allow" # For the GitHub API
 ```
 
-Allow the path the agent actually uses (see [Socket path](../ghtkn-backend/reference.md#socket-path)).
+Allow the path the agent actually uses (see [Socket path](backend.md#socket-path)).
 
 Use an absolute path.
 Unlike `filesystem` entries, `~` is not expanded here, and a `~` or relative entry fails at startup rather than being ignored:
@@ -128,5 +132,5 @@ description = "Workspace profile plus ghtkn text backend access."
 # "api.github.com" = "allow" # To allow revoke, and for whatever consumes the token
 ```
 
-Allow the path the backend actually resolves (see [text Backend](../ghtkn-backend/reference.md#text-backend)).
+Allow the path the backend actually resolves (see [text Backend](backend.md#text-backend)).
 Allow the directory, not the file: the text backend writes a token by creating a temporary file next to it and renaming it into place.

@@ -1,3 +1,7 @@
+---
+description: Configure Claude Code sandbox to run ghtkn, per backend. Use when ghtkn fails inside Claude Code sandbox, for instance the agent socket is not permitted, a token cannot be stored, or TLS fails with OSStatus -26276.
+---
+
 # Claude Code Sandbox Configuration
 
 [Claude Code](https://code.claude.com/docs/en/sandboxing) can run Bash commands inside an OS-level sandbox that restricts filesystem and network access.
@@ -36,7 +40,7 @@ $ ghtkn agent status
 ERR ghtkn failed error="query the agent status: connect to the ghtkn agent: dial unix /Users/foo/.cache/ghtkn/agent.sock: connect: operation not permitted"
 ```
 
-Allow the path the agent actually uses (see [Socket path](../ghtkn-backend/reference.md#socket-path)); `~/` is expanded.
+Allow the path the agent actually uses (see [Socket path](backend.md#socket-path)); `~/` is expanded.
 
 On Linux, allow Unix sockets entirely:
 
@@ -143,7 +147,7 @@ Writing needs the token directory:
 Allow the directory, not the file.
 The text backend writes a token by creating a temporary file next to it and renaming it into place, so allowing only `<dir>/<client-id>` isn't enough.
 
-Allow the path the backend actually resolves (see [text Backend](../ghtkn-backend/reference.md#text-backend)).
+Allow the path the backend actually resolves (see [text Backend](backend.md#text-backend)).
 
 As with the keyring backend, writes only happen when a token is minted, so read-only use needs no settings.
 

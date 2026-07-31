@@ -1,3 +1,7 @@
+---
+description: Configure and switch between multiple GitHub Apps in ghtkn. Use when setting up per-organization apps, selecting an app by argument or GHTKN_APP, or switching apps per directory with direnv.
+---
+
 # Using Multiple Apps
 
 You can configure multiple GitHub Apps in the `apps` section of the configuration file and create and use different Apps for each Organization or User.

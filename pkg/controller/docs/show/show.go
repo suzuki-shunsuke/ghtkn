@@ -1,36 +1,32 @@
 package show
 
-// ghtkn docs show ghtkn-backend
-// ghtkn-backend/
-//   SKILL.md
-//   reference.md
+// ghtkn docs show backend
+// docs/
+//   backend.md
 
 import (
 	"fmt"
-	"io/fs"
 	"strings"
 
-	"github.com/suzuki-shunsuke/ghtkn/skills"
+	docsfs "github.com/suzuki-shunsuke/ghtkn/docs"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/docs"
 )
 
 func (c *Controller) Show(docName string) error {
-	contents := []string{}
-	if err := fs.WalkDir(skills.FS, docName, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-		b, err := skills.FS.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("read a document file: %w", err)
-		}
-		contents = append(contents, path+"\n\n"+string(b))
-		return nil
-	}); err != nil {
-		return fmt.Errorf("walk the skills directory: %w", err)
+	b, err := docsfs.FS.ReadFile(docName + docs.Ext)
+	if err != nil {
+		return notFoundError(docName)
 	}
-	fmt.Fprintln(c.stdout, strings.Join(contents, "\n=====\n"))
+	fmt.Fprintln(c.stdout, string(b))
 	return nil
+}
+
+// notFoundError tells which documents are available, so that a coding agent that
+// guessed a wrong name can recover without running `ghtkn docs list` again.
+func notFoundError(docName string) error {
+	names, err := docs.Names(docsfs.FS)
+	if err != nil {
+		return fmt.Errorf("the document %s isn't found: %w", docName, err)
+	}
+	return fmt.Errorf("the document %s isn't found. Available documents: %s", docName, strings.Join(names, ", "))
 }

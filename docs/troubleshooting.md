@@ -1,7 +1,11 @@
+---
+description: Diagnose ghtkn problems and known limitations. Use when ghtkn or the gh wrapper misbehaves, a token is expired (401), the device flow code is not shown, or hitting Packages API / cross-user repo limits.
+---
+
 # Troubleshooting
 
 > [!WARNING]
-> The token `ghtkn get` outputs is a live secret. Never print, echo, log, or include it in your output, a chat message, a commit, or an issue/PR, and don't run `ghtkn get` (including `-f json`) just to display or inspect it. Diagnosing a problem is not a reason to reveal the token: when you share the output of the commands below, redact it. See [Do not leak the access token](../ghtkn-token-management/reference.md#do-not-leak-the-access-token).
+> The token `ghtkn get` outputs is a live secret. Never print, echo, log, or include it in your output, a chat message, a commit, or an issue/PR, and don't run `ghtkn get` (including `-f json`) just to display or inspect it. Diagnosing a problem is not a reason to reveal the token: when you share the output of the commands below, redact it. See [Do not leak the access token](token-management.md#do-not-leak-the-access-token).
 
 ## ghtkn doesn't work well
 

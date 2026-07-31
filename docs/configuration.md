@@ -1,3 +1,7 @@
+---
+description: Configure ghtkn via config file, environment variables, and CLI args. Use for configuration priority, disabling browser open, the GitHub account picker, enterprise GitHub App sharing, or GHTKN_GITHUB_TOKEN.
+---
+
 # Configuration
 
 Some settings can be configured via multiple sources.
@@ -59,4 +63,4 @@ From a company's perspective, this can prevent the leakage of developers' PATs o
 ## Using personal access token for one-off operations
 
 If the `GHTKN_GITHUB_TOKEN` environment variable is set, `ghtkn` will use it as the GitHub token.
-This is useful when a personal access token is required due to the limitations of user access tokens (see the troubleshooting reference).
+This is useful when a personal access token is required due to the limitations of user access tokens (see [Troubleshooting](troubleshooting.md)).

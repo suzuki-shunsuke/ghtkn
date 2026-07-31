@@ -1,3 +1,7 @@
+---
+description: Manage the ghtkn access token lifecycle - regeneration, ghtkn auth, the automatic device flow, and clipboard. Use when tokens expire, configuring -min-expiration, authenticating, or copying the one-time code. The token ghtkn get outputs is a secret; never print or log it.
+---
+
 # Token Management
 
 ## Do not leak the access token
@@ -8,7 +12,7 @@ Rules:
 
 - Never print, echo, log, or include the token in your output, a response to the user, a chat message, a commit message, or an issue/PR. This applies to `ghtkn get` and `ghtkn get -f json` alike.
 - Do not run `ghtkn get` just to display or inspect the token. There is no reason to look at its value; if you need to check things, use `ghtkn info` or `ghtkn exec -e GH_TOKEN -- gh auth status`, neither of which prints the token.
-- Don't handle the raw token at all. Run the tool with [`ghtkn exec`](../ghtkn-exec/reference.md), which puts the token in an environment variable of the command instead of writing it to stdout:
+- Don't handle the raw token at all. Run the tool with [`ghtkn exec`](exec.md), which puts the token in an environment variable of the command instead of writing it to stdout:
 
   ```sh
   ghtkn exec -e GH_TOKEN -- gh issue list
@@ -16,16 +20,16 @@ Rules:
 
 There is no reason to prefer `GH_TOKEN=$(ghtkn get) gh issue list`: it exposes the token to your shell and your output for no gain.
 
-- For `git`, configure the [git credential helper](../ghtkn-git-credential-helper/reference.md) (`ghtkn git-credential`). Git then fetches a token itself for each operation, so you never run `ghtkn get` or see the token.
-- For `gh` and similar tools, wrap the tool in `ghtkn exec` (see the ghtkn-exec skill), so that every invocation gets its token the same way.
+- For `git`, configure the [git credential helper](git-credential-helper.md) (`ghtkn git-credential`). Git then fetches a token itself for each operation, so you never run `ghtkn get` or see the token.
+- For `gh` and similar tools, wrap the tool in `ghtkn exec` (see [Running Commands](exec.md)), so that every invocation gets its token the same way.
 
-If a token is exposed, revoke it immediately with `ghtkn revoke` (see the ghtkn-revoke-tokens skill).
+If a token is exposed, revoke it immediately with `ghtkn revoke` (see [How To Revoke Access Tokens](revoke-tokens.md)).
 
 ## Access Token Regeneration
 
 ghtkn stores generated access tokens and their expiration dates in the backend.
 `ghtkn get` retrieves these, and if the expiration has passed, regenerates the access token through Device Flow.
-(With the agent backend and refresh enabled, an expired token is instead refreshed silently from the stored refresh token when a usable one exists, and Device Flow runs only otherwise. See the ghtkn-refresh-token skill.)
+(With the agent backend and refresh enabled, an expired token is instead refreshed silently from the stored refresh token when a usable one exists, and Device Flow runs only otherwise. See [Refreshing tokens](refresh-token.md).)
 The access token validity period is 8 hours.
 
 By default, if the access token hasn't expired, it returns it, but this may result in a short-lived access token being returned.
