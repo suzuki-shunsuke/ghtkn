@@ -15,7 +15,7 @@ USAGE:
    ghtkn [global options] [command [command options]]
 
 VERSION:
-   0.3.4
+   0.3.5
 
 DESCRIPTION:
    Create GitHub App User Access Tokens for secure local development.
@@ -36,6 +36,7 @@ COMMANDS:
    init            Create ghtkn.yaml if it doesn't exist
    git-credential  Git Credential Helper
    get             Output a GitHub App User Access Token to stdout
+   exec            Run a command with access tokens in environment variables
    auth            Authenticate to GitHub and cache an access token without outputting it
    agent           Manage the ghtkn agent that caches access tokens and serves them over a Unix socket
    revoke          Revoke GitHub App User Access Tokens
@@ -99,8 +100,8 @@ DESCRIPTION:
    Git invokes this command following its credential helper protocol. Only the 'get'
    operation is handled; it outputs a token for the requested host in Git's credential
    format so that Git pushes and pulls authenticate with a ghtkn token automatically.
-   The app is selected by apps[].git_owner (with credential.useHttpPath true) or by
-   GHTKN_GIT_APP.
+   The app is selected by apps[].git_owner or apps[].git_owners (with
+   credential.useHttpPath true) or by GHTKN_GIT_APP.
 
    Configure it in Git (an empty helper first disables other helpers):
 
@@ -131,14 +132,16 @@ USAGE:
 DESCRIPTION:
    Output a GitHub App User Access Token to stdout.
 
+   Prefer 'ghtkn exec', which puts the token in the environment of a command instead of
+   printing it: 'ghtkn exec -e GH_TOKEN -- gh issue list'. ghtkn then writes the token
+   nowhere, though a command that prints its own environment still exposes it. For git,
+   prefer the credential helper ('ghtkn git-credential'): git runs it and reads the
+   credential itself, so the token never passes through your shell.
+
    The output is a secret. Do not print, echo, log, or include it in a chat message,
    a commit, or any other output, and do not run 'ghtkn get' (including -f json) just
    to display or inspect the token. If you are a coding agent, this applies to your
-   responses too: a leaked token can be used until it is revoked. Consume it without
-   showing it: assign it to an environment variable and pass that to the tool, e.g.
-   'GH_TOKEN=$(ghtkn get) gh issue list'. Better still, avoid handling the raw token
-   at all - for git, use the credential helper ('ghtkn git-credential'), which lets
-   git fetch the token automatically; for gh, use a wrapper that sets GH_TOKEN.
+   responses too: a leaked token can be used until it is revoked.
 
    It returns the token cached in the backend (keyring, agent, or text) when one is
    available and still valid. Otherwise, if the device flow is enabled, it creates a
@@ -153,7 +156,6 @@ DESCRIPTION:
    $ ghtkn get my-app
    $ ghtkn get -f json my-app
    $ ghtkn get -m 1h my-app
-   $ GH_TOKEN=$(ghtkn get) gh issue list
 
 OPTIONS:
    --log-level string                  Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
@@ -162,6 +164,77 @@ OPTIONS:
    --min-expiration string, -m string  minimum expiration duration (e.g. 1h, 30m, 30s)
    --device-flow, -d                   Allow the interactive device flow to create a new access token
    --help, -h                          show help
+
+GLOBAL OPTIONS:
+   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
+   --config string, -c string  configuration file path [$GHTKN_CONFIG]
+```
+
+## ghtkn exec
+
+```console
+$ ghtkn exec --help
+NAME:
+   ghtkn exec - Run a command with access tokens in environment variables
+
+USAGE:
+   ghtkn exec [options] -- <command> [<args>...]
+
+DESCRIPTION:
+   Run a command with GitHub App User Access Tokens in its environment.
+
+   Unlike 'ghtkn get', the token is never written to stdout, so it can't end up in a
+   terminal transcript, a log, or a chat message. If you are a coding agent, prefer this
+   command over 'ghtkn get': tokens leaked by agents printing what 'ghtkn get' returned
+   are the reason it exists. The token is still an environment variable of the command,
+   though, so a command that prints its environment still exposes it.
+
+   The '--' in front of the command is required. Everything after it is the command and
+   its arguments, so the command's own flags are passed through instead of being parsed
+   by ghtkn.
+
+   By default the token is set to GITHUB_TOKEN. -e replaces that default entirely, so
+   GITHUB_TOKEN is not set implicitly once -e is given. '-e <env name>' uses the app
+   ghtkn selects automatically, the same way 'ghtkn get' does, and
+   '-e <env name>:<app name>' uses the given app. -e can be repeated to give several
+   tools their own token. A token is created or read once per app, and an environment
+   variable inherited from ghtkn's environment is replaced rather than duplicated.
+   Everything else is inherited unchanged: the rest of the environment, the working
+   directory, and stdin, stdout and stderr. Nothing ghtkn writes goes to stdout, so
+   the command's stdout carries the command's output alone.
+
+   The device flow behaves as in 'ghtkn get': it is disabled by default, so an app with
+   no valid cached token fails instead of prompting. Enable it with -device-flow or
+   GHTKN_ENABLE_DEVICE_FLOW=true, or run 'ghtkn auth' beforehand.
+
+   On Linux and macOS, ghtkn doesn't stay around while the command runs: it replaces its
+   own process with the command, which therefore keeps ghtkn's process id, process group
+   and terminal. Signals, job control and 'wait' behave as if the command had been run
+   directly, because it is the process you started. Windows has no such call, so there
+   the command runs as a child, the signals ghtkn receives are forwarded to it, and the
+   same signal twice kills it (except Ctrl-C, so that a second one doesn't kill an
+   interactive command).
+
+   The exit code is the command's exit code, or 128 plus the signal number when it is
+   killed by a signal. 127 means the command was not found and 126 that it could not be
+   executed. If an access token can't be created or read, the command is not run and
+   ghtkn exits 111; with -continue-on-error it is run anyway, the environment variables
+   whose tokens were acquired are still set, and the others keep the values inherited
+   from ghtkn's environment.
+
+   $ ghtkn exec -- gh pr view
+   $ ghtkn exec -e GH_TOKEN -- gh pr view
+   $ ghtkn exec -e PINACT_GITHUB_TOKEN:suzuki-shunsuke/read -e GH_TOKEN:suzuki-shunsuke/write -- bash foo.sh
+   $ ghtkn exec -m 1h -- terraform plan
+
+OPTIONS:
+   --log-level string                                   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
+   --config string, -c string                           configuration file path [$GHTKN_CONFIG]
+   --min-expiration string, -m string                   minimum expiration duration (e.g. 1h, 30m, 30s)
+   --device-flow, -d                                    Allow the interactive device flow to create a new access token
+   --env string, -e string [ --env string, -e string ]  environment variable set to an access token: <env name>[:<app name>]. Repeatable
+   --continue-on-error                                  Run the command even if an access token can't be created or read
+   --help, -h                                           show help
 
 GLOBAL OPTIONS:
    --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
