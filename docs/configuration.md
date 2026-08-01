@@ -60,6 +60,17 @@ Therefore, the risk of sharing within a limited internal space is considered to 
 
 From a company's perspective, this can prevent the leakage of developers' PATs or GitHub CLI OAuth App access tokens that have access to the company's Organization. Even if a Client ID is leaked outside the company, it doesn't provide direct access to the company's Organization, and even if an access token is leaked, the risk can be minimized due to its short validity period (8 hours).
 
+A shared App owned by an enterprise is often installed on several Organizations. One app entry covers all of them: list the Organizations in `.apps[].git_owners` so the [Git Credential Helper](git-credential-helper.md) picks that app for each of them.
+
+```yaml
+apps:
+  - name: my-company
+    client_id: xxx
+    git_owners:
+      - my-company
+      - my-company-sandbox
+```
+
 ## Using personal access token for one-off operations
 
 If the `GHTKN_GITHUB_TOKEN` environment variable is set, `ghtkn` will use it as the GitHub token.

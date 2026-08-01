@@ -52,8 +52,8 @@ const gitCredentialDescription = `Act as a Git credential helper that supplies G
 Git invokes this command following its credential helper protocol. Only the 'get'
 operation is handled; it outputs a token for the requested host in Git's credential
 format so that Git pushes and pulls authenticate with a ghtkn token automatically.
-The app is selected by apps[].git_owner (with credential.useHttpPath true) or by
-GHTKN_GIT_APP.
+The app is selected by apps[].git_owner or apps[].git_owners (with
+credential.useHttpPath true) or by GHTKN_GIT_APP.
 
 Configure it in Git (an empty helper first disables other helpers):
 

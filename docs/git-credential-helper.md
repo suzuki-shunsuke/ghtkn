@@ -30,7 +30,7 @@ Beyond convenience, the credential helper is the safest way to use ghtkn with gi
 
 If you want to switch GitHub Apps by repository owner,
 
-1. Set `.apps[].git_owner` in a configuration file
+1. Set `.apps[].git_owner` or `.apps[].git_owners` in a configuration file
 1. Configure Git `git config credential.useHttpPath true`
 
 ```sh
@@ -44,10 +44,23 @@ apps:
     git_owner: suzuki-shunsuke # Using this app if the repository owner is suzuki-shunsuke
 ```
 
+One app can also cover several repository owners. This is what you want for a GitHub App owned by an enterprise and installed on several organizations: `client_id` must be unique across apps, so the app can't be repeated once per owner. List the owners in `git_owners` instead:
+
+```yaml
+apps:
+  - name: my-company
+    client_id: xxx
+    git_owners: # Using this app if the repository owner is one of these
+      - my-company
+      - my-company-sandbox
+```
+
+`git_owner` and `git_owners` are mutually exclusive; set one or the other in an app.
+
 > [!WARNING]
-> `git_owner` must be unique.
-> Please set `git_owner` to only one app per repository owner (organization and user).
-> For instance, if you use a read-only app and a write app for a repository owner and you want to push commits, you should set `git_owner` to the write app.
+> A repository owner must be unique across apps, whether it's set in `git_owner` or in `git_owners`.
+> Please assign a repository owner (organization and user) to only one app.
+> For instance, if you use a read-only app and a write app for a repository owner and you want to push commits, you should assign the owner to the write app.
 >
 > ```yaml
 > apps:
@@ -61,8 +74,8 @@ apps:
 
 ### Switching GitHub Apps to access fork repositories
 
-Unfortunately, `.apps[].git_owner` doesn't match when accessing fork repositories.
-For instance, when you checkout a pull request from a fork repository by [gh pr checkout](https://cli.github.com/manual/gh_pr_checkout) command and push commits to the fork repository, `.apps[].git_owner` doesn't work unless you configure fork repositories in `ghtkn.yaml`.
+Unfortunately, `.apps[].git_owner` and `.apps[].git_owners` don't match when accessing fork repositories.
+For instance, when you checkout a pull request from a fork repository by [gh pr checkout](https://cli.github.com/manual/gh_pr_checkout) command and push commits to the fork repository, they don't work unless you configure fork repositories in `ghtkn.yaml`.
 
 As of ghtkn v0.2.6, the environment variable `GHTKN_GIT_APP` is useful.
 `GHTKN_GIT_APP` is similar to `GHTKN_APP` (see [Using Multiple Apps](multiple-apps.md)) but it's used for Git Credential Helper.
@@ -75,7 +88,7 @@ export GHTKN_GIT_APP=suzuki-shunsuke/git
 
 The priority of the app used for Git Credential Helper is as follows:
 
-1. `.apps[].git_owner` if it matches the repository owner in the credential path (this requires `credential.useHttpPath true`)
+1. `.apps[].git_owner` or `.apps[].git_owners` if it matches the repository owner in the credential path (this requires `credential.useHttpPath true`)
 1. `GHTKN_GIT_APP`
 1. `GHTKN_APP` if `GHTKN_GIT_APP` is not set
 1. The default app

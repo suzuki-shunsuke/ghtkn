@@ -13,6 +13,12 @@
         },
         "git_owner": {
           "type": "string"
+        },
+        "git_owners": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
       },
       "additionalProperties": false,
