@@ -3,6 +3,8 @@
 #
 # backend:
 #   type: agent # backend type. One of keyring(default), agent, or text
+# clipboard:
+#   enable: true # If true, one-time codes are copied to the clipboard
 # min_expiration: 1h # minimum expiration time. Default is 0h
 # skip_account_picker: false # Default is true
 # open_browser:
