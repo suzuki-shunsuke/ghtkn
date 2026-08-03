@@ -77,6 +77,9 @@ This assumes the agent is already running and unlocked outside the sandbox.
 
 ### Older versions of ghtkn
 
+`ghtkn version` tells you which side of this boundary you are on.
+A running agent keeps the version it started from, so check `agent.version` in `ghtkn info` as well and [restart the agent](backend.md#restart-the-agent-after-upgrading-ghtkn) if it lags behind.
+
 Before v0.3.4 the client, not the agent, ran the device flow and then stored the minted token in the agent over the socket.
 There was no token refresh either, so a new token had to be minted through the device flow every 8 hours.
 
