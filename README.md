@@ -192,10 +192,5 @@ Detailed documentation is split by topic under [`docs/`](docs). These documents 
 - [Design](docs/design.md) - how ghtkn works, a comparison with other access tokens, and API rate limits.
 - [Refreshing Tokens](docs/refresh-token.md) - automatically refresh expiring GitHub access tokens with refresh tokens.
 - [How To Revoke Access Tokens](docs/revoke-tokens.md) - invalidate leaked or compromised tokens.
+- [Go SDK](docs/go-sdk.md) - how tools such as aqua and pinact reuse ghtkn tokens, and how to embed ghtkn in your own Go CLI.
 - [Troubleshooting](docs/troubleshooting.md) - diagnosing problems and known limitations.
-
-## Go SDK
-
-You can enable your CLI application to create GitHub User Access Tokens using [ghtkn Go SDK](https://pkg.go.dev/github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn).
-ghtkn itself uses this.
-If SDK doesn't work well, please check if the version is latest.
