@@ -14,3 +14,15 @@ Please read the following document.
   - `cli/<name>` — the CLI interface and DI (flags, args, wiring).
   - `controller/<name>` — the core logic behind a command. The agent's subcommands are controllers too: `controller/agent/{stop,status,unlock,lock,reset}`, each of which talks to the agent server over the socket (or reads the passphrase).
   - `config`, `clipboard`, `log`, `agent`, ... — supporting packages / subsystems that the controllers call into. `agent` is the agent subsystem: the long-running server in `agent/server`, plus its at-rest-crypto primitives (`crypt`, `keyfile`, `tokenstore`, `harden`, `tty`). The controllers (and `cli/agent`, for `start`) depend on it, not the other way around.
+
+## Documentation
+
+`docs/*.md` is embedded in the binary (`docs/doc.go`) and served by `ghtkn docs list` and `ghtkn docs show <name>`. The README and the skill both point at it, so editing a document updates every surface at once. Nothing here is generated, so there is no script to run.
+
+These documents are read by humans and by coding agents, and the guides below keep them useful to both.
+
+- Frontmatter holds `description` and nothing else. `pkg/controller/docs/frontmatter.go` parses that key alone, and a document with no frontmatter, or an unclosed one, fails to load. Write the description the way you would write an Agent Skill's description: it is all an agent sees when it decides whether to open the topic, so name the symptoms a reader arrives with rather than the subject alone. Every document currently follows the form `<what it is>. Use when <symptom>, <symptom>.`
+- Choose the form per section, not per document. A section the reader executes is a numbered list of imperatives with commands they can paste. A section that explains how something works, or why a decision was made, stays prose. `docs/troubleshooting.md` is the model for the first and `docs/design.md` for the second. Making an explanation imperative helps nobody, and that, rather than the imperative mood itself, is what makes a document read badly to a human.
+- State the check, not just the cause. Where a section says what is probably wrong, give the command that confirms it in the same section. #566 is the cautionary case: "almost always a version is old" was true and relevant, but no command was attached, so an agent read it, agreed with it, and diagnosed nothing.
+- Write each topic so it can be read alone. `ghtkn docs show` prints one topic, so assume the reader has seen no other, and link across topics instead of building on them. Spell out what not to do, such as never printing the access token, rather than leaving it implied: an agent fills a silence with whatever looks reasonable.
+- Keep guidance about how to answer out of `docs/`. Instructions like "read the documentation before answering" belong in `skills/ghtkn/SKILL.md`, which governs the agent rather than describing ghtkn. For the same reason, don't copy procedures or commands into the skill: it is installed separately from the binary and would go stale, so it deliberately carries no documentation of its own.
