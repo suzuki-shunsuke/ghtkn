@@ -4,6 +4,7 @@ description: |
   Read ghtkn's documentation with `ghtkn docs list` and `ghtkn docs show <name>` before answering.
   ghtkn is a CLI that creates short-lived (8h) GitHub user access tokens from GitHub Apps.
   Use for any question about ghtkn, `GHTKN_*` environment variables, `ghtkn get` / `exec` / `auth` / `agent` / `revoke`, the ghtkn git credential helper, or errors from ghtkn.
+  Use it too when a tool that embeds the ghtkn Go SDK - aqua, pinact, ghir, ghaperf - fails to get a token or seems to ignore ghtkn.
 ---
 
 > [!WARNING]
@@ -18,6 +19,10 @@ list the documentation, then `ghtkn docs show <name>` to read the relevant topic
 answering questions about ghtkn or troubleshooting its errors. `ghtkn docs show` prints
 the whole topic; read it through before concluding. You don't need to re-read a topic you
 already read in this session.
+
+Read the source only after the documentation has failed to answer the question, and read
+it at the version that is installed - a repository checkout is usually `main`, which can
+be far ahead of the binary the user runs.
 
 Organization-specific practice - which GitHub App to use, how a given repository switches
 apps, and so on - is outside what `ghtkn docs` covers, so answer that from the user's own

@@ -33,8 +33,18 @@ Run [`ghtkn auth`](token-management.md) yourself beforehand; that is the interac
 
 ## When the integration doesn't work
 
-Almost always a version is old, on one side or the other. Update both the tool that embeds the SDK and the ghtkn CLI to their latest versions.
+Almost always a version is old, on one side or the other, so find out which versions are actually in play before reasoning about what the tool does.
+Run these three checks first:
+
+1. Which version of the tool is installed - `<tool> --version`, compared with the tool's latest release.
+   Check the installed binary, not a source checkout: a checkout is usually `main`, which can be far ahead of what the user runs, so reading it tells you how a version nobody is running behaves.
+1. Which SDK version that binary was built with - `go version -m "$(command -v <tool>)" | grep ghtkn-go-sdk`.
+   The tools above are all Go binaries, so this reports the embedded SDK version without checking anything out. For a tool managed by aqua, pass `"$(aqua which <tool>)"` instead, because what is on your `PATH` is the aqua proxy.
+1. What ghtkn itself resolves - `ghtkn info` prints the resolved configuration, the backend in use, and every `GHTKN_*` variable ghtkn reads. See [Troubleshooting](troubleshooting.md).
+
+Then check the SDK version from step 2 against the boundaries below.
 The SDK is a separate module from the CLI, so a tool keeps whatever SDK version it was built with until it is rebuilt and released - a current `ghtkn` binary does not upgrade the SDK inside `aqua` or `pinact`.
+Updating the tool is what moves the SDK, so update both the tool and the ghtkn CLI to their latest versions.
 
 Version boundaries worth knowing:
 
@@ -42,7 +52,8 @@ Version boundaries worth knowing:
 - SDK `>= v0.3.0` - the [agent backend](backend.md) is supported. Older SDKs cannot read tokens from it.
 - SDK `>= v0.4.0` - the backend set in the configuration file is respected. Older SDKs ignore it, so a tool may look in the keyring while ghtkn stores tokens in the agent.
 
-If the tool sees no token while `ghtkn get` works, compare what each one uses: `ghtkn info` prints the resolved configuration and every `GHTKN_*` variable ghtkn reads. See [Troubleshooting](troubleshooting.md).
+Nothing warns you when a boundary isn't met.
+A tool built against an older SDK simply behaves the way that SDK behaves, so a token `ghtkn get` returns fine can be invisible to the tool.
 
 ## Embedding the SDK in your own CLI
 
