@@ -15,7 +15,7 @@ USAGE:
    ghtkn [global options] [command [command options]]
 
 VERSION:
-   0.3.5
+   0.3.6
 
 DESCRIPTION:
    Create GitHub App User Access Tokens for secure local development.
