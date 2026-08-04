@@ -12,7 +12,7 @@ description: Diagnose ghtkn problems and known limitations. Use when ghtkn or th
 1. Check environment variables, ghtkn version, etc.
 
 ```sh
-ghtkn info [<app name>]
+ghtkn info
 ```
 
 If `ghtkn info` command isn't found or the version isn't latest, please upgrade ghtkn to the latest version.

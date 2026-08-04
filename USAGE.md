@@ -538,7 +538,7 @@ NAME:
    ghtkn info - Output information about the environment which is useful for troubleshooting
 
 USAGE:
-   ghtkn info [options] app-name 
+   ghtkn info [options]
 
 DESCRIPTION:
    Output environment information useful for troubleshooting.
@@ -556,7 +556,6 @@ DESCRIPTION:
    stdout untouched.
 
    $ ghtkn info
-   $ ghtkn info my-app
    $ ghtkn info | jq .envs
 
 OPTIONS:

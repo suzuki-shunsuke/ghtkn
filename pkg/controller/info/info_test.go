@@ -26,7 +26,6 @@ func TestController_Info(t *testing.T) { //nolint:funlen
 	tests := []struct {
 		name    string
 		env     map[string]string
-		appName string
 		version string
 		cfg     *config.Config
 		want    *info.Output
@@ -34,7 +33,6 @@ func TestController_Info(t *testing.T) { //nolint:funlen
 		{
 			name:    "minimal: no environment variables set",
 			env:     map[string]string{},
-			appName: "",
 			version: "v1.0.0",
 			want: &info.Output{
 				OS:         runtime.GOOS,
@@ -80,21 +78,30 @@ func TestController_Info(t *testing.T) { //nolint:funlen
 			},
 		},
 		{
-			name: "appName argument overrides GHTKN_APP",
+			// GHTKN_APP selects a configured app rather than the default (first) one.
+			name: "GHTKN_APP selects a configured app",
 			env: map[string]string{
-				"GHTKN_APP": "env-app",
+				"GHTKN_APP": "second",
 			},
-			appName: "arg-app",
 			version: "v1.0.0",
+			cfg: &config.Config{
+				Apps: []*config.App{
+					{Name: "first", ClientID: "Iv1.first"},
+					{Name: "second", ClientID: "Iv1.second"},
+				},
+			},
 			want: &info.Output{
 				OS:      runtime.GOOS,
 				Arch:    runtime.GOARCH,
 				Version: "v1.0.0",
 				Envs: map[string]string{
-					"GHTKN_APP": "env-app",
+					"GHTKN_APP": "second",
 				},
-				App:        "arg-app",
+				App:        "second",
 				ConfigPath: configPath,
+				// The config holds nothing but apps, which are omitted, so it
+				// round-trips through JSON as an empty object.
+				Config: &info.ConfigView{},
 			},
 		},
 		{
@@ -195,7 +202,7 @@ func TestController_Info(t *testing.T) { //nolint:funlen
 				Arch:    runtime.GOARCH,
 				Version: "v1.0.0",
 				Envs:    map[string]string{},
-				// No GHTKN_APP/argument, so the reported app is the default (first) app.
+				// No GHTKN_APP, so the reported app is the default (first) app.
 				App:        "example",
 				ConfigPath: configPath,
 				// apps must not appear: the round-trip through JSON drops it.
@@ -214,7 +221,7 @@ func TestController_Info(t *testing.T) { //nolint:funlen
 			buf := &bytes.Buffer{}
 			ctrl := info.New(buf, fakeEnv(tt.env))
 
-			if err := ctrl.Info(configPath, tt.appName, tt.version, tt.cfg, nil); err != nil {
+			if err := ctrl.Info(configPath, tt.version, tt.cfg, nil); err != nil {
 				t.Fatalf("Info() returned an unexpected error: %v", err)
 			}
 
@@ -246,7 +253,7 @@ func TestController_Info_agent(t *testing.T) {
 	}
 
 	buf := &bytes.Buffer{}
-	if err := info.New(buf, fakeEnv(nil)).Info("/x/ghtkn.yaml", "", "", nil, agent); err != nil {
+	if err := info.New(buf, fakeEnv(nil)).Info("/x/ghtkn.yaml", "", nil, agent); err != nil {
 		t.Fatal(err)
 	}
 	got := &info.Output{}
@@ -270,7 +277,7 @@ func TestController_Info_agent(t *testing.T) {
 func TestController_Info_noAgent(t *testing.T) {
 	t.Parallel()
 	buf := &bytes.Buffer{}
-	if err := info.New(buf, fakeEnv(nil)).Info("/x/ghtkn.yaml", "", "", nil, nil); err != nil {
+	if err := info.New(buf, fakeEnv(nil)).Info("/x/ghtkn.yaml", "", nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	got := &info.Output{}
