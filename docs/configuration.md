@@ -84,3 +84,10 @@ The setup differs per shell, so run the following command and follow the instruc
 ```sh
 ghtkn help completion
 ```
+
+Once it is set up, `ghtkn get`, `ghtkn auth`, and `ghtkn revoke` complete their app name argument with the apps in your configuration file, so you don't have to remember the names:
+
+```console
+$ ghtkn get <TAB>
+my-app  work-app
+```

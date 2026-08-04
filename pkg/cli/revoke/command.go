@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/completion"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/revoke"
@@ -55,6 +56,8 @@ With --all, the stored tokens of every app in the config are revoked. This is me
 		Action: func(ctx context.Context, _ *cli.Command) error {
 			return action(ctx, logger, args)
 		},
+		// Raw access tokens are arguments too, but only app names can be completed.
+		ShellComplete: completion.AppNames(&args.Config),
 		Flags: []cli.Flag{
 			flag.LogLevel(&args.LogLevel),
 			flag.Config(&args.Config),
