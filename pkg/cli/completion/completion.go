@@ -11,7 +11,6 @@ package completion
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
@@ -37,10 +36,16 @@ func AppName(configFilePath *string) cli.ShellCompleteFunc {
 // AppNames is AppName for a command that takes any number of app names, namely
 // 'ghtkn revoke'. Arguments already on the command line are dropped from the
 // candidates, so an app is not offered twice.
-func AppNames(configFilePath *string) cli.ShellCompleteFunc {
+//
+// ignored reports whether the command line being completed makes the command ignore
+// its app name arguments; no app is offered then. It must not be nil.
+func AppNames(configFilePath *string, ignored func(cmd *cli.Command) bool) cli.ShellCompleteFunc {
 	return func(ctx context.Context, cmd *cli.Command) {
 		rest := cmd.Args().Slice()
 		if completeFlags(ctx, cmd, rest) {
+			return
+		}
+		if ignored(cmd) {
 			return
 		}
 		writeAppNames(cmd, *configFilePath, rest)
@@ -79,11 +84,22 @@ func writeAppNames(cmd *cli.Command, configFilePath string, exclude []string) {
 	if err != nil {
 		return
 	}
+	// A name is offered once. The config file can hold duplicates: Config.Validate
+	// rejects them, but nothing validates it here, and a candidate listed twice is
+	// noise rather than a report of the problem.
+	seen := make(map[string]struct{}, len(exclude))
+	for _, name := range exclude {
+		seen[name] = struct{}{}
+	}
 	w := cmd.Root().Writer
 	for _, app := range cfg.Apps {
-		if app == nil || app.Name == "" || slices.Contains(exclude, app.Name) {
+		if app == nil || app.Name == "" {
 			continue
 		}
+		if _, ok := seen[app.Name]; ok {
+			continue
+		}
+		seen[app.Name] = struct{}{}
 		fmt.Fprintln(w, app.Name)
 	}
 }

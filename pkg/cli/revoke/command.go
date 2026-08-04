@@ -57,7 +57,7 @@ With --all, the stored tokens of every app in the config are revoked. This is me
 			return action(ctx, logger, args)
 		},
 		// Raw access tokens are arguments too, but only app names can be completed.
-		ShellComplete: completion.AppNames(&args.Config),
+		ShellComplete: completion.AppNames(&args.Config, ignoresAppNames),
 		Flags: []cli.Flag{
 			flag.LogLevel(&args.LogLevel),
 			flag.Config(&args.Config),
@@ -76,6 +76,13 @@ With --all, the stored tokens of every app in the config are revoked. This is me
 			},
 		},
 	}
+}
+
+// ignoresAppNames reports whether the command line being completed makes revoke drop
+// its app name arguments, which --all does (see action). Completing them there would
+// only make them look like they still select what is revoked.
+func ignoresAppNames(cmd *cli.Command) bool {
+	return cmd.Bool("all")
 }
 
 // classify splits positional arguments into raw access tokens and app names by

@@ -26,12 +26,29 @@ const configContent = `apps:
 // writeConfig writes a config file with two apps and returns its path.
 func writeConfig(t *testing.T) string {
 	t.Helper()
+	return writeConfigContent(t, configContent)
+}
+
+// writeConfigContent writes content as a config file and returns its path.
+func writeConfigContent(t *testing.T, content string) string {
+	t.Helper()
 	p := filepath.Join(t.TempDir(), "ghtkn.yaml")
-	if err := os.WriteFile(p, []byte(configContent), 0o600); err != nil {
+	if err := os.WriteFile(p, []byte(content), 0o600); err != nil {
 		t.Fatalf("write a config file: %v", err)
 	}
 	return p
 }
+
+// appNames adapts completion.AppNames to what complete takes. ignored is the
+// predicate that suppresses the candidates; revoke passes --all as one.
+func appNames(ignored func(*cli.Command) bool) func(*string) cli.ShellCompleteFunc {
+	return func(configFilePath *string) cli.ShellCompleteFunc {
+		return completion.AppNames(configFilePath, ignored)
+	}
+}
+
+// never is a predicate for a command line that ignores nothing.
+func never(*cli.Command) bool { return false }
 
 // complete runs the completion the way a shell does: it appends the completion flag to
 // the arguments and returns what the command wrote as candidates.
@@ -82,7 +99,7 @@ func lines(s string) []string {
 	return strings.Split(s, "\n")
 }
 
-func TestAppName(t *testing.T) {
+func TestAppName(t *testing.T) { //nolint:funlen // The length is the table of cases.
 	t.Parallel()
 	configFilePath := writeConfig(t)
 
@@ -125,6 +142,36 @@ func TestAppName(t *testing.T) {
 			args: []string{"-c", filepath.Join(t.TempDir(), "absent.yaml")},
 			want: nil,
 		},
+		{
+			// A config file that can't be read leaves the shell with nothing rather than
+			// with an error message offered as a candidate.
+			name: "an unreadable config file yields no candidate",
+			args: []string{"-c", t.TempDir()},
+			want: nil,
+		},
+		{
+			// Config.Validate rejects a duplicate name, but nothing validates the config
+			// here, and the same candidate twice is noise rather than a report of it.
+			name: "a duplicate app name is offered once",
+			args: []string{"-c", writeConfigContent(t, `apps:
+  - name: dup
+    client_id: Iv1.one
+  - name: dup
+    client_id: Iv1.two
+`)},
+			want: []string{"dup"},
+		},
+		{
+			// An app without a name is no candidate: ghtkn can't be asked for it.
+			name: "an app without a name is skipped",
+			args: []string{"-c", writeConfigContent(t, `apps:
+  - name: ""
+    client_id: Iv1.nameless
+  - name: named
+    client_id: Iv1.named
+`)},
+			want: []string{"named"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -143,14 +190,30 @@ func TestAppNames(t *testing.T) {
 	configFilePath := writeConfig(t)
 
 	tests := []struct {
-		name string
-		args []string
-		want []string
+		name    string
+		args    []string
+		ignored bool
+		want    []string
 	}{
 		{
 			name: "every app is a candidate",
 			args: []string{"-c", configFilePath},
 			want: []string{"first", "second"},
+		},
+		{
+			// 'ghtkn revoke --all' revokes every app and ignores its app name arguments,
+			// so completing them would only make them look like they still matter.
+			name:    "no candidate where the argument is ignored",
+			args:    []string{"-c", configFilePath},
+			ignored: true,
+			want:    nil,
+		},
+		{
+			// The flags are completed even then: only the app names go away.
+			name:    "flags are still completed where the argument is ignored",
+			args:    []string{"-c", configFilePath, "-"},
+			ignored: true,
+			want:    []string{"--config:configuration file path", "--help:show help"},
 		},
 		{
 			// revoke takes any number of app names, so the completion goes on after the
@@ -176,7 +239,11 @@ func TestAppNames(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := lines(complete(t, completion.AppNames, tt.args...))
+			ignored := never
+			if tt.ignored {
+				ignored = func(*cli.Command) bool { return true }
+			}
+			got := lines(complete(t, appNames(ignored), tt.args...))
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("candidates mismatch (-want +got):\n%s", diff)
 			}
