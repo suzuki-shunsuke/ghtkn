@@ -78,10 +78,10 @@ type AgentRefreshToken struct {
 // The caller resolves and passes configPath, so the controller reads only the
 // environment variables it reports, via the injected getEnv.
 // Token-bearing variables (GH_TOKEN, GITHUB_TOKEN, GHTKN_GITHUB_TOKEN) are
-// redacted, and empty variables are omitted. appName, when non-empty, overrides
-// GHTKN_APP; when neither is set, the reported app falls back to the default app (the
-// first configured app), matching what ghtkn would actually use.
-func (c *Controller) Info(configPath, appName, version string, cfg *config.Config, agent *AgentStatus) error {
+// redacted, and empty variables are omitted. The reported app is the one ghtkn would
+// actually use: GHTKN_APP, or the default app (the first configured app) when it is
+// unset.
+func (c *Controller) Info(configPath, version string, cfg *config.Config, agent *AgentStatus) error {
 	output := &Output{
 		OS:         runtime.GOOS,
 		Arch:       runtime.GOARCH,
@@ -103,14 +103,11 @@ func (c *Controller) Info(configPath, appName, version string, cfg *config.Confi
 	output.Envs = c.collectEnvs()
 
 	// Resolve the app the same way token retrieval does, via the SDK's ResolveApp,
-	// instead of reimplementing the default-app rule here. key is the requested app
-	// (argument overrides GHTKN_APP); when it resolves to a configured app the resolved
-	// name is reported (an empty key selects the default app), otherwise the requested
-	// key is reported as is so an unknown app is still visible.
+	// instead of reimplementing the default-app rule here. key is the app GHTKN_APP
+	// requests; when it resolves to a configured app the resolved name is reported (an
+	// empty key selects the default app), otherwise the requested key is reported as is
+	// so an app named by GHTKN_APP but missing from the config is still visible.
 	key := c.getEnv(env.App)
-	if appName != "" {
-		key = appName
-	}
 	output.App = key
 	if app := config.ResolveApp(cfg, key, ""); app != nil {
 		output.App = app.Name

@@ -27,11 +27,10 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-// Args holds the flag and argument values for the info command.
+// Args holds the flag values for the info command.
 type Args struct {
 	*flag.GlobalFlags
 
-	AppName string // positional argument for 'info' command
 	Version string
 }
 
@@ -69,7 +68,6 @@ out with a warning printed on stderr after the JSON, which leaves the output on
 stdout untouched.
 
 $ ghtkn info
-$ ghtkn info my-app
 $ ghtkn info | jq .envs`,
 		Action: func(ctx context.Context, _ *cli.Command) error {
 			return r.action(ctx, logger, args)
@@ -77,12 +75,6 @@ $ ghtkn info | jq .envs`,
 		Flags: []cli.Flag{
 			flag.LogLevel(&args.LogLevel),
 			flag.Config(&args.Config),
-		},
-		Arguments: []cli.Argument{
-			&cli.StringArg{
-				Name:        "app-name",
-				Destination: &args.AppName,
-			},
 		},
 	}
 }
@@ -115,7 +107,7 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args
 	// info is a troubleshooting command and must never fail because the agent is down.
 	agentBackend := cfg != nil && cfg.Backend != nil && cfg.Backend.Type == "agent"
 	agent := buildAgentStatus(ctx, agentBackend, logger)
-	err = info.New(os.Stdout, os.Getenv).Info(configPath, args.AppName, args.Version, cfg, agent)
+	err = info.New(os.Stdout, os.Getenv).Info(configPath, args.Version, cfg, agent)
 	// After the output, not before: the JSON runs to dozens of lines, and a message
 	// scrolled off the top of it is a message nobody reads. The docs hint comes first so
 	// that a stale-agent warning, which is about this machine rather than about ghtkn in
