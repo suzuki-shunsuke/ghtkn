@@ -34,7 +34,19 @@ import (
 // Returns an error if command parsing or execution fails.
 func Run(ctx context.Context, logger *slogutil.Logger, env *urfave.Env) error {
 	gFlags := &flag.GlobalFlags{}
-	cmd := urfave.Command(env, &cli.Command{
+	cmd := newCommand(logger, env, gFlags)
+	hintDocsOnVersion(cmd, logger, env, gFlags)
+	if err := cmd.Run(ctx, env.Args); err != nil {
+		return withHelp(err)
+	}
+	return nil
+}
+
+// newCommand builds the command tree. It is separate from Run so that a test can run
+// the real tree with its output captured, which Run can't offer: the commands write
+// to os.Stdout.
+func newCommand(logger *slogutil.Logger, env *urfave.Env, gFlags *flag.GlobalFlags) *cli.Command {
+	return urfave.Command(env, &cli.Command{
 		Name:  "ghtkn",
 		Usage: "Create GitHub App User Access Tokens for secure local development. https://github.com/suzuki-shunsuke/ghtkn",
 		Description: `Create GitHub App User Access Tokens for secure local development.
@@ -68,15 +80,11 @@ troubleshooting its errors.`,
 		// The default error handler, cli.HandleExitCoder, calls os.Exit from inside
 		// cmd.Run for any error carrying an exit code, which 'ghtkn exec' returns to
 		// propagate the exit code of the command it ran. That would print the error
-		// itself and skip both ghtkn's structured logging and the hint added below, so
-		// errors are handled here instead. See exitCode for what this gives up.
+		// itself and skip both ghtkn's structured logging and the hint Run adds with
+		// withHelp, so errors are handled there instead. See exitCode for what this
+		// gives up.
 		ExitErrHandler: func(context.Context, *cli.Command, error) {},
 	})
-	hintDocsOnVersion(cmd, logger, env, gFlags)
-	if err := cmd.Run(ctx, env.Args); err != nil {
-		return withHelp(err)
-	}
-	return nil
 }
 
 // withHelp adds the hint about the documentation to an error while keeping any exit

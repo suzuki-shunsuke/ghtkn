@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/completion"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/clipboard"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
@@ -66,6 +67,7 @@ $ ghtkn auth -p`,
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			return action(ctx, cmd, logger, args)
 		},
+		ShellComplete: completion.AppName(&args.Config),
 		Flags: []cli.Flag{
 			flag.LogLevel(&args.LogLevel),
 			flag.Config(&args.Config),
