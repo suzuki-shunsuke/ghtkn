@@ -1,5 +1,5 @@
 ---
-description: Configure ghtkn via config file, environment variables, and CLI args. Use for configuration priority, disabling browser open, the GitHub account picker, enterprise GitHub App sharing, or GHTKN_GITHUB_TOKEN.
+description: Configure ghtkn via config file, environment variables, and CLI args. Use for configuration priority, disabling browser open, the GitHub account picker, enterprise GitHub App sharing, GHTKN_GITHUB_TOKEN, or shell completion.
 ---
 
 # Configuration
@@ -75,3 +75,12 @@ apps:
 
 If the `GHTKN_GITHUB_TOKEN` environment variable is set, `ghtkn` will use it as the GitHub token.
 This is useful when a personal access token is required due to the limitations of user access tokens (see [Troubleshooting](troubleshooting.md)).
+
+## Shell Completion
+
+ghtkn can output a shell completion script for bash, zsh, fish, and PowerShell.
+The setup differs per shell, so run the following command and follow the instructions it prints for your shell:
+
+```sh
+ghtkn help completion
+```
