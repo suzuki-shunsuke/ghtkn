@@ -1,11 +1,11 @@
 ---
-description: Use the ghtkn Go SDK, which lets tools such as aqua, pinact, ghir, and ghaperf reuse ghtkn tokens without a PAT. Use when a tool's ghtkn integration doesn't kick in, when deciding what enables it (GHTKN_ENABLE, the config file), or when embedding ghtkn in your own Go CLI.
+description: Use the ghtkn Go SDK, which lets tools such as aqua, pinact, ghir, and ghaperf reuse ghtkn tokens without a PAT. Use when a tool's ghtkn integration doesn't kick in, when deciding what enables it (the configuration file alone is usually enough - GHTKN_ENABLE and tool-specific switches only override it), or when embedding ghtkn in your own Go CLI.
 ---
 
 # Go SDK
 
-[ghtkn Go SDK](https://pkg.go.dev/github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn) lets a Go application create and reuse GitHub App User Access Tokens the same way the ghtkn CLI does.
-ghtkn itself is built on it, so a tool using the SDK reads the same configuration file, the same [backend](backend.md), and the same cached tokens as the `ghtkn` command.
+[ghtkn Go SDK](https://pkg.go.dev/github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn) lets a Go application obtain GitHub App User Access Tokens the same way the ghtkn CLI does - normally by reading the token ghtkn has already stored in the [backend](backend.md).
+ghtkn itself is built on it, so a tool using the SDK reads the same configuration file, the same backend, and the same cached tokens as the `ghtkn` command.
 
 There are two sides to this document: using a tool that already embeds the SDK, and embedding it in your own CLI.
 
@@ -17,15 +17,18 @@ Nothing has to be wired up: install ghtkn, run `ghtkn auth` once, and these tool
 
 ## When the integration is enabled
 
-A tool asks the SDK whether the ghtkn integration should be enabled (`ghtkn.Enabled`), and the answer is resolved in this order:
+Normally nothing enables the integration but the [ghtkn configuration file](configuration.md): once `ghtkn init` has created `ghtkn.yaml`, every tool that embeds the SDK turns it on by itself, and no environment variable has to be set.
+The variables below only override that, and the one worth knowing is the one that turns it off - `GHTKN_ENABLE=false` disables ghtkn for every tool that uses the SDK without deleting anything.
+This is about enabling and disabling only; variables that decide what ghtkn does, such as `GHTKN_APP`, are a separate matter - see [Using Multiple Apps](multiple-apps.md).
+
+A tool asks the SDK whether the integration should be enabled (`ghtkn.Enabled`), and the answer is resolved in this order:
 
 1. the first environment variable the tool itself nominates that is set, if it defines one (for instance a tool-specific `<TOOL>_GHTKN_ENABLE` switch - check the tool's own documentation),
 1. the `GHTKN_ENABLE` environment variable,
 1. whether the [ghtkn configuration file](configuration.md) exists.
 
 For the first two, the value must be a boolean (`true`, `false`, `1`, `0`); anything else is an error rather than a silent "disabled".
-The third step is why the integration usually needs no setup at all: once `ghtkn init` has created `ghtkn.yaml`, it turns on by itself.
-It is also how you turn it off without deleting anything - `GHTKN_ENABLE=false` disables ghtkn for every tool that uses the SDK.
+A tool-specific switch wins over `GHTKN_ENABLE`, so a leftover `<TOOL>_GHTKN_ENABLE=false` keeps that one tool disabled however `GHTKN_ENABLE` is set.
 
 Being enabled is not the same as running the device flow.
 The device flow is disabled by default in the SDK just as it is in `ghtkn get`, so a tool fails rather than prompting when there is no usable token.
@@ -54,6 +57,10 @@ Version boundaries worth knowing:
 
 Nothing warns you when a boundary isn't met.
 A tool built against an older SDK simply behaves the way that SDK behaves, so a token `ghtkn get` returns fine can be invisible to the tool.
+
+The same boundary decides whether an old environment variable can go.
+A tool's own switch used to be the only way to turn the integration on, so many setups still set one; from SDK v0.3.0 on it is redundant, because the configuration file enables the integration by itself.
+Check the version from step 2 before deleting it: against an older SDK that switch is what turns the integration on, and removing it turns the integration off with nothing warning you.
 
 ## Embedding the SDK in your own CLI
 
