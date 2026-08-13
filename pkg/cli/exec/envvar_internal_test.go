@@ -56,6 +56,19 @@ func TestParseEnvs(t *testing.T) { //nolint:funlen // A table of test cases.
 			wantErr: true,
 		},
 		{
+			// urfave/cli's slice flags split their value on commas, so this used to set
+			// two environment variables without ghtkn meaning to offer it. It is
+			// rejected rather than silently naming a single variable "A,B".
+			name:    "a comma between two environment variables",
+			values:  []string{"A,B"},
+			wantErr: true,
+		},
+		{
+			name:   "a comma in an app name is no separator",
+			values: []string{"GH_TOKEN:my,app"},
+			want:   []*exec.EnvVar{{Name: "GH_TOKEN", AppName: "my,app"}},
+		},
+		{
 			name:    "'=' instead of ':'",
 			values:  []string{"GH_TOKEN=my-app"},
 			wantErr: true,

@@ -7,7 +7,7 @@ import "strings"
 // A variable of the same name inherited from ghtkn's environment is replaced rather
 // than duplicated, so the command sees one entry per name. A variable whose token
 // couldn't be acquired is not in vars, so the value inherited from ghtkn's
-// environment, if any, is passed through untouched; that is what -continue-on-error
+// environment, if any, is passed through untouched; that is what --continue-on-error
 // means for it.
 //
 // Environment variable names are case insensitive on Windows, which this doesn't

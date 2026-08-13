@@ -21,12 +21,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/completion"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/revoke"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
-	"github.com/urfave/cli/v3"
 )
 
 // Args holds the flag and argument values for the revoke command.
@@ -39,50 +39,39 @@ type Args struct {
 
 // New creates a new revoke command instance with the provided logger.
 // It returns a CLI command that can be registered with the main CLI application.
-func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
+func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cobra.Command {
 	args := &Args{
 		GlobalFlags: gFlags,
 	}
-	return &cli.Command{
-		Name:      "revoke",
-		Usage:     "Revoke GitHub App User Access Tokens",
-		ArgsUsage: "[<access token | app name>...]",
-		Description: `Revoke GitHub App User Access Tokens via GitHub's credential revocation API and remove them from the backend.
+	cmd := &cobra.Command{
+		Use:   "revoke [<access token | app name>...]",
+		Short: "Revoke GitHub App User Access Tokens",
+		Long: `Revoke GitHub App User Access Tokens via GitHub's credential revocation API and remove them from the backend.
 
 Each argument is classified by its prefix: arguments starting with a GitHub token prefix (ghp_, github_pat_, gho_, ghu_, ghr_) are revoked directly as raw access tokens, and all other arguments are treated as app names whose stored tokens are revoked and removed from the backend.
 When no argument is given, the token stored for GHTKN_APP (or the default app) is revoked.
 
 With --all, the stored tokens of every app in the config are revoked. This is meant for incident response: when the environment running ghtkn is compromised, all stored tokens can be revoked at once. App name arguments are ignored when --all is set, but raw access tokens are still revoked as usual.`,
-		Action: func(ctx context.Context, _ *cli.Command) error {
-			return action(ctx, logger, args)
-		},
+		Args: cobra.ArbitraryArgs,
 		// Raw access tokens are arguments too, but only app names can be completed.
-		ShellComplete: completion.AppNames(&args.Config, ignoresAppNames),
-		Flags: []cli.Flag{
-			flag.LogLevel(&args.LogLevel),
-			flag.Config(&args.Config),
-			&cli.BoolFlag{
-				Name:        "all",
-				Usage:       "Revoke the stored tokens of every app in the config",
-				Destination: &args.All,
-			},
-		},
-		Arguments: []cli.Argument{
-			&cli.StringArgs{
-				Name:        "token-or-app",
-				Min:         0,
-				Max:         -1,
-				Destination: &args.Args,
-			},
+		ValidArgsFunction: completion.AppNames(&args.Config, ignoresAppNames),
+		RunE: func(cmd *cobra.Command, positional []string) error {
+			args.Args = positional
+			return action(cmd.Context(), logger, args)
 		},
 	}
+	cmd.Flags().BoolVar(&args.All, "all", false, "Revoke the stored tokens of every app in the config")
+	return cmd
 }
 
 // ignoresAppNames reports whether the command line being completed makes revoke drop
 // its app name arguments, which --all does (see action). Completing them there would
 // only make them look like they still select what is revoked.
-func ignoresAppNames(cmd *cli.Command) bool {
-	return cmd.Bool("all")
+func ignoresAppNames(cmd *cobra.Command) bool {
+	all, err := cmd.Flags().GetBool("all")
+	// The flag is registered right above, so the error can only mean the command being
+	// completed is not this one; offering no app name is the safe answer either way.
+	return err == nil && all
 }
 
 // classify splits positional arguments into raw access tokens and app names by

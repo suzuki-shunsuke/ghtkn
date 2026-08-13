@@ -20,7 +20,7 @@ import (
 // terminal, it can run as a background service.
 //
 // ctx is canceled when the process receives SIGINT or SIGTERM; the signal
-// handling is set up by urfave.Main (see cmd/ghtkn/main.go), so this function
+// handling is set up by cobrautil.Main (see cmd/ghtkn/main.go), so this function
 // does not register its own signal handler.
 func (s *Server) Start(ctx context.Context, logger *slog.Logger) error {
 	// Best-effort: block same-user memory reads and core dumps of this process before it

@@ -4,24 +4,20 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/spf13/cobra"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cobrautil"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 )
-
-// completionFlag is the flag the shell completion scripts append to the command line.
-// It is unexported in urfave/cli, so it is repeated here.
-const completionFlag = "--generate-shell-completion"
 
 // TestCompleteAppNames checks that the commands taking an app name argument are wired
 // to the app name completion, which the tests of pkg/cli/completion can't see: they
 // drive the completion functions through a command tree of their own, so they still
-// pass if a command drops its ShellComplete.
+// pass if a command drops its ValidArgsFunction.
 func TestCompleteAppNames(t *testing.T) {
 	configFilePath := filepath.Join(t.TempDir(), "ghtkn.yaml")
 	if err := os.WriteFile(configFilePath, []byte(`apps:
@@ -68,10 +64,10 @@ func TestCompleteAppNames(t *testing.T) {
 		},
 		{
 			// git-credential selects its app by repository owner, so it takes no app
-			// name to complete. urfave/cli's own completion answers instead.
+			// name to complete.
 			name: "git-credential offers no app",
 			args: []string{"git-credential", "-c", configFilePath},
-			want: []string{"help:Shows a list of commands or help for one command"},
+			want: nil,
 		},
 	}
 
@@ -88,15 +84,18 @@ func TestCompleteAppNames(t *testing.T) {
 	}
 }
 
-// completeCommandLine runs the real command tree the way a shell does, by appending
-// the completion flag to the command line, and returns the candidates it wrote.
+// completeCommandLine runs the real command tree the way a shell does, by calling
+// cobra's hidden __complete command, and returns the candidates it wrote. The empty
+// last argument is the word under the cursor, which the shell passes even when the
+// cursor sits on a fresh word.
 func completeCommandLine(t *testing.T, args ...string) []string {
 	t.Helper()
-	env := &urfave.Env{
+	env := &cobrautil.Env{
 		Program: program,
 		Version: "v1.0.0",
 		Stdin:   os.Stdin,
 		Getenv:  os.Getenv,
+		Args:    append(append([]string{program, cobra.ShellCompRequestCmd}, args...), ""),
 	}
 	// The logger writes to a file that goes away with the test: the completion must
 	// log nothing, but a stray log must not reach the terminal either.
@@ -108,20 +107,20 @@ func completeCommandLine(t *testing.T, args ...string) []string {
 	logger := slogutil.New(&slogutil.InputNew{Name: program, Version: env.Version, Out: logFile})
 	cmd := newCommand(logger, env, &flag.GlobalFlags{})
 	stdout := &bytes.Buffer{}
-	cmd.Writer = stdout
+	cmd.SetOut(stdout)
+	cmd.SetErr(&bytes.Buffer{})
 
-	osArgs := append([]string{program}, args...)
-	if err := cmd.Run(t.Context(), append(osArgs, completionFlag)); err != nil {
-		t.Fatalf("run the command: %v", err)
+	if err := cmd.ExecuteContext(t.Context()); err != nil {
+		t.Fatalf("run the completion: %v", err)
 	}
 
-	out := strings.TrimSuffix(stdout.String(), "\n")
-	if out == "" {
-		return nil
+	var got []string
+	for line := range strings.SplitSeq(strings.TrimSuffix(stdout.String(), "\n"), "\n") {
+		// The last line carries the ShellCompDirective rather than a candidate.
+		if line == "" || strings.HasPrefix(line, ":") {
+			continue
+		}
+		got = append(got, line)
 	}
-	// The completion command is unhidden by urfave-cli-v3-util, so it shows up
-	// wherever subcommands are suggested. It says nothing about the app names.
-	return slices.DeleteFunc(strings.Split(out, "\n"), func(line string) bool {
-		return strings.HasPrefix(line, "completion:")
-	})
+	return got
 }

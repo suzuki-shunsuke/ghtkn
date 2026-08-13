@@ -7,14 +7,14 @@ import (
 	"log/slog"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cobrautil"
 	"github.com/suzuki-shunsuke/go-error-with-exit-code/ecerror"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
 )
 
 const (
 	// exitCodeTokenFailure is the exit code when an access token can't be created or
-	// read and -continue-on-error isn't set. The command isn't run at all.
+	// read and --continue-on-error isn't set. The command isn't run at all.
 	exitCodeTokenFailure = 111
 	// exitCodeInterrupted follows the shell convention for a process interrupted by
 	// SIGINT: 128 plus the signal number.
@@ -45,9 +45,9 @@ func (c *Controller) Run(ctx context.Context, logger *slog.Logger, input *InputR
 	}
 	if code != 0 {
 		// The command has already reported its own failure, so ghtkn adds nothing but
-		// the exit code. urfave.ErrSilent has an empty message, which keeps ghtkn from
+		// the exit code. cobrautil.ErrSilent has an empty message, which keeps ghtkn from
 		// logging an error of its own.
-		return ecerror.Wrap(urfave.ErrSilent, code)
+		return ecerror.Wrap(cobrautil.ErrSilent, code)
 	}
 	return nil
 }
@@ -75,7 +75,7 @@ func (c *Controller) tokens(ctx context.Context, logger *slog.Logger, input *Inp
 		token, ok := tokens[ev.AppName]
 		if !ok {
 			if _, f := failed[ev.AppName]; f {
-				// The app already failed and -continue-on-error is set, so don't ask
+				// The app already failed and --continue-on-error is set, so don't ask
 				// for it again.
 				continue
 			}
@@ -105,8 +105,8 @@ func handleTokenError(logger *slog.Logger, continueOnError bool, err error) erro
 	if errors.Is(err, context.Canceled) {
 		// ghtkn was interrupted while getting the token, for example during the device
 		// flow. The user knows why, so exit like a shell does without logging an error,
-		// and without running the command even with -continue-on-error.
-		return ecerror.Wrap(urfave.ErrSilent, exitCodeInterrupted)
+		// and without running the command even with --continue-on-error.
+		return ecerror.Wrap(cobrautil.ErrSilent, exitCodeInterrupted)
 	}
 	if !continueOnError {
 		return ecerror.Wrap(err, exitCodeTokenFailure)

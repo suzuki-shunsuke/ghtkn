@@ -14,9 +14,11 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/spf13/cobra"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/server"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cobrautil"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/lock"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/reset"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/status"
@@ -24,23 +26,21 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/unlock"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
-	"github.com/urfave/cli/v3"
 )
 
 // New creates the 'agent' parent command for the CLI application.
 // The parent command groups the agent subcommands (currently only 'start').
 // The returned command can be added to the CLI application's command list.
-func New(logger *slogutil.Logger, env *urfave.Env, gFlags *flag.GlobalFlags) *cli.Command {
+func New(logger *slogutil.Logger, env *cobrautil.Env, gFlags *flag.GlobalFlags) *cobra.Command {
 	r := &runner{
 		logger:  logger,
 		flags:   gFlags,
 		version: env.Version,
 	}
-	return &cli.Command{
-		Name:  "agent",
-		Usage: "Manage the ghtkn agent that caches access tokens and serves them over a Unix socket",
-		Description: `Manage the ghtkn agent.
+	cmd := &cobra.Command{
+		Use:   "agent",
+		Short: "Manage the ghtkn agent that caches access tokens and serves them over a Unix socket",
+		Long: `Manage the ghtkn agent.
 
 The agent is a long-running process that caches GitHub App access tokens and serves
 them to clients over a Unix domain socket. It is intended for environments where the
@@ -49,15 +49,16 @@ GHTKN_BACKEND=agent or backend.type: agent in the config.
 
 The agent starts locked; unlock it with a passphrase to make cached tokens available.
 Tokens are encrypted at rest with AES-256-GCM.`,
-		Commands: []*cli.Command{
-			r.startCommand(),
-			r.stopCommand(),
-			r.statusCommand(),
-			r.unlockCommand(),
-			r.lockCommand(),
-			r.resetCommand(),
-		},
 	}
+	cmd.AddCommand(
+		r.startCommand(),
+		r.stopCommand(),
+		r.statusCommand(),
+		r.unlockCommand(),
+		r.lockCommand(),
+		r.resetCommand(),
+	)
+	return cmd
 }
 
 // runner holds the dependencies for the agent subcommands.
@@ -107,11 +108,12 @@ func (r *runner) warnIfBackendNotAgent() {
 
 // startCommand returns the CLI command definition for the 'agent start' subcommand.
 // It configures the command name, usage description, and action handler.
-func (r *runner) startCommand() *cli.Command {
-	return &cli.Command{
-		Name:  "start",
-		Usage: "Start the ghtkn agent in the foreground (locked)",
-		Description: `Start the ghtkn agent in the foreground.
+func (r *runner) startCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "start",
+		Short: "Start the ghtkn agent in the foreground (locked)",
+		Args:  cobra.NoArgs,
+		Long: `Start the ghtkn agent in the foreground.
 
 The agent starts locked and listens on a Unix domain socket without asking for a
 passphrase, so it can run as a background service (e.g. systemd). Use
@@ -119,13 +121,15 @@ passphrase, so it can run as a background service (e.g. systemd). Use
 It keeps running until it receives SIGINT or SIGTERM, then removes the socket and exits.
 
 $ ghtkn agent start`,
-		Action: r.start,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return r.start(cmd.Context())
+		},
 	}
 }
 
 // start executes the 'agent start' command logic.
 // It configures the log level and runs the agent controller until the process is signaled.
-func (r *runner) start(ctx context.Context, _ *cli.Command) error {
+func (r *runner) start(ctx context.Context) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
@@ -134,22 +138,25 @@ func (r *runner) start(ctx context.Context, _ *cli.Command) error {
 }
 
 // stopCommand returns the CLI command definition for the 'agent stop' subcommand.
-func (r *runner) stopCommand() *cli.Command {
-	return &cli.Command{
-		Name:  "stop",
-		Usage: "Stop the running ghtkn agent",
-		Description: `Stop the running ghtkn agent.
+func (r *runner) stopCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "stop",
+		Short: "Stop the running ghtkn agent",
+		Args:  cobra.NoArgs,
+		Long: `Stop the running ghtkn agent.
 
 It connects to the agent's Unix domain socket and asks it to shut down.
 
 $ ghtkn agent stop`,
-		Action: r.stop,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return r.stop(cmd.Context())
+		},
 	}
 }
 
 // stop executes the 'agent stop' command logic.
 // It configures the log level and asks the running agent to shut down.
-func (r *runner) stop(ctx context.Context, _ *cli.Command) error {
+func (r *runner) stop(ctx context.Context) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
@@ -158,11 +165,12 @@ func (r *runner) stop(ctx context.Context, _ *cli.Command) error {
 }
 
 // statusCommand returns the CLI command definition for the 'agent status' subcommand.
-func (r *runner) statusCommand() *cli.Command {
-	return &cli.Command{
-		Name:  "status",
-		Usage: "Show whether the ghtkn agent is running",
-		Description: `Show whether the ghtkn agent is running.
+func (r *runner) statusCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "status",
+		Short: "Show whether the ghtkn agent is running",
+		Args:  cobra.NoArgs,
+		Long: `Show whether the ghtkn agent is running.
 
 It connects to the agent's Unix domain socket and reports the number of cached
 access tokens, along with the ghtkn version the running agent was built from and
@@ -171,13 +179,15 @@ started with, so an agent version older than 'ghtkn --version' means the agent
 must be restarted. It exits 0 whether or not the agent is running.
 
 $ ghtkn agent status`,
-		Action: r.status,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return r.status(cmd.Context())
+		},
 	}
 }
 
 // status executes the 'agent status' command logic.
 // It configures the log level and reports whether the agent is running.
-func (r *runner) status(ctx context.Context, _ *cli.Command) error {
+func (r *runner) status(ctx context.Context) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
@@ -186,14 +196,15 @@ func (r *runner) status(ctx context.Context, _ *cli.Command) error {
 }
 
 // unlockCommand returns the CLI command definition for the 'agent unlock' subcommand.
-func (r *runner) unlockCommand() *cli.Command {
+func (r *runner) unlockCommand() *cobra.Command {
 	args := &unlockArgs{
 		GlobalFlags: r.flags,
 	}
-	return &cli.Command{
-		Name:  "unlock",
-		Usage: "Unlock the running ghtkn agent by entering the passphrase",
-		Description: `Unlock the running ghtkn agent.
+	cmd := &cobra.Command{
+		Use:   "unlock",
+		Short: "Unlock the running ghtkn agent by entering the passphrase",
+		Args:  cobra.NoArgs,
+		Long: `Unlock the running ghtkn agent.
 
 The agent starts locked. This command prompts for the passphrase on the terminal
 and sends it to the agent over the socket so it can decrypt cached tokens. On first
@@ -212,26 +223,19 @@ The TTL takes a number with a d (day), w (week), or m (30-day month) suffix, e.g
 14d, 4w, 2m, and must be less than 6 months.
 
 $ ghtkn agent unlock`,
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:        "enable-refresh",
-				Usage:       "Enable refreshing expiring access tokens with stored refresh tokens",
-				Destination: &args.EnableRefresh,
-			},
-			&cli.StringFlag{
-				// No default value: an empty value means the flag was not given, which
-				// lets the agent apply its own default (seven days) instead of duplicating
-				// it here, and lets this command tell "not given" from an explicit value
-				// it must reject without --enable-refresh.
-				Name:        "refresh-token-ttl",
-				Usage:       "How long a stored token may sit unused before the agent discards it, e.g. 14d/4w/2m (default 7d; only with --enable-refresh)",
-				Destination: &args.RefreshTokenTTL,
-			},
-		},
-		Action: func(ctx context.Context, _ *cli.Command) error {
-			return r.unlock(ctx, args)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return r.unlock(cmd.Context(), args)
 		},
 	}
+	cmd.Flags().BoolVar(&args.EnableRefresh, "enable-refresh",
+		false, "Enable refreshing expiring access tokens with stored refresh tokens")
+	// No default value: an empty value means the flag was not given, which lets the
+	// agent apply its own default (seven days) instead of duplicating it here, and lets
+	// this command tell "not given" from an explicit value it must reject without
+	// --enable-refresh.
+	cmd.Flags().StringVar(&args.RefreshTokenTTL, "refresh-token-ttl",
+		"", "How long a stored token may sit unused before the agent discards it, e.g. 14d/4w/2m (default 7d; only with --enable-refresh)")
+	return cmd
 }
 
 // unlock executes the 'agent unlock' command logic.
@@ -252,11 +256,12 @@ func (r *runner) unlock(ctx context.Context, args *unlockArgs) error {
 }
 
 // lockCommand returns the CLI command definition for the 'agent lock' subcommand.
-func (r *runner) lockCommand() *cli.Command {
-	return &cli.Command{
-		Name:  "lock",
-		Usage: "Lock the running ghtkn agent by discarding its in-memory data key",
-		Description: `Lock the running ghtkn agent.
+func (r *runner) lockCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "lock",
+		Short: "Lock the running ghtkn agent by discarding its in-memory data key",
+		Args:  cobra.NoArgs,
+		Long: `Lock the running ghtkn agent.
 
 It asks the agent to discard the data key it holds in memory and return to the
 locked state, without stopping the process or deleting the key file. Cached tokens
@@ -266,13 +271,15 @@ locking needs no passphrase, so it can be wired to a screen-lock or logout hook 
 shrink the window in which the agent holds decrypted tokens.
 
 $ ghtkn agent lock`,
-		Action: r.lock,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return r.lock(cmd.Context())
+		},
 	}
 }
 
 // lock executes the 'agent lock' command logic.
 // It configures the log level and asks the running agent to discard its data key.
-func (r *runner) lock(ctx context.Context, _ *cli.Command) error {
+func (r *runner) lock(ctx context.Context) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
@@ -281,11 +288,12 @@ func (r *runner) lock(ctx context.Context, _ *cli.Command) error {
 }
 
 // resetCommand returns the CLI command definition for the 'agent reset' subcommand.
-func (r *runner) resetCommand() *cli.Command {
-	return &cli.Command{
-		Name:  "reset",
-		Usage: "Reset the agent after a forgotten passphrase (deletes the key and cached tokens)",
-		Description: `Reset the ghtkn agent when you have forgotten the passphrase.
+func (r *runner) resetCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "reset",
+		Short: "Reset the agent after a forgotten passphrase (deletes the key and cached tokens)",
+		Args:  cobra.NoArgs,
+		Long: `Reset the ghtkn agent when you have forgotten the passphrase.
 
 It stops the agent if it is running, deletes the key file and all encrypted access
 token files, and creates a new key from a freshly entered passphrase. The old
@@ -298,13 +306,15 @@ afterwards; until then every 'ghtkn get' fails.
 $ ghtkn agent reset
 $ ghtkn agent start
 $ ghtkn agent unlock`,
-		Action: r.reset,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return r.reset(cmd.Context())
+		},
 	}
 }
 
 // reset executes the 'agent reset' command logic.
 // It configures the log level and reinitializes the agent's key.
-func (r *runner) reset(ctx context.Context, _ *cli.Command) error {
+func (r *runner) reset(ctx context.Context) error {
 	if err := r.logger.SetLevel(r.flags.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}

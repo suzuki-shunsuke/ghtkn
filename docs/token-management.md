@@ -1,5 +1,5 @@
 ---
-description: Manage the ghtkn access token lifecycle - regeneration, ghtkn auth, the automatic device flow, and clipboard. Use when tokens expire, configuring -min-expiration, authenticating, or copying the one-time code. The token ghtkn get outputs is a secret; never print or log it.
+description: Manage the ghtkn access token lifecycle - regeneration, ghtkn auth, the automatic device flow, and clipboard. Use when tokens expire, configuring --min-expiration, authenticating, or copying the one-time code. The token ghtkn get outputs is a secret; never print or log it.
 ---
 
 # Token Management
@@ -33,7 +33,7 @@ ghtkn stores generated access tokens and their expiration dates in the backend.
 The access token validity period is 8 hours.
 
 By default, if the access token hasn't expired, it returns it, but this may result in a short-lived access token being returned.
-By specifying `-min-expiration (-m) <minimum required validity period. Not a datetime but remaining time>`, the access token will be regenerated if its validity period is shorter than the specified duration.
+By specifying `--min-expiration (-m) <minimum required validity period. Not a datetime but remaining time>`, the access token will be regenerated if its validity period is shorter than the specified duration.
 
 ```sh
 ghtkn get -m 1h
@@ -75,7 +75,7 @@ It is stored with no expiration date and served from the cache, instead of runni
 `ghtkn auth` command authenticates to GitHub and caches an access token without printing it to stdout.
 It regenerates the token regardless of any cached token. Regeneration normally runs the device flow, but with the agent backend and refresh enabled it silently refreshes from the stored refresh token when one is available, running the device flow only when no usable refresh token exists.
 Unlike `ghtkn get`, the device flow is always allowed even though it is disabled by default (and even when `GHTKN_ENABLE_DEVICE_FLOW=false`).
-Also unlike `ghtkn get`, it does not accept `-min-expiration (-m)`, nor read `GHTKN_MIN_EXPIRATION` or `min_expiration` in the configuration file.
+Also unlike `ghtkn get`, it does not accept `--min-expiration (-m)`, nor read `GHTKN_MIN_EXPIRATION` or `min_expiration` in the configuration file.
 
 ## Disabling Automatic Device Flow
 
@@ -101,7 +101,7 @@ If you want `ghtkn get` to start the device flow automatically (the behavior bef
 
 `ghtkn auth` can copy the one-time code to the system clipboard for you.
 This is only available on `ghtkn auth`, the explicit, interactive authentication command - not on `ghtkn get` or `ghtkn git-credential`, which must not start the device flow on your behalf.
-It is disabled by default; enable it with the `-clipboard` (`-p`) flag, the `GHTKN_CLIPBOARD` environment variable, or the `clipboard.enable` config field.
+It is disabled by default; enable it with the `--clipboard` (`-p`) flag, the `GHTKN_CLIPBOARD` environment variable, or the `clipboard.enable` config field.
 
 ```sh
 ghtkn auth -p

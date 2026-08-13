@@ -8,13 +8,9 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/spf13/cobra"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/completion"
-	"github.com/urfave/cli/v3"
 )
-
-// completionFlag is the flag the completion scripts append to the command line. It is
-// unexported in urfave/cli, so it is repeated here.
-const completionFlag = "--generate-shell-completion"
 
 const configContent = `apps:
   - name: first
@@ -39,64 +35,51 @@ func writeConfigContent(t *testing.T, content string) string {
 	return p
 }
 
-// appNames adapts completion.AppNames to what complete takes. ignored is the
-// predicate that suppresses the candidates; revoke passes --all as one.
-func appNames(ignored func(*cli.Command) bool) func(*string) cli.ShellCompleteFunc {
-	return func(configFilePath *string) cli.ShellCompleteFunc {
-		return completion.AppNames(configFilePath, ignored)
-	}
-}
-
 // never is a predicate for a command line that ignores nothing.
-func never(*cli.Command) bool { return false }
+func never(*cobra.Command) bool { return false }
 
-// complete runs the completion the way a shell does: it appends the completion flag to
-// the arguments and returns what the command wrote as candidates.
+// complete runs the completion the way a shell does, by calling cobra's hidden
+// __complete command, and returns the candidates it wrote.
 //
-// The command tree mirrors the real one closely enough for the completion path:
-// completion is enabled on the root (urfave-cli-v3-util does that for ghtkn), and the
-// subcommand carries the -c flag whose destination the ShellCompleteFunc reads.
-func complete(t *testing.T, shellComplete func(*string) cli.ShellCompleteFunc, args ...string) string {
+// The command tree mirrors the real one closely enough for the completion path: the
+// subcommand carries the -c flag whose destination the completion function reads.
+// toComplete is the word under the cursor, which the shell passes as the last
+// argument and which is empty when the cursor sits on a fresh word.
+func complete(t *testing.T, fn func(*string) completion.Func, toComplete string, args ...string) []string {
 	t.Helper()
 	configFilePath := ""
-	buf := &bytes.Buffer{}
-	cmd := &cli.Command{
-		Name:                  "ghtkn",
-		EnableShellCompletion: true,
-		Writer:                buf,
-		Commands: []*cli.Command{
-			{
-				Name: "target",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:        "config",
-						Aliases:     []string{"c"},
-						Usage:       "configuration file path",
-						Destination: &configFilePath,
-					},
-				},
-				Arguments: []cli.Argument{
-					&cli.StringArgs{Name: "app-name", Max: -1},
-				},
-				ShellComplete: shellComplete(&configFilePath),
-			},
-		},
+	target := &cobra.Command{
+		Use:               "target",
+		Args:              cobra.ArbitraryArgs,
+		ValidArgsFunction: fn(&configFilePath),
+		RunE:              func(*cobra.Command, []string) error { return nil },
 	}
-	osArgs := append([]string{"ghtkn", "target"}, args...)
-	if err := cmd.Run(t.Context(), append(osArgs, completionFlag)); err != nil {
-		t.Fatalf("run the command: %v", err)
+	target.Flags().StringVarP(&configFilePath, "config", "c", "", "configuration file path")
+	root := &cobra.Command{Use: "ghtkn", SilenceErrors: true, SilenceUsage: true}
+	root.AddCommand(target)
+
+	stdout := &bytes.Buffer{}
+	root.SetOut(stdout)
+	root.SetErr(&bytes.Buffer{})
+	root.SetArgs(append(append([]string{cobra.ShellCompRequestCmd, "target"}, args...), toComplete))
+	if err := root.ExecuteContext(t.Context()); err != nil {
+		t.Fatalf("run the completion: %v", err)
 	}
-	return buf.String()
+	return candidates(stdout.String())
 }
 
-// lines splits completion output into candidates. The empty output is no candidate,
-// which strings.Split would report as one empty candidate.
-func lines(s string) []string {
-	s = strings.TrimSuffix(s, "\n")
-	if s == "" {
-		return nil
+// candidates splits the output of __complete into the candidate list, dropping the
+// trailing line that carries the ShellCompDirective rather than a candidate.
+func candidates(out string) []string {
+	lines := strings.Split(strings.TrimSuffix(out, "\n"), "\n")
+	var got []string
+	for _, line := range lines {
+		if line == "" || strings.HasPrefix(line, ":") {
+			continue
+		}
+		got = append(got, line)
 	}
-	return strings.Split(s, "\n")
+	return got
 }
 
 func TestAppName(t *testing.T) { //nolint:funlen // The length is the table of cases.
@@ -104,9 +87,10 @@ func TestAppName(t *testing.T) { //nolint:funlen // The length is the table of c
 	configFilePath := writeConfig(t)
 
 	tests := []struct {
-		name string
-		args []string
-		want []string
+		name       string
+		args       []string
+		toComplete string
+		want       []string
 	}{
 		{
 			name: "every app is a candidate",
@@ -114,28 +98,31 @@ func TestAppName(t *testing.T) { //nolint:funlen // The length is the table of c
 			want: []string{"first", "second"},
 		},
 		{
+			// The shell filters the candidates too, but a completion function is
+			// expected to narrow them itself, and cobra offers what it is given.
+			name:       "the candidates are narrowed to the typed prefix",
+			args:       []string{"-c", configFilePath},
+			toComplete: "f",
+			want:       []string{"first"},
+		},
+		{
 			// The command takes one app name, so nothing is left to complete once it is
-			// given. The shell drops the word being typed, so an argument here is a
-			// complete one rather than a prefix.
+			// given. The word under the cursor is passed separately, so an argument here
+			// is a complete one rather than a prefix.
 			name: "no candidate once the app name is given",
 			args: []string{"-c", configFilePath, "first"},
 			want: nil,
 		},
 		{
-			// Defining ShellComplete replaces urfave/cli's own flag completion, so the
-			// command must hand that case back to it.
-			name: "flags are still completed",
-			args: []string{"-c", configFilePath, "-"},
-			want: []string{"--config:configuration file path", "--help:show help"},
-		},
-		{
-			// '-c <TAB>' and a half-typed '-c' arrive identically: the completion scripts
-			// append the word under the cursor only when it starts with '-'. So a flag
-			// value position can only be completed as a flag name, which is what
-			// urfave/cli does for every command that defines no ShellComplete.
-			name: "a flag value position is completed as a flag",
-			args: []string{"-c"},
-			want: []string{"--config:configuration file path"},
+			// cobra completes the flags itself, before it asks for argument candidates,
+			// so nothing in this package has to hand that case back the way it did with
+			// urfave/cli.
+			name:       "flags are completed by cobra",
+			toComplete: "-",
+			want: []string{
+				"--config\tconfiguration file path", "-c\tconfiguration file path",
+				"--help\thelp for target", "-h\thelp for target",
+			},
 		},
 		{
 			name: "a missing config file yields no candidate",
@@ -177,7 +164,7 @@ func TestAppName(t *testing.T) { //nolint:funlen // The length is the table of c
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := lines(complete(t, completion.AppName, tt.args...))
+			got := complete(t, completion.AppName, tt.toComplete, tt.args...)
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("candidates mismatch (-want +got):\n%s", diff)
 			}
@@ -190,10 +177,11 @@ func TestAppNames(t *testing.T) {
 	configFilePath := writeConfig(t)
 
 	tests := []struct {
-		name    string
-		args    []string
-		ignored bool
-		want    []string
+		name       string
+		args       []string
+		toComplete string
+		ignored    bool
+		want       []string
 	}{
 		{
 			name: "every app is a candidate",
@@ -209,13 +197,6 @@ func TestAppNames(t *testing.T) {
 			want:    nil,
 		},
 		{
-			// The flags are completed even then: only the app names go away.
-			name:    "flags are still completed where the argument is ignored",
-			args:    []string{"-c", configFilePath, "-"},
-			ignored: true,
-			want:    []string{"--config:configuration file path", "--help:show help"},
-		},
-		{
 			// revoke takes any number of app names, so the completion goes on after the
 			// first one; offering it again would only produce a duplicate argument.
 			name: "an app already given is dropped",
@@ -229,11 +210,6 @@ func TestAppNames(t *testing.T) {
 			args: []string{"-c", configFilePath, "ghu_xxx"},
 			want: []string{"first", "second"},
 		},
-		{
-			name: "flags are still completed",
-			args: []string{"-c", configFilePath, "-"},
-			want: []string{"--config:configuration file path", "--help:show help"},
-		},
 	}
 
 	for _, tt := range tests {
@@ -241,9 +217,12 @@ func TestAppNames(t *testing.T) {
 			t.Parallel()
 			ignored := never
 			if tt.ignored {
-				ignored = func(*cli.Command) bool { return true }
+				ignored = func(*cobra.Command) bool { return true }
 			}
-			got := lines(complete(t, appNames(ignored), tt.args...))
+			fn := func(configFilePath *string) completion.Func {
+				return completion.AppNames(configFilePath, ignored)
+			}
+			got := complete(t, fn, tt.toComplete, tt.args...)
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("candidates mismatch (-want +got):\n%s", diff)
 			}
