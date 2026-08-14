@@ -7,7 +7,7 @@ description: Run a command with ghtkn access tokens in environment variables usi
 `ghtkn exec` runs an external command with GitHub App User Access Tokens in its environment.
 
 ```sh
-ghtkn exec [-config <config file>] [-log-level <level>] [-device-flow] [-min-expiration <duration>] [-continue-on-error] [-e <env name>[:<app name>]...] -- <command> [<args>...]
+ghtkn exec [--config <config file>] [--log-level <level>] [--device-flow] [--min-expiration <duration>] [--continue-on-error] [-e <env name>[:<app name>]...] -- <command> [<args>...]
 ```
 
 ```sh
@@ -58,15 +58,15 @@ An environment variable inherited from ghtkn's own environment is replaced rathe
 
 ## The device flow
 
-`ghtkn exec` behaves like `ghtkn get`: the device flow is disabled by default, so an app whose cached token is missing or expiring fails instead of prompting. Enable it with `-device-flow` or `GHTKN_ENABLE_DEVICE_FLOW=true`, or simply run `ghtkn auth` beforehand. `-min-expiration` works as in `ghtkn get` too.
+`ghtkn exec` behaves like `ghtkn get`: the device flow is disabled by default, so an app whose cached token is missing or expiring fails instead of prompting. Enable it with `--device-flow` or `GHTKN_ENABLE_DEVICE_FLOW=true`, or simply run `ghtkn auth` beforehand. `--min-expiration` works as in `ghtkn get` too.
 
-Note that the token is acquired once, before the command starts. A command running longer than the token's remaining lifetime will see it expire; `ghtkn exec` doesn't renew it in the meantime. Use `-min-expiration` to require a token that lives long enough for what you are about to run.
+Note that the token is acquired once, before the command starts. A command running longer than the token's remaining lifetime will see it expire; `ghtkn exec` doesn't renew it in the meantime. Use `--min-expiration` to require a token that lives long enough for what you are about to run.
 
 ## When a token can't be acquired
 
 By default the command is not run at all and ghtkn exits `111`.
 
-With `-continue-on-error` the command runs anyway and a warning is logged. The environment variables whose tokens were acquired are still set; the others keep whatever value they had in ghtkn's environment. That last part matters: if `GITHUB_TOKEN` was already set to another credential, the command silently uses it. The warning says so.
+With `--continue-on-error` the command runs anyway and a warning is logged. The environment variables whose tokens were acquired are still set; the others keep whatever value they had in ghtkn's environment. That last part matters: if `GITHUB_TOKEN` was already set to another credential, the command silently uses it. The warning says so.
 
 ## Exit codes
 

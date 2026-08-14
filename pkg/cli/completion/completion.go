@@ -3,33 +3,31 @@
 // configuration file, so the shell offers exactly the apps that ghtkn can issue a
 // token for.
 //
-// Shell completion itself is enabled by urfave-cli-v3-util on the root command, and
-// the completion scripts come from urfave/cli's hidden 'completion' command; this
-// package only supplies the candidates.
+// Shell completion itself comes from cobra's 'completion' command; this package only
+// supplies the candidates. Unlike urfave/cli, cobra completes flags before it asks
+// for argument candidates, so nothing here has to hand that case back.
 package completion
 
 import (
-	"context"
-	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
-	"github.com/urfave/cli/v3"
 )
 
-// AppName returns a ShellCompleteFunc for a command that takes a single app name,
+// Func is the signature cobra takes for completing positional arguments.
+type Func func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective)
+
+// AppName returns a completion function for a command that takes a single app name,
 // such as 'ghtkn get'. configFilePath points at the -c flag's destination, which is
 // read when the completion runs rather than when the command is built.
-func AppName(configFilePath *string) cli.ShellCompleteFunc {
-	return func(ctx context.Context, cmd *cli.Command) {
-		if rest := cmd.Args().Slice(); len(rest) > 0 {
-			// The app name is already given, so there is nothing left to complete. The
-			// exception is a flag being completed, which urfave/cli would handle itself
-			// if this command defined no ShellComplete, so hand it back.
-			completeFlags(ctx, cmd, rest)
-			return
+func AppName(configFilePath *string) Func {
+	return func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		if len(args) > 0 {
+			// The app name is already given, so there is nothing left to complete.
+			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		writeAppNames(cmd, *configFilePath, nil)
+		return appNames(*configFilePath, toComplete, nil), cobra.ShellCompDirectiveNoFileComp
 	}
 }
 
@@ -39,50 +37,31 @@ func AppName(configFilePath *string) cli.ShellCompleteFunc {
 //
 // ignored reports whether the command line being completed makes the command ignore
 // its app name arguments; no app is offered then. It must not be nil.
-func AppNames(configFilePath *string, ignored func(cmd *cli.Command) bool) cli.ShellCompleteFunc {
-	return func(ctx context.Context, cmd *cli.Command) {
-		rest := cmd.Args().Slice()
-		if completeFlags(ctx, cmd, rest) {
-			return
-		}
+func AppNames(configFilePath *string, ignored func(cmd *cobra.Command) bool) Func {
+	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if ignored(cmd) {
-			return
+			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		writeAppNames(cmd, *configFilePath, rest)
+		return appNames(*configFilePath, toComplete, args), cobra.ShellCompDirectiveNoFileComp
 	}
 }
 
-// completeFlags hands the completion back to urfave/cli when a flag is being
-// completed, and reports whether it did. Defining ShellComplete replaces
-// DefaultCompleteWithFlags, which is what completes '-' and '--conf' otherwise, so
-// every ShellComplete here has to delegate that case explicitly.
-//
-// The last argument is the one being completed: the completion scripts append the
-// word under the cursor only when it starts with '-', and pass the words before the
-// cursor as is otherwise.
-func completeFlags(ctx context.Context, cmd *cli.Command, args []string) bool {
-	if len(args) == 0 || !strings.HasPrefix(args[len(args)-1], "-") {
-		return false
-	}
-	cli.DefaultCompleteWithFlags(ctx, cmd)
-	return true
-}
-
-// writeAppNames writes the name of every configured app, except those in exclude, as
-// completion candidates. The shell filters them by the prefix the user has typed.
+// appNames returns the name of every configured app that starts with toComplete,
+// except those in exclude.
 //
 // Errors are dropped: the output is the candidate list itself, so a message about a
 // broken config file would be offered as a candidate. Nothing here reaches the
 // keyring, the agent, or GitHub either, because this runs on every press of the tab
 // key.
-func writeAppNames(cmd *cli.Command, configFilePath string, exclude []string) {
-	// LoadConfig resolves GHTKN_CONFIG itself when the path is empty. The -c flag's
-	// own environment variable source can't be relied on here: urfave/cli applies it
-	// after the point where it runs the completion. A missing config file is not an
-	// error, and yields no candidate.
+func appNames(configFilePath, toComplete string, exclude []string) []string {
+	// LoadConfig resolves GHTKN_CONFIG itself when the path is empty, which is what
+	// makes the environment variable work here: the -c flag's own environment variable
+	// source is applied by the root command's PersistentPreRunE, which cobra does not
+	// run while completing. A missing config file is not an error, and yields no
+	// candidate.
 	cfg, err := ghtkn.LoadConfig(&ghtkn.InputLoadConfig{ConfigFilePath: configFilePath})
 	if err != nil {
-		return
+		return nil
 	}
 	// A name is offered once. The config file can hold duplicates: Config.Validate
 	// rejects them, but nothing validates it here, and a candidate listed twice is
@@ -91,7 +70,7 @@ func writeAppNames(cmd *cli.Command, configFilePath string, exclude []string) {
 	for _, name := range exclude {
 		seen[name] = struct{}{}
 	}
-	w := cmd.Root().Writer
+	var names []string
 	for _, app := range cfg.Apps {
 		if app == nil || app.Name == "" {
 			continue
@@ -100,6 +79,10 @@ func writeAppNames(cmd *cli.Command, configFilePath string, exclude []string) {
 			continue
 		}
 		seen[app.Name] = struct{}{}
-		fmt.Fprintln(w, app.Name)
+		if !strings.HasPrefix(app.Name, toComplete) {
+			continue
+		}
+		names = append(names, app.Name)
 	}
+	return names
 }

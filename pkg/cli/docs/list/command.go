@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/spf13/cobra"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/docs/list"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
-	"github.com/urfave/cli/v3"
 )
 
 // Args holds the flag and argument values for the info command.
@@ -16,7 +16,7 @@ type Args struct {
 	*flag.GlobalFlags
 }
 
-func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
+func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cobra.Command {
 	args := &Args{
 		GlobalFlags: gFlags,
 	}
@@ -26,18 +26,16 @@ func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
 
 type runner struct{}
 
-func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
-	return &cli.Command{
-		Name:        "list",
-		Usage:       "List document names and descriptions",
-		Description: ``,
-		Action: func(ctx context.Context, _ *cli.Command) error {
-			return r.action(ctx, logger, args)
-		},
-		Flags: []cli.Flag{
-			flag.LogLevel(&args.LogLevel),
+func (r *runner) Command(logger *slogutil.Logger, args *Args) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "List document names and descriptions",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return r.action(cmd.Context(), logger, args)
 		},
 	}
+	return cmd
 }
 
 func (r *runner) action(_ context.Context, logger *slogutil.Logger, args *Args) error {

@@ -13,18 +13,18 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/server"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cobrautil"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/status"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/info"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
-	"github.com/urfave/cli/v3"
 )
 
 // Args holds the flag values for the info command.
@@ -34,7 +34,7 @@ type Args struct {
 	Version string
 }
 
-func New(logger *slogutil.Logger, env *urfave.Env, gFlags *flag.GlobalFlags) *cli.Command {
+func New(logger *slogutil.Logger, env *cobrautil.Env, gFlags *flag.GlobalFlags) *cobra.Command {
 	args := &Args{
 		GlobalFlags: gFlags,
 		Version:     env.Version,
@@ -49,11 +49,11 @@ type runner struct {
 	stdin io.Reader
 }
 
-func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
-	return &cli.Command{
-		Name:  "info",
-		Usage: "Output information about the environment which is useful for troubleshooting",
-		Description: `Output environment information useful for troubleshooting.
+func (r *runner) Command(logger *slogutil.Logger, args *Args) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "info",
+		Short: "Output information about the environment which is useful for troubleshooting",
+		Long: `Output environment information useful for troubleshooting.
 
 It prints, as JSON, the OS, architecture, ghtkn version, relevant GHTKN_* and
 related environment variables (with token values redacted), the selected backend,
@@ -69,14 +69,12 @@ stdout untouched.
 
 $ ghtkn info
 $ ghtkn info | jq .envs`,
-		Action: func(ctx context.Context, _ *cli.Command) error {
-			return r.action(ctx, logger, args)
-		},
-		Flags: []cli.Flag{
-			flag.LogLevel(&args.LogLevel),
-			flag.Config(&args.Config),
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return r.action(cmd.Context(), logger, args)
 		},
 	}
+	return cmd
 }
 
 // action implements the 'info' command. It sets the log level, resolves the

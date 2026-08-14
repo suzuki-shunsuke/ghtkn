@@ -13,13 +13,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/spf13/cobra"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/exec"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
-	"github.com/urfave/cli/v3"
 )
 
 const execDescription = `Run a command with GitHub App User Access Tokens in its environment.
@@ -45,7 +44,7 @@ directory, and stdin, stdout and stderr. Nothing ghtkn writes goes to stdout, so
 the command's stdout carries the command's output alone.
 
 The device flow behaves as in 'ghtkn get': it is disabled by default, so an app with
-no valid cached token fails instead of prompting. Enable it with -device-flow or
+no valid cached token fails instead of prompting. Enable it with --device-flow or
 GHTKN_ENABLE_DEVICE_FLOW=true, or run 'ghtkn auth' beforehand.
 
 On Linux and macOS, ghtkn doesn't stay around while the command runs: it replaces its
@@ -59,7 +58,7 @@ interactive command).
 The exit code is the command's exit code, or 128 plus the signal number when it is
 killed by a signal. 127 means the command was not found and 126 that it could not be
 executed. If an access token can't be created or read, the command is not run and
-ghtkn exits 111; with -continue-on-error it is run anyway, the environment variables
+ghtkn exits 111; with --continue-on-error it is run anyway, the environment variables
 whose tokens were acquired are still set, and the others keep the values inherited
 from ghtkn's environment.
 
@@ -88,71 +87,54 @@ type Args struct {
 
 // New creates a new exec command instance with the provided logger.
 // It returns a CLI command that can be registered with the main CLI application.
-func New(logger *slogutil.Logger, env *urfave.Env, gFlags *flag.GlobalFlags) *cli.Command {
+func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cobra.Command {
 	args := &Args{
 		GlobalFlags: gFlags,
 	}
-	r := &runner{
-		rawArgs: env.Args,
-	}
+	r := &runner{}
 	return r.Command(logger, args)
 }
 
 // runner holds the state the exec command needs beyond its flags.
-type runner struct {
-	// rawArgs is the command line as given to ghtkn. urfave/cli removes the '--' from
-	// the parsed arguments, so it can only be found here.
-	rawArgs []string
-}
+type runner struct{}
 
 // Command returns the CLI command definition for the exec subcommand.
-func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
-	return &cli.Command{
-		Name:        commandName,
-		Usage:       "Run a command with access tokens in environment variables",
-		ArgsUsage:   "-- <command> [<args>...]",
-		Description: execDescription,
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			return r.action(ctx, cmd, logger, args)
-		},
-		Flags: []cli.Flag{
-			flag.LogLevel(&args.LogLevel),
-			flag.Config(&args.Config),
-			flag.MinExpiration(&args.MinExpiration),
-			flag.DeviceFlow(&args.DeviceFlow),
-			&cli.StringSliceFlag{
-				Name:        "env",
-				Aliases:     []string{"e"},
-				Usage:       "environment variable set to an access token: <env name>[:<app name>]. Repeatable",
-				Destination: &args.Envs,
-			},
-			&cli.BoolFlag{
-				Name:        "continue-on-error",
-				Usage:       "Run the command even if an access token can't be created or read",
-				Destination: &args.ContinueOnError,
-			},
-		},
-		Arguments: []cli.Argument{
-			// Min is 0 so that a missing command is reported by requireSeparator,
-			// which explains the '--' too.
-			&cli.StringArgs{
-				Name:        "command",
-				Min:         0,
-				Max:         -1,
-				Destination: &args.Command,
-			},
+func (r *runner) Command(logger *slogutil.Logger, args *Args) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   commandName + " [<flags>] -- <command> [<args>...]",
+		Short: "Run a command with access tokens in environment variables",
+		// The flags are spelled out in Use, where they belong: they have to come before
+		// the '--'. cobra would otherwise append its own "[flags]" after the command.
+		DisableFlagsInUseLine: true,
+		Long:                  execDescription,
+		// Any number of arguments is accepted so that a command line missing the '--',
+		// or the command itself, is reported by requireSeparator, which explains the
+		// '--' too.
+		Args: cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, positional []string) error {
+			args.Command = positional
+			return r.action(cmd.Context(), cmd, logger, args)
 		},
 	}
+	flag.MinExpiration(cmd.Flags(), &args.MinExpiration)
+	flag.DeviceFlow(cmd.Flags(), &args.DeviceFlow)
+	// StringArray rather than StringSlice: a value is taken as written, so an
+	// environment variable or app name is never split on a comma it happens to contain.
+	cmd.Flags().StringArrayVarP(&args.Envs, "env", "e",
+		nil, "environment variable set to an access token: <env name>[:<app name>]. Repeatable")
+	cmd.Flags().BoolVar(&args.ContinueOnError, "continue-on-error",
+		false, "Run the command even if an access token can't be created or read")
+	return cmd
 }
 
 // action implements the main logic for the exec command.
 // The command line is validated before anything else so that a mistake in it doesn't
 // unlock the backend or start a device flow.
-func (r *runner) action(ctx context.Context, cmd *cli.Command, logger *slogutil.Logger, args *Args) error {
+func (r *runner) action(ctx context.Context, cmd *cobra.Command, logger *slogutil.Logger, args *Args) error {
 	if err := logger.SetLevel(args.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
-	if err := requireSeparator(r.rawArgs, args.Command); err != nil {
+	if err := requireSeparator(cmd.ArgsLenAtDash(), args.Command); err != nil {
 		return err
 	}
 	envVars, err := parseEnvs(args.Envs)
@@ -169,7 +151,7 @@ func (r *runner) action(ctx context.Context, cmd *cli.Command, logger *slogutil.
 	// Pass the device-flow override only when the flag is explicitly set so it takes
 	// precedence over GHTKN_ENABLE_DEVICE_FLOW and the config; otherwise leave it nil
 	// so the SDK resolves them itself.
-	if cmd.IsSet("device-flow") {
+	if cmd.Flags().Changed("device-flow") {
 		inputGet.EnableDeviceFlow = &args.DeviceFlow
 	}
 

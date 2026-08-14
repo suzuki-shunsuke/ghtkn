@@ -1,11 +1,11 @@
 package docs
 
 import (
+	"github.com/spf13/cobra"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs/list"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs/show"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
-	"github.com/urfave/cli/v3"
 )
 
 // Hint points coding agents at `ghtkn docs`. It lives here, next to the command it
@@ -22,7 +22,7 @@ type Args struct {
 	*flag.GlobalFlags
 }
 
-func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
+func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cobra.Command {
 	args := &Args{
 		GlobalFlags: gFlags,
 	}
@@ -32,14 +32,15 @@ func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cli.Command {
 
 type runner struct{}
 
-func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
-	return &cli.Command{
-		Name:        "docs",
-		Usage:       "Output document for coding agent",
-		Description: `List and output documents. This command is useful for coding agent to read document and solve problems.`,
-		Commands: []*cli.Command{
-			show.New(logger, args.GlobalFlags),
-			list.New(logger, args.GlobalFlags),
-		},
+func (r *runner) Command(logger *slogutil.Logger, args *Args) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "docs",
+		Short: "Output document for coding agent",
+		Long:  `List and output documents. This command is useful for coding agent to read document and solve problems.`,
 	}
+	cmd.AddCommand(
+		show.New(logger, args.GlobalFlags),
+		list.New(logger, args.GlobalFlags),
+	)
+	return cmd
 }

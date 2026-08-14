@@ -6,6 +6,8 @@ go 1.26.5
 
 require (
 	github.com/google/go-cmp v0.7.0
+	github.com/spf13/cobra v1.10.2
+	github.com/spf13/pflag v1.0.9
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
 	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.5.1
 	github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0
@@ -13,8 +15,6 @@ require (
 	github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.2
 	github.com/suzuki-shunsuke/slog-error v0.2.2
 	github.com/suzuki-shunsuke/slog-util v0.3.2
-	github.com/suzuki-shunsuke/urfave-cli-v3-util v0.2.3
-	github.com/urfave/cli/v3 v3.10.1
 	golang.design/x/clipboard v0.8.0
 	golang.org/x/crypto v0.54.0
 	golang.org/x/sys v0.47.0
@@ -28,6 +28,7 @@ require (
 	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/ebitengine/purego v0.10.1 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/invopop/jsonschema v0.12.0 // indirect
 	github.com/lmittmann/tint v1.1.3 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
