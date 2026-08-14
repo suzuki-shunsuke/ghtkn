@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
 )
 
@@ -23,8 +22,6 @@ type mockClient struct {
 func (m *mockClient) Get(_ context.Context, _ *slog.Logger, _ *ghtkn.InputGet) (*ghtkn.AccessToken, *ghtkn.AppConfig, error) {
 	return m.token, m.app, m.err
 }
-
-func (m *mockClient) SetCopyOnetimeCodeToClipboard(_ deviceflow.CopyTextToClipboard) {}
 
 func TestController_Run(t *testing.T) {
 	t.Parallel()

@@ -183,7 +183,7 @@ Detailed documentation is split by topic under [`docs/`](docs). These documents 
 - [Running Commands](docs/exec.md) - run a command with access tokens in environment variables using `ghtkn exec`, without printing them.
 - [Git Credential Helper](docs/git-credential-helper.md) - use ghtkn as a Git credential helper and switch apps by repository owner.
 - [Using Multiple Apps](docs/multiple-apps.md) - configure multiple GitHub Apps and switch between them per command, env var, or directory.
-- [Token Management](docs/token-management.md) - token regeneration, `ghtkn auth`, the automatic device flow, and clipboard.
+- [Token Management](docs/token-management.md) - token regeneration, `ghtkn auth`, the device flow, and clipboard.
 - [Backend](docs/backend.md) - where tokens are stored (`keyring`, `text`, `agent`); useful for containers and microVMs.
 - [Running the agent](docs/agent-deployment.md) - run the agent as a systemd user service, from a container entrypoint, or on the host with containers as clients.
 - [Sandbox Configuration: Claude Code](docs/sandbox-claude-code.md) - settings ghtkn needs to run inside Claude Code's sandbox, per backend.

@@ -95,13 +95,13 @@ Stored refresh tokens will be dropped (access tokens are kept; affected apps re-
 ```
 
 Answer `y` to drop the refresh tokens and unlock with refresh disabled, or `N` (the default) to abort so you can rerun with `--enable-refresh` and keep them.
-Only the refresh tokens are dropped; the access tokens stay, so the affected apps simply re-authenticate with the device flow when they next expire.
+Only the refresh tokens are dropped; the access tokens stay, so the affected apps need `ghtkn auth` again once they expire.
 When no valid refresh token is stored, there is nothing to remove and no prompt appears.
 
 Everything else works as before.
 
 When refresh-token support is enabled and the access token has expired but a valid refresh token exists, `ghtkn get` and `ghtkn auth` refresh the token automatically instead of running the device flow.
-When no valid refresh token exists, they run the device flow as before.
+When no valid refresh token exists, `ghtkn auth` runs the device flow and `ghtkn get` fails, as they do without refresh.
 A refresh token is valid for six months.
 
 ## refresh-token-ttl: automatically remove unused refresh tokens from the backend
