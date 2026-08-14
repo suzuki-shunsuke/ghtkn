@@ -88,7 +88,7 @@ Unlike `ghtkn get`, it does not accept `--min-expiration (-m)`, nor read `GHTKN_
 A coding agent (or any background / non-interactive process) cannot complete this, so it would block until a device code expires.
 Worse, these commands are often run indirectly, by a wrapper script, the Git credential helper, or a third-party tool built on the ghtkn SDK. A device flow started that way is a phishing risk: you could be led to approve one you never initiated.
 
-So `ghtkn get`, `ghtkn exec`, `ghtkn git-credential`, and the SDK never start one. They serve the cached token and otherwise fail fast with an actionable error. Run `ghtkn auth` in your own interactive terminal to authenticate; then the one-time code you are shown is always one you asked for.
+So `ghtkn get`, `ghtkn exec`, `ghtkn git-credential`, and the SDK never start one. They serve whatever token the backend can supply without asking you anything, which is the cached one, or a silently refreshed one with the agent backend and [refresh](refresh-token.md) enabled, and otherwise fail fast with an actionable error. Run `ghtkn auth` in your own interactive terminal to authenticate; then the one-time code you are shown is always one you asked for.
 
 ## :bulb: Copying a one-time code to clipboard automatically
 

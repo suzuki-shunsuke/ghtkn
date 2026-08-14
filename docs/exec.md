@@ -58,7 +58,7 @@ An environment variable inherited from ghtkn's own environment is replaced rathe
 
 ## The device flow
 
-`ghtkn exec` behaves like `ghtkn get`: it never starts the device flow, so an app whose cached token is missing or expiring fails instead of prompting. Run `ghtkn auth` beforehand. `--min-expiration` works as in `ghtkn get` too.
+`ghtkn exec` behaves like `ghtkn get`: it never starts the device flow, so an app for which no token can be obtained without asking you fails instead of prompting. Run `ghtkn auth` beforehand. With the agent backend and [refresh](refresh-token.md) enabled, an expiring token is renewed silently and no prompt is needed in the first place. `--min-expiration` works as in `ghtkn get` too.
 
 Note that the token is acquired once, before the command starts. A command running longer than the token's remaining lifetime will see it expire; `ghtkn exec` doesn't renew it in the meantime. Use `--min-expiration` to require a token that lives long enough for what you are about to run.
 

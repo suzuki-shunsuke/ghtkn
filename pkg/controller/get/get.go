@@ -15,8 +15,9 @@ type InputRun struct {
 // Run executes the main logic for retrieving a GitHub App access token.
 // It reads configuration and the token cached in the backend, retrieves the
 // authenticated user's login for Git Credential Helper if necessary, and outputs the
-// result in the requested format. It fails when no valid token is cached, because
-// creating one runs the device flow and only 'ghtkn auth' does that.
+// result in the requested format. It fails when the backend can't supply a token
+// without asking the user, because the only way left is the device flow and only
+// 'ghtkn auth' starts that.
 func (c *Controller) Run(ctx context.Context, logger *slog.Logger, input *InputRun) error {
 	token, app, err := c.input.Client.Get(ctx, logger, input.InputGet)
 	if err != nil {

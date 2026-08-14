@@ -43,8 +43,9 @@ Everything else is inherited unchanged: the rest of the environment, the working
 directory, and stdin, stdout and stderr. Nothing ghtkn writes goes to stdout, so
 the command's stdout carries the command's output alone.
 
-The device flow behaves as in 'ghtkn get': it is never started here, so an app with no
-valid cached token fails instead of prompting. Run 'ghtkn auth' beforehand.
+The device flow behaves as in 'ghtkn get': it is never started here, so an app for which
+no token can be obtained without asking you fails instead of prompting. Run 'ghtkn auth'
+beforehand.
 
 On Linux and macOS, ghtkn doesn't stay around while the command runs: it replaces its
 own process with the command, which therefore keeps ghtkn's process id, process group

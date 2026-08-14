@@ -1,6 +1,7 @@
 // Package get provides functionality to retrieve GitHub App access tokens.
 // It serves both the standard 'get' command and the 'git-credential' helper command.
-// It reads the token cached in the backend and never creates one: creating a token runs
+// It reads the token cached in the backend, which on the agent backend with refresh
+// enabled includes one renewed silently from the stored refresh token. It never starts
 // the device flow, which only 'ghtkn auth' does.
 package get
 

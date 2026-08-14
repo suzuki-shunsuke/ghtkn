@@ -34,9 +34,11 @@ to display or inspect the token. If you are a coding agent, this applies to your
 responses too: a leaked token can be used until it is revoked.
 
 It returns the token cached in the backend (keyring, agent, or text) when one is
-available and still valid. Otherwise it fails immediately: creating a token runs
-GitHub's interactive OAuth device flow, which only 'ghtkn auth' starts, so no command
-ever starts one on your behalf. Run 'ghtkn auth' in your own terminal to authenticate.
+available and still valid, and with the agent backend and refresh enabled it also
+renews an expiring one silently from the stored refresh token. Otherwise it fails
+immediately, because the only way left is GitHub's interactive OAuth device flow,
+which only 'ghtkn auth' starts, so no command ever starts one on your behalf. Run
+'ghtkn auth' in your own terminal to authenticate.
 
 If an app name is given, the token is issued for that app; otherwise GHTKN_APP or
 the default app in the config is used. Use --min-expiration to force regeneration

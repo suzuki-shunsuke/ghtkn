@@ -69,5 +69,5 @@ Both ship with the SDK, so they describe the version you actually depend on; thi
 
 Two things are worth knowing before you read them, because they are decisions ghtkn made rather than API details:
 
-- `Client.Get` never creates a token, so one that has to be created makes it fail with `ghtkn.ErrDisableDeviceFlow` instead of prompting. Tell the user to run `ghtkn auth`. The device flow runs only in `Client.Auth`, which is what `ghtkn auth` calls; unless you are writing something that authenticates, you want `Get`.
+- `Client.Get` never starts the device flow, so a token that could only come from one makes it fail with `ghtkn.ErrDisableDeviceFlow` instead of prompting. Tell the user to run `ghtkn auth`. It is the interactive path that is closed, not token creation: with the agent backend and [refresh](refresh-token.md) enabled, `Get` still renews an expiring token silently. The device flow runs only in `Client.Auth`, which is what `ghtkn auth` calls; unless you are writing something that authenticates, you want `Get`.
 - The access token you get back is a live secret. Don't print it, log it, or include it in an error message. See [Token Management](token-management.md).
