@@ -43,8 +43,9 @@ which only 'ghtkn auth' starts, so no command ever starts one on your behalf. Ru
 'ghtkn auth' in your own terminal to authenticate.
 
 If an app name is given, the token is issued for that app; otherwise GHTKN_APP or
-the default app in the config is used. Use --min-expiration to force regeneration
-when the cached token expires within the given duration.
+the default app in the config is used. Use --min-expiration to require a token with
+at least the given validity left; one with less counts as expiring, so it fails the
+same way, or is refreshed silently with the agent backend and refresh enabled.
 
 $ ghtkn get
 $ ghtkn get my-app

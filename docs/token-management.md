@@ -33,7 +33,7 @@ ghtkn stores generated access tokens and their expiration dates in the backend.
 The access token validity period is 8 hours.
 
 By default, if the access token hasn't expired, it returns it, but this may result in a short-lived access token being returned.
-By specifying `--min-expiration (-m) <minimum required validity period. Not a datetime but remaining time>`, the access token will be regenerated if its validity period is shorter than the specified duration.
+By specifying `--min-expiration (-m) <minimum required validity period. Not a datetime but remaining time>`, an access token whose validity period is shorter than the specified duration counts as expiring, so `ghtkn get` fails just as it does for an expired one (or refreshes it silently with the agent backend and refresh enabled).
 
 ```sh
 ghtkn get -m 1h
