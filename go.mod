@@ -7,7 +7,7 @@ go 1.26.5
 require (
 	github.com/google/go-cmp v0.7.0
 	github.com/spf13/cobra v1.10.2
-	github.com/spf13/pflag v1.0.9
+	github.com/spf13/pflag v1.0.10
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
 	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.5.1
 	github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0
