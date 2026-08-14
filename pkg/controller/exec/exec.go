@@ -103,9 +103,9 @@ func (c *Controller) tokens(ctx context.Context, logger *slog.Logger, input *Inp
 // variable.
 func handleTokenError(logger *slog.Logger, continueOnError bool, err error) error {
 	if errors.Is(err, context.Canceled) {
-		// ghtkn was interrupted while getting the token, for example during the device
-		// flow. The user knows why, so exit like a shell does without logging an error,
-		// and without running the command even with --continue-on-error.
+		// ghtkn was interrupted while getting the token, for example while waiting on the
+		// backend renewing it. The user knows why, so exit like a shell does without
+		// logging an error, and without running the command even with --continue-on-error.
 		return ecerror.Wrap(cobrautil.ErrSilent, exitCodeInterrupted)
 	}
 	if !continueOnError {
