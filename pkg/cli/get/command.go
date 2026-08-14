@@ -1,8 +1,10 @@
 // Package get implements both the 'ghtkn get' command and 'ghtkn git-credential' command.
-// These commands retrieve or create GitHub App User Access Tokens and output them to stdout.
+// These commands read a GitHub App User Access Token from the backend and output it to
+// stdout. Neither creates one through the device flow, which only 'ghtkn auth' runs;
+// with the agent backend and refresh enabled the backend does renew an expiring token
+// silently, which needs nothing from the user.
 // The 'get' command outputs tokens in plain text or JSON format for general use.
 // The 'git-credential' command outputs tokens in Git's credential helper format for seamless Git authentication.
-// Both commands handle token persistence, expiration checking, and automatic renewal when needed.
 package get
 
 import (

@@ -127,7 +127,7 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cobra.Command {
 
 // action implements the main logic for the exec command.
 // The command line is validated before anything else so that a mistake in it doesn't
-// unlock the backend or start a device flow.
+// unlock the backend or ask it for a token.
 func (r *runner) action(ctx context.Context, cmd *cobra.Command, logger *slogutil.Logger, args *Args) error {
 	if err := logger.SetLevel(args.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)

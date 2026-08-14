@@ -19,7 +19,6 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/completion"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/clipboard"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/auth"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
@@ -78,25 +77,10 @@ func action(ctx context.Context, cmd *cobra.Command, logger *slogutil.Logger, ar
 	if err := logger.SetLevel(args.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
-	inputAuth := &ghtkn.InputAuth{
-		ConfigFilePath: args.Config,
-	}
-	if args.AppName != "" {
-		inputAuth.AppName = args.AppName
-	}
-
+	inputAuth := newInputAuth(args, cmd.Flags().Changed("clipboard"))
 	input, err := auth.NewInput()
 	if err != nil {
 		return fmt.Errorf("create the controller input: %w", err)
-	}
-	// Always provide the clipboard implementation; whether to actually copy is
-	// resolved by the SDK from the flag override below, GHTKN_CLIPBOARD, and the
-	// config's clipboard.enable.
-	input.Client.SetCopyOnetimeCodeToClipboard(clipboard.New())
-	// Pass the clipboard override only when --clipboard is explicitly set (including
-	// --clipboard=false) so it takes precedence over the env var and config.
-	if cmd.Flags().Changed("clipboard") {
-		inputAuth.Clipboard = &args.Clipboard
 	}
 	p, err := config.ResolvePath(inputAuth.ConfigFilePath)
 	if err != nil {
@@ -104,4 +88,20 @@ func action(ctx context.Context, cmd *cobra.Command, logger *slogutil.Logger, ar
 	}
 	inputAuth.ConfigFilePath = p
 	return auth.New(input).Run(ctx, logger.Logger, inputAuth) //nolint:wrapcheck
+}
+
+// newInputAuth builds the SDK request from the command line. clipboardSet tells whether
+// --clipboard was explicitly given; the override is passed only then (including
+// --clipboard=false) so that it takes precedence over GHTKN_CLIPBOARD and the config,
+// while an unset flag leaves the two to the SDK. The config file path is the raw flag
+// value; the caller resolves it.
+func newInputAuth(args *Args, clipboardSet bool) *ghtkn.InputAuth {
+	input := &ghtkn.InputAuth{
+		AppName:        args.AppName,
+		ConfigFilePath: args.Config,
+	}
+	if clipboardSet {
+		input.Clipboard = &args.Clipboard
+	}
+	return input
 }

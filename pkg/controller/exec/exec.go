@@ -61,13 +61,13 @@ type envVar struct {
 // tokens gets an access token for each environment variable, in the order the
 // variables were given.
 //
-// Tokens are acquired one at a time, never concurrently: creating one runs the device
-// flow, which is interactive and reads the terminal.
+// Tokens are acquired one at a time, never concurrently, so a failure is reported
+// against the '-e' that caused it and in the order they were given.
 func (c *Controller) tokens(ctx context.Context, logger *slog.Logger, input *InputRun) ([]*envVar, error) {
 	// Tokens are keyed by the requested app name, an empty string meaning the app
 	// ghtkn selects automatically, so an app is asked for only once however many
-	// environment variables are bound to it. The SDK caches nothing between calls, and
-	// asking twice could run the device flow twice.
+	// environment variables are bound to it. The SDK caches nothing between calls, so
+	// asking twice would repeat the whole backend request for a token already in hand.
 	tokens := make(map[string]string, len(input.EnvVars))
 	failed := make(map[string]struct{}, len(input.EnvVars))
 	vars := make([]*envVar, 0, len(input.EnvVars))

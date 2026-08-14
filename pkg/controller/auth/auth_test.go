@@ -4,12 +4,16 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/auth"
 )
+
+// errDeviceFlow stands in for whatever the SDK's Auth failed with, so the test can
+// check that Run wraps it rather than replacing it.
+var errDeviceFlow = errors.New("device flow failed")
 
 type mockClient struct {
 	err error
@@ -22,8 +26,6 @@ func (m *mockClient) Auth(_ context.Context, _ *slog.Logger, input *ghtkn.InputA
 	m.input = input
 	return m.err
 }
-
-func (m *mockClient) SetCopyOnetimeCodeToClipboard(_ deviceflow.CopyTextToClipboard) {}
 
 func TestController_Run(t *testing.T) {
 	t.Parallel()
@@ -39,7 +41,7 @@ func TestController_Run(t *testing.T) {
 		},
 		{
 			name:    "authentication error",
-			client:  &mockClient{err: errors.New("device flow failed")},
+			client:  &mockClient{err: errDeviceFlow},
 			wantErr: true,
 		},
 	}
@@ -57,6 +59,16 @@ func TestController_Run(t *testing.T) {
 			if err != nil {
 				if !tt.wantErr {
 					t.Error(err)
+					return
+				}
+				// The cause must survive the wrapping: the SDK's error is what tells the
+				// user why authenticating failed, and errors.Is is how a caller detects
+				// a specific one.
+				if !errors.Is(err, tt.client.err) {
+					t.Errorf("Run() error = %v, want it to wrap %v", err, tt.client.err)
+				}
+				if !strings.Contains(err.Error(), "create an access token") {
+					t.Errorf("Run() error = %v, want it to say what failed", err)
 				}
 				return
 			}

@@ -10,7 +10,7 @@ import (
 	"log/slog"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/clipboard"
 )
 
 // Controller manages the process of authenticating to GitHub and caching the token.
@@ -27,7 +27,6 @@ func New(input *Input) *Controller {
 
 type Client interface {
 	Auth(ctx context.Context, logger *slog.Logger, input *ghtkn.InputAuth) error
-	SetCopyOnetimeCodeToClipboard(f deviceflow.CopyTextToClipboard)
 }
 
 // Input contains all the dependencies and configuration needed by the Controller.
@@ -41,6 +40,11 @@ func NewInput() (*Input, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create a ghtkn client: %w", err)
 	}
+	// The clipboard implementation is always injected; whether the one-time code is
+	// actually copied is resolved by the SDK from InputAuth.Clipboard, GHTKN_CLIPBOARD,
+	// and the config's clipboard.enable. It is wired here rather than in the CLI so that
+	// the Client interface stays the one method the controller calls.
+	client.SetCopyOnetimeCodeToClipboard(clipboard.New())
 	return &Input{
 		Client: client,
 	}, nil

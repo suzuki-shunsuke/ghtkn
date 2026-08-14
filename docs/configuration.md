@@ -76,6 +76,8 @@ apps:
 If the `GHTKN_GITHUB_TOKEN` environment variable is set, `ghtkn` will use it as the GitHub token.
 This is useful when a personal access token is required due to the limitations of user access tokens (see [Troubleshooting](troubleshooting.md)).
 
+`ghtkn auth` ignores `GHTKN_GITHUB_TOKEN` and authenticates as usual, since caching a GitHub App user access token is its whole job.
+
 ## Shell Completion
 
 ghtkn can output a shell completion script for bash, zsh, fish, and PowerShell.
