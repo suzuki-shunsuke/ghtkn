@@ -5,8 +5,8 @@
 // Regeneration normally runs the OAuth device flow; with the agent backend and
 // refresh enabled it is a silent refresh using the stored refresh token when one
 // is available, and the device flow runs only when no usable refresh token exists.
-// Unlike 'ghtkn get', the device flow is always allowed, regardless of
-// GHTKN_ENABLE_DEVICE_FLOW, because authentication is inherently interactive.
+// It is the only command that runs the device flow, so no other command can start
+// one on the user's behalf; that is why it is the only interactive one.
 // Unlike 'ghtkn get', it does not accept the --min-expiration flag nor read
 // GHTKN_MIN_EXPIRATION; that knob is reserved for 'ghtkn get'.
 package auth
@@ -14,24 +14,15 @@ package auth
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/completion"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/clipboard"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/get"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/auth"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
 )
-
-// alwaysRenewMinExpiration forces 'ghtkn auth' to always regenerate the token. It
-// must exceed GitHub's 8h User Access Token TTL so the cached access token is always
-// treated as expiring (see checkExpired in the SDK), which triggers regeneration:
-// the device flow normally, or a silent refresh from the stored refresh token on the
-// agent backend when refresh is enabled and a valid refresh token exists.
-const alwaysRenewMinExpiration = 9 * time.Hour
 
 // Args holds the flag and argument values for the auth command.
 type Args struct {
@@ -56,8 +47,10 @@ Unlike 'ghtkn get', this regenerates the token regardless of any cached token, s
 running it proactively refreshes the cached token before it expires. Regeneration
 normally runs the OAuth device flow; with the agent backend and refresh enabled, a
 valid stored refresh token is used to refresh silently and the device flow runs
-only when no usable refresh token exists. The device flow is always allowed here,
-even when GHTKN_ENABLE_DEVICE_FLOW is false, because authentication is interactive.
+only when no usable refresh token exists. This is the only command that runs the
+device flow, so it is only ever started by you, never on your behalf by 'ghtkn get',
+'ghtkn exec', the Git credential helper, or a tool built on the ghtkn SDK. Run it in
+your own interactive terminal: it waits for you to enter a one-time code.
 It does not accept --min-expiration. Use --clipboard to copy the one-time code to the
 clipboard. If an app name is omitted, GHTKN_APP or the default app is used.
 
@@ -78,50 +71,37 @@ $ ghtkn auth -p`,
 }
 
 // action authenticates to GitHub and caches an access token without printing it.
-// It reuses the get controller with Silent enabled, and always allows the device
-// flow so authentication works even when GHTKN_ENABLE_DEVICE_FLOW is false.
+// The SDK's Auth is the only entry point that runs the device flow, and it always
+// regenerates the token, so neither of those is a knob this command has to set.
 func action(ctx context.Context, cmd *cobra.Command, logger *slogutil.Logger, args *Args) error {
 	if err := logger.SetLevel(args.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
-	inputGet := &ghtkn.InputGet{}
-	// auth always regenerates the token, so it ignores --min-expiration,
-	// GHTKN_MIN_EXPIRATION and the config's min_expiration, and forces a min expiration
-	// larger than the token TTL. Passing it as an explicit override (non-nil pointer)
-	// makes it take precedence over the environment variable and config.
-	inputGet.MinExpiration = new(alwaysRenewMinExpiration)
-	inputGet.ConfigFilePath = args.Config
-	if args.AppName != "" {
-		inputGet.AppName = args.AppName
-	}
-	// auth always allows the device flow, overriding GHTKN_ENABLE_DEVICE_FLOW,
-	// because it is an explicit, interactive authentication command.
-	enable := true
-	inputGet.EnableDeviceFlow = &enable
-
-	input, err := get.NewInput()
+	inputAuth := newInputAuth(args, cmd.Flags().Changed("clipboard"))
+	input, err := auth.NewInput()
 	if err != nil {
 		return fmt.Errorf("create the controller input: %w", err)
 	}
-	// Always provide the clipboard implementation; whether to actually copy is
-	// resolved by the SDK from the flag override below, GHTKN_CLIPBOARD, and the
-	// config's clipboard.enable.
-	input.Client.SetCopyOnetimeCodeToClipboard(clipboard.New())
-	// Pass the clipboard override only when --clipboard is explicitly set (including
-	// --clipboard=false) so it takes precedence over the env var and config.
-	if cmd.Flags().Changed("clipboard") {
-		inputGet.Clipboard = &args.Clipboard
-	}
-	p, err := config.ResolvePath(inputGet.ConfigFilePath)
+	p, err := config.ResolvePath(inputAuth.ConfigFilePath)
 	if err != nil {
 		return err //nolint:wrapcheck
 	}
-	inputGet.ConfigFilePath = p
-	if err := input.Validate(); err != nil {
-		return err //nolint:wrapcheck
+	inputAuth.ConfigFilePath = p
+	return auth.New(input).Run(ctx, logger.Logger, inputAuth) //nolint:wrapcheck
+}
+
+// newInputAuth builds the SDK request from the command line. clipboardSet tells whether
+// --clipboard was explicitly given; the override is passed only then (including
+// --clipboard=false) so that it takes precedence over GHTKN_CLIPBOARD and the config,
+// while an unset flag leaves the two to the SDK. The config file path is the raw flag
+// value; the caller resolves it.
+func newInputAuth(args *Args, clipboardSet bool) *ghtkn.InputAuth {
+	input := &ghtkn.InputAuth{
+		AppName:        args.AppName,
+		ConfigFilePath: args.Config,
 	}
-	return get.New(input).Run(ctx, logger.Logger, &get.InputRun{ //nolint:wrapcheck
-		Silent:   true,
-		InputGet: inputGet,
-	})
+	if clipboardSet {
+		input.Clipboard = &args.Clipboard
+	}
+	return input
 }

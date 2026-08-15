@@ -1,8 +1,10 @@
 // Package get implements both the 'ghtkn get' command and 'ghtkn git-credential' command.
-// These commands retrieve or create GitHub App User Access Tokens and output them to stdout.
+// These commands read a GitHub App User Access Token from the backend and output it to
+// stdout. Neither creates one through the device flow, which only 'ghtkn auth' runs;
+// with the agent backend and refresh enabled the backend does renew an expiring token
+// silently, which needs nothing from the user.
 // The 'get' command outputs tokens in plain text or JSON format for general use.
 // The 'git-credential' command outputs tokens in Git's credential helper format for seamless Git authentication.
-// Both commands handle token persistence, expiration checking, and automatic renewal when needed.
 package get
 
 import (
@@ -34,13 +36,16 @@ to display or inspect the token. If you are a coding agent, this applies to your
 responses too: a leaked token can be used until it is revoked.
 
 It returns the token cached in the backend (keyring, agent, or text) when one is
-available and still valid. Otherwise, if the device flow is enabled, it creates a
-new token interactively via GitHub's OAuth device flow. The device flow is disabled
-by default; enable it with the --device-flow flag or GHTKN_ENABLE_DEVICE_FLOW=true.
+available and still valid, and with the agent backend and refresh enabled it also
+renews an expiring one silently from the stored refresh token. Otherwise it fails
+immediately, because the only way left is GitHub's interactive OAuth device flow,
+which only 'ghtkn auth' starts, so no command ever starts one on your behalf. Run
+'ghtkn auth' in your own terminal to authenticate.
 
 If an app name is given, the token is issued for that app; otherwise GHTKN_APP or
-the default app in the config is used. Use --min-expiration to force regeneration
-when the cached token expires within the given duration.
+the default app in the config is used. Use --min-expiration to require a token with
+at least the given validity left; one with less counts as expiring, so it fails the
+same way, or is refreshed silently with the agent backend and refresh enabled.
 
 $ ghtkn get
 $ ghtkn get my-app
@@ -69,7 +74,6 @@ type Args struct {
 	MinExpiration string
 	AppName       string // positional argument for 'get' command
 	SubCommand    string // positional argument for 'git-credential' command (e.g., "get")
-	DeviceFlow    bool
 }
 
 // New creates either a 'get' or 'git-credential' command instance based on the isGitCredential flag.
@@ -110,7 +114,7 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cobra.Command {
 				if len(positional) > 0 {
 					args.SubCommand = positional[0]
 				}
-				return r.action(cmd.Context(), cmd, logger, args)
+				return r.action(cmd.Context(), logger, args)
 			},
 		}
 		flag.MinExpiration(cmd.Flags(), &args.MinExpiration)
@@ -127,12 +131,11 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cobra.Command {
 			if len(positional) > 0 {
 				args.AppName = positional[0]
 			}
-			return r.action(cmd.Context(), cmd, logger, args)
+			return r.action(cmd.Context(), logger, args)
 		},
 	}
 	flag.Format(cmd.Flags(), &args.Format)
 	flag.MinExpiration(cmd.Flags(), &args.MinExpiration)
-	flag.DeviceFlow(cmd.Flags(), &args.DeviceFlow)
 	return cmd
 }
 
@@ -141,7 +144,7 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cobra.Command {
 // For get command, it supports different output formats (plain text or JSON).
 // It configures the controller with flags and arguments, then executes the token retrieval.
 // Returns an error if configuration is invalid or token retrieval fails.
-func (r *runner) action(ctx context.Context, cmd *cobra.Command, logger *slogutil.Logger, args *Args) error {
+func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args) error {
 	if err := logger.SetLevel(args.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
 	}
@@ -165,7 +168,7 @@ func (r *runner) action(ctx context.Context, cmd *cobra.Command, logger *sloguti
 			return nil
 		}
 	} else {
-		setupGet(cmd, args, input, inputGet)
+		setupGet(args, input, inputGet)
 	}
 	p, err := config.ResolvePath(inputGet.ConfigFilePath)
 	if err != nil {
@@ -180,18 +183,12 @@ func (r *runner) action(ctx context.Context, cmd *cobra.Command, logger *sloguti
 	})
 }
 
-// setupGet applies the 'get'-only flags to the controller input and SDK request.
-// It is never called for git-credential, so the device-flow flag (which only the
-// 'get' command registers) is handled exclusively here.
-func setupGet(cmd *cobra.Command, args *Args, input *get.Input, inputGet *ghtkn.InputGet) {
+// setupGet applies the 'get'-only flags and argument to the controller input and SDK
+// request. git-credential registers no output format and takes no app name (it selects
+// the app from the Git request), so it is never called for it.
+func setupGet(args *Args, input *get.Input, inputGet *ghtkn.InputGet) {
 	input.OutputFormat = args.Format
 	if args.AppName != "" {
 		inputGet.AppName = args.AppName
-	}
-	// Pass the device-flow override only when the flag is explicitly set so it takes
-	// precedence over GHTKN_ENABLE_DEVICE_FLOW and the config; otherwise leave it nil
-	// so the SDK resolves them itself.
-	if cmd.Flags().Changed("device-flow") {
-		inputGet.EnableDeviceFlow = &args.DeviceFlow
 	}
 }

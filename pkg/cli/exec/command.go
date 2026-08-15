@@ -43,9 +43,9 @@ Everything else is inherited unchanged: the rest of the environment, the working
 directory, and stdin, stdout and stderr. Nothing ghtkn writes goes to stdout, so
 the command's stdout carries the command's output alone.
 
-The device flow behaves as in 'ghtkn get': it is disabled by default, so an app with
-no valid cached token fails instead of prompting. Enable it with --device-flow or
-GHTKN_ENABLE_DEVICE_FLOW=true, or run 'ghtkn auth' beforehand.
+The device flow behaves as in 'ghtkn get': it is never started here, so an app for which
+no token can be obtained without asking you fails instead of prompting. Run 'ghtkn auth'
+beforehand.
 
 On Linux and macOS, ghtkn doesn't stay around while the command runs: it replaces its
 own process with the command, which therefore keeps ghtkn's process id, process group
@@ -81,7 +81,6 @@ type Args struct {
 	// Command is the command to run and its arguments, taken from the positional
 	// arguments after '--'.
 	Command         []string
-	DeviceFlow      bool
 	ContinueOnError bool
 }
 
@@ -117,7 +116,6 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cobra.Command {
 		},
 	}
 	flag.MinExpiration(cmd.Flags(), &args.MinExpiration)
-	flag.DeviceFlow(cmd.Flags(), &args.DeviceFlow)
 	// StringArray rather than StringSlice: a value is taken as written, so an
 	// environment variable or app name is never split on a comma it happens to contain.
 	cmd.Flags().StringArrayVarP(&args.Envs, "env", "e",
@@ -129,7 +127,7 @@ func (r *runner) Command(logger *slogutil.Logger, args *Args) *cobra.Command {
 
 // action implements the main logic for the exec command.
 // The command line is validated before anything else so that a mistake in it doesn't
-// unlock the backend or start a device flow.
+// unlock the backend or ask it for a token.
 func (r *runner) action(ctx context.Context, cmd *cobra.Command, logger *slogutil.Logger, args *Args) error {
 	if err := logger.SetLevel(args.LogLevel); err != nil {
 		return fmt.Errorf("set log level: %w", err)
@@ -148,13 +146,6 @@ func (r *runner) action(ctx context.Context, cmd *cobra.Command, logger *sloguti
 	if err := flag.SetMinExpiration(inputGet, args.MinExpiration); err != nil {
 		return err //nolint:wrapcheck
 	}
-	// Pass the device-flow override only when the flag is explicitly set so it takes
-	// precedence over GHTKN_ENABLE_DEVICE_FLOW and the config; otherwise leave it nil
-	// so the SDK resolves them itself.
-	if cmd.Flags().Changed("device-flow") {
-		inputGet.EnableDeviceFlow = &args.DeviceFlow
-	}
-
 	input, err := exec.NewInput()
 	if err != nil {
 		return fmt.Errorf("create the controller input: %w", err)

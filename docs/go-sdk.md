@@ -31,7 +31,7 @@ For the first two, the value must be a boolean (`true`, `false`, `1`, `0`); anyt
 A tool-specific switch wins over `GHTKN_ENABLE`, so a leftover `<TOOL>_GHTKN_ENABLE=false` keeps that one tool disabled however `GHTKN_ENABLE` is set.
 
 Being enabled is not the same as running the device flow.
-The device flow is disabled by default in the SDK just as it is in `ghtkn get`, so a tool fails rather than prompting when there is no usable token.
+A tool using the SDK never runs the device flow, just as `ghtkn get` doesn't, so it fails rather than prompting when there is no usable token.
 Run [`ghtkn auth`](token-management.md) yourself beforehand; that is the interactive part, and it belongs in your terminal, not inside another tool's run.
 
 ## When the integration doesn't work
@@ -69,5 +69,5 @@ Both ship with the SDK, so they describe the version you actually depend on; thi
 
 Two things are worth knowing before you read them, because they are decisions ghtkn made rather than API details:
 
-- The device flow is disabled unless you enable it, so a token that has to be created makes `Get` fail instead of prompting. Tell the user to run `ghtkn auth` rather than starting an interactive flow from inside your tool.
+- `Client.Get` never starts the device flow, so a token that could only come from one makes it fail with `ghtkn.ErrDisableDeviceFlow` instead of prompting. Tell the user to run `ghtkn auth`. It is the interactive path that is closed, not token creation: with the agent backend and [refresh](refresh-token.md) enabled, `Get` still renews an expiring token silently. The device flow runs only in `Client.Auth`, which is what `ghtkn auth` calls; unless you are writing something that authenticates, you want `Get`.
 - The access token you get back is a live secret. Don't print it, log it, or include it in an error message. See [Token Management](token-management.md).

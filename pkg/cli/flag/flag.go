@@ -75,18 +75,6 @@ func MinExpiration(fs *pflag.FlagSet, dest *string) {
 	fs.StringVarP(dest, "min-expiration", "m", "", "minimum expiration duration (e.g. 1h, 30m, 30s)")
 }
 
-// DeviceFlow registers the flag controlling whether the OAuth device flow may run to
-// create a new access token. It defaults to false, so the device flow is not
-// started automatically; ghtkn fails fast with an actionable error instead of
-// blocking in non-interactive environments. Pass -d (or --device-flow=true) to allow it.
-// The GHTKN_ENABLE_DEVICE_FLOW environment variable is read by the SDK, not this
-// flag, so that it applies to SDK consumers too; the flag, when explicitly set,
-// overrides the environment variable.
-// Alias: -d
-func DeviceFlow(fs *pflag.FlagSet, dest *bool) {
-	fs.BoolVarP(dest, "device-flow", "d", false, "Allow the interactive device flow to create a new access token")
-}
-
 // Clipboard registers the --clipboard (-p) flag, which copies the device flow one-time
 // code to the system clipboard. The flag, when explicitly set, overrides both the
 // GHTKN_CLIPBOARD environment variable and the config's clipboard.enable (both read

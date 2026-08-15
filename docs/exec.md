@@ -7,7 +7,7 @@ description: Run a command with ghtkn access tokens in environment variables usi
 `ghtkn exec` runs an external command with GitHub App User Access Tokens in its environment.
 
 ```sh
-ghtkn exec [--config <config file>] [--log-level <level>] [--device-flow] [--min-expiration <duration>] [--continue-on-error] [-e <env name>[:<app name>]...] -- <command> [<args>...]
+ghtkn exec [--config <config file>] [--log-level <level>] [--min-expiration <duration>] [--continue-on-error] [-e <env name>[:<app name>]...] -- <command> [<args>...]
 ```
 
 ```sh
@@ -52,13 +52,13 @@ Without `-e`, the access token of the app ghtkn selects automatically is set to 
 
 `-e` is repeatable, which lets one command hold tokens of different apps, for instance a read-only token for one tool and a writable one for another. The name is cut at the first `:`, so an app name containing a colon still works. Note that `-e` takes an app name, not a value: `-e GH_TOKEN=xxx` is an error, and it tells you to use `:`.
 
-An access token is created or read once per app, however many environment variables are bound to it, so several `-e` of one app never run the device flow twice. Tokens are acquired one at a time, in the order the `-e` were given.
+An access token is read once per app, however many environment variables are bound to it. Tokens are acquired one at a time, in the order the `-e` were given.
 
-An environment variable inherited from ghtkn's own environment is replaced rather than duplicated. Everything else is inherited unchanged: the rest of the environment, the working directory, and stdin, stdout and stderr. Nothing ghtkn does writes to stdout, not even while running the device flow, so the command's stdout carries the command's output alone.
+An environment variable inherited from ghtkn's own environment is replaced rather than duplicated. Everything else is inherited unchanged: the rest of the environment, the working directory, and stdin, stdout and stderr. Nothing ghtkn does writes to stdout, so the command's stdout carries the command's output alone.
 
 ## The device flow
 
-`ghtkn exec` behaves like `ghtkn get`: the device flow is disabled by default, so an app whose cached token is missing or expiring fails instead of prompting. Enable it with `--device-flow` or `GHTKN_ENABLE_DEVICE_FLOW=true`, or simply run `ghtkn auth` beforehand. `--min-expiration` works as in `ghtkn get` too.
+`ghtkn exec` behaves like `ghtkn get`: it never starts the device flow, so an app for which no token can be obtained without asking you fails instead of prompting. Run `ghtkn auth` beforehand. With the agent backend and [refresh](refresh-token.md) enabled, an expiring token is renewed silently and no prompt is needed in the first place. `--min-expiration` works as in `ghtkn get` too.
 
 Note that the token is acquired once, before the command starts. A command running longer than the token's remaining lifetime will see it expire; `ghtkn exec` doesn't renew it in the meantime. Use `--min-expiration` to require a token that lives long enough for what you are about to run.
 
