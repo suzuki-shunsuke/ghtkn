@@ -17,6 +17,7 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/get"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/info"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/initcmd"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/jsonschema"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/revoke"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cobrautil"
 	"github.com/suzuki-shunsuke/go-error-with-exit-code/ecerror"
@@ -75,6 +76,7 @@ troubleshooting its errors.`,
 		revoke.New(logger, gFlags),
 		info.New(logger, env, gFlags),
 		docs.New(logger, gFlags),
+		jsonschema.New(),
 	)
 	return cobrautil.Command(env, cmd, &cobrautil.Options{
 		AfterVersion: func() {
