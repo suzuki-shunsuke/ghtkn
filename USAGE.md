@@ -8,743 +8,749 @@
 
 ```console
 $ ghtkn --help
-NAME:
-   ghtkn - Create GitHub App User Access Tokens for secure local development. https://github.com/suzuki-shunsuke/ghtkn
+Create GitHub App User Access Tokens for secure local development.
 
-USAGE:
-   ghtkn [global options] [command [command options]]
+ghtkn issues short-lived GitHub App User Access Tokens via the OAuth device flow
+and caches them in a backend (OS keyring, the ghtkn agent, or a plain text file).
+Use it to authenticate the gh CLI, Git, and other tools without long-lived
+Personal Access Tokens.
 
-VERSION:
-   0.3.6
+See each subcommand's help with 'ghtkn help <command>'.
+See https://github.com/suzuki-shunsuke/ghtkn for details.
 
-DESCRIPTION:
-   Create GitHub App User Access Tokens for secure local development.
+If you are a coding agent, run 'ghtkn docs list' to list the documentation and
+'ghtkn docs show <doc>' to read it before answering questions about ghtkn or
+troubleshooting its errors.
 
-   ghtkn issues short-lived GitHub App User Access Tokens via the OAuth device flow
-   and caches them in a backend (OS keyring, the ghtkn agent, or a plain text file).
-   Use it to authenticate the gh CLI, Git, and other tools without long-lived
-   Personal Access Tokens.
+Usage:
+  ghtkn [flags]
+  ghtkn [command]
 
-   See each subcommand's help with 'ghtkn help <command>'.
-   See https://github.com/suzuki-shunsuke/ghtkn for details.
+Available Commands:
+  agent          Manage the ghtkn agent that caches access tokens and serves them over a Unix socket
+  auth           Authenticate to GitHub and cache an access token without outputting it
+  completion     Generate the autocompletion script for the specified shell
+  docs           Output document for coding agent
+  exec           Run a command with access tokens in environment variables
+  get            Output a GitHub App User Access Token to stdout
+  git-credential Git Credential Helper
+  help           Help about any command
+  info           Output information about the environment which is useful for troubleshooting
+  init           Create ghtkn.yaml if it doesn't exist
+  json-schema    Output JSON Schema for the configuration file
+  revoke         Revoke GitHub App User Access Tokens
+  version        Show version
 
-   If you are a coding agent, run 'ghtkn docs list' to list the documentation and
-   'ghtkn docs show <doc>' to read it before answering questions about ghtkn or
-   troubleshooting its errors.
+Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+  -h, --help               help for ghtkn
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
+  -v, --version            print the version
 
-COMMANDS:
-   init            Create ghtkn.yaml if it doesn't exist
-   git-credential  Git Credential Helper
-   get             Output a GitHub App User Access Token to stdout
-   exec            Run a command with access tokens in environment variables
-   auth            Authenticate to GitHub and cache an access token without outputting it
-   agent           Manage the ghtkn agent that caches access tokens and serves them over a Unix socket
-   revoke          Revoke GitHub App User Access Tokens
-   info            Output information about the environment which is useful for troubleshooting
-   docs            Output document for coding agent
-   version         Show version
-   help, h         Shows a list of commands or help for one command
-   completion      Output shell completion script for bash, zsh, fish, or Powershell
-
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
-   --help, -h                  show help
-   --version, -v               print the version
-```
-
-## ghtkn init
-
-```console
-$ ghtkn init --help
-NAME:
-   ghtkn init - Create ghtkn.yaml if it doesn't exist
-
-USAGE:
-   ghtkn init [options] config-file-path 
-
-DESCRIPTION:
-   Create a ghtkn configuration file if it does not exist.
-
-   It writes a template ghtkn.yaml with an example app entry and commented-out optional
-   settings. If the file already exists it is left untouched. The path is taken from the
-   config-file-path argument, then the -config flag, then the default location for the OS.
-   After creating it, edit the file to set your GitHub App's client_id.
-
-   $ ghtkn init
-   $ ghtkn init /path/to/ghtkn.yaml
-
-OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
-   --help, -h                  show help
-
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
-```
-
-## ghtkn git-credential
-
-```console
-$ ghtkn git-credential --help
-NAME:
-   ghtkn git-credential - Git Credential Helper
-
-USAGE:
-   ghtkn git-credential [options] subcommand 
-
-DESCRIPTION:
-   Act as a Git credential helper that supplies GitHub App User Access Tokens.
-
-   Git invokes this command following its credential helper protocol. Only the 'get'
-   operation is handled; it outputs a token for the requested host in Git's credential
-   format so that Git pushes and pulls authenticate with a ghtkn token automatically.
-   The app is selected by apps[].git_owner or apps[].git_owners (with
-   credential.useHttpPath true) or by GHTKN_GIT_APP.
-
-   Configure it in Git (an empty helper first disables other helpers):
-
-   $ git config --global credential.helper ''
-   $ git config --global --add credential.helper '!ghtkn git-credential'
-
-OPTIONS:
-   --log-level string                  Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string          configuration file path [$GHTKN_CONFIG]
-   --min-expiration string, -m string  minimum expiration duration (e.g. 1h, 30m, 30s)
-   --help, -h                          show help
-
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
-```
-
-## ghtkn get
-
-```console
-$ ghtkn get --help
-NAME:
-   ghtkn get - Output a GitHub App User Access Token to stdout
-
-USAGE:
-   ghtkn get [options] app-name 
-
-DESCRIPTION:
-   Output a GitHub App User Access Token to stdout.
-
-   Prefer 'ghtkn exec', which puts the token in the environment of a command instead of
-   printing it: 'ghtkn exec -e GH_TOKEN -- gh issue list'. ghtkn then writes the token
-   nowhere, though a command that prints its own environment still exposes it. For git,
-   prefer the credential helper ('ghtkn git-credential'): git runs it and reads the
-   credential itself, so the token never passes through your shell.
-
-   The output is a secret. Do not print, echo, log, or include it in a chat message,
-   a commit, or any other output, and do not run 'ghtkn get' (including -f json) just
-   to display or inspect the token. If you are a coding agent, this applies to your
-   responses too: a leaked token can be used until it is revoked.
-
-   It returns the token cached in the backend (keyring, agent, or text) when one is
-   available and still valid. Otherwise, if the device flow is enabled, it creates a
-   new token interactively via GitHub's OAuth device flow. The device flow is disabled
-   by default; enable it with the -device-flow flag or GHTKN_ENABLE_DEVICE_FLOW=true.
-
-   If an app name is given, the token is issued for that app; otherwise GHTKN_APP or
-   the default app in the config is used. Use -min-expiration to force regeneration
-   when the cached token expires within the given duration.
-
-   $ ghtkn get
-   $ ghtkn get my-app
-   $ ghtkn get -f json my-app
-   $ ghtkn get -m 1h my-app
-
-OPTIONS:
-   --log-level string                  Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string          configuration file path [$GHTKN_CONFIG]
-   --format string, -f string          output format (json) [$GHTKN_OUTPUT_FORMAT]
-   --min-expiration string, -m string  minimum expiration duration (e.g. 1h, 30m, 30s)
-   --device-flow, -d                   Allow the interactive device flow to create a new access token
-   --help, -h                          show help
-
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
-```
-
-## ghtkn exec
-
-```console
-$ ghtkn exec --help
-NAME:
-   ghtkn exec - Run a command with access tokens in environment variables
-
-USAGE:
-   ghtkn exec [options] -- <command> [<args>...]
-
-DESCRIPTION:
-   Run a command with GitHub App User Access Tokens in its environment.
-
-   Unlike 'ghtkn get', the token is never written to stdout, so it can't end up in a
-   terminal transcript, a log, or a chat message. If you are a coding agent, prefer this
-   command over 'ghtkn get': tokens leaked by agents printing what 'ghtkn get' returned
-   are the reason it exists. The token is still an environment variable of the command,
-   though, so a command that prints its environment still exposes it.
-
-   The '--' in front of the command is required. Everything after it is the command and
-   its arguments, so the command's own flags are passed through instead of being parsed
-   by ghtkn.
-
-   By default the token is set to GITHUB_TOKEN. -e replaces that default entirely, so
-   GITHUB_TOKEN is not set implicitly once -e is given. '-e <env name>' uses the app
-   ghtkn selects automatically, the same way 'ghtkn get' does, and
-   '-e <env name>:<app name>' uses the given app. -e can be repeated to give several
-   tools their own token. A token is created or read once per app, and an environment
-   variable inherited from ghtkn's environment is replaced rather than duplicated.
-   Everything else is inherited unchanged: the rest of the environment, the working
-   directory, and stdin, stdout and stderr. Nothing ghtkn writes goes to stdout, so
-   the command's stdout carries the command's output alone.
-
-   The device flow behaves as in 'ghtkn get': it is disabled by default, so an app with
-   no valid cached token fails instead of prompting. Enable it with -device-flow or
-   GHTKN_ENABLE_DEVICE_FLOW=true, or run 'ghtkn auth' beforehand.
-
-   On Linux and macOS, ghtkn doesn't stay around while the command runs: it replaces its
-   own process with the command, which therefore keeps ghtkn's process id, process group
-   and terminal. Signals, job control and 'wait' behave as if the command had been run
-   directly, because it is the process you started. Windows has no such call, so there
-   the command runs as a child, the signals ghtkn receives are forwarded to it, and the
-   same signal twice kills it (except Ctrl-C, so that a second one doesn't kill an
-   interactive command).
-
-   The exit code is the command's exit code, or 128 plus the signal number when it is
-   killed by a signal. 127 means the command was not found and 126 that it could not be
-   executed. If an access token can't be created or read, the command is not run and
-   ghtkn exits 111; with -continue-on-error it is run anyway, the environment variables
-   whose tokens were acquired are still set, and the others keep the values inherited
-   from ghtkn's environment.
-
-   $ ghtkn exec -- gh pr view
-   $ ghtkn exec -e GH_TOKEN -- gh pr view
-   $ ghtkn exec -e PINACT_GITHUB_TOKEN:suzuki-shunsuke/read -e GH_TOKEN:suzuki-shunsuke/write -- bash foo.sh
-   $ ghtkn exec -m 1h -- terraform plan
-
-OPTIONS:
-   --log-level string                                   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string                           configuration file path [$GHTKN_CONFIG]
-   --min-expiration string, -m string                   minimum expiration duration (e.g. 1h, 30m, 30s)
-   --device-flow, -d                                    Allow the interactive device flow to create a new access token
-   --env string, -e string [ --env string, -e string ]  environment variable set to an access token: <env name>[:<app name>]. Repeatable
-   --continue-on-error                                  Run the command even if an access token can't be created or read
-   --help, -h                                           show help
-
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
-```
-
-## ghtkn auth
-
-```console
-$ ghtkn auth --help
-NAME:
-   ghtkn auth - Authenticate to GitHub and cache an access token without outputting it
-
-USAGE:
-   ghtkn auth [options] app-name 
-
-DESCRIPTION:
-   Authenticate to GitHub and cache an access token without printing it.
-
-   Unlike 'ghtkn get', this regenerates the token regardless of any cached token, so
-   running it proactively refreshes the cached token before it expires. Regeneration
-   normally runs the OAuth device flow; with the agent backend and refresh enabled, a
-   valid stored refresh token is used to refresh silently and the device flow runs
-   only when no usable refresh token exists. The device flow is always allowed here,
-   even when GHTKN_ENABLE_DEVICE_FLOW is false, because authentication is interactive.
-   It does not accept -min-expiration. Use -clipboard to copy the one-time code to the
-   clipboard. If an app name is omitted, GHTKN_APP or the default app is used.
-
-   $ ghtkn auth
-   $ ghtkn auth my-app
-   $ ghtkn auth -p
-
-OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
-   --clipboard, -p             Copy the device flow one-time code to the clipboard
-   --help, -h                  show help
-
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
+Use "ghtkn [command] --help" for more information about a command.
 ```
 
 ## ghtkn agent
 
 ```console
 $ ghtkn agent --help
-NAME:
-   ghtkn agent - Manage the ghtkn agent that caches access tokens and serves them over a Unix socket
+Manage the ghtkn agent.
 
-USAGE:
-   ghtkn agent [command [command options]]
+The agent is a long-running process that caches GitHub App access tokens and serves
+them to clients over a Unix domain socket. It is intended for environments where the
+OS keyring is unavailable (containers, VMs, minimal Linux, etc.). Select it with
+GHTKN_BACKEND=agent or backend.type: agent in the config.
 
-DESCRIPTION:
-   Manage the ghtkn agent.
+The agent starts locked; unlock it with a passphrase to make cached tokens available.
+Tokens are encrypted at rest with AES-256-GCM.
 
-   The agent is a long-running process that caches GitHub App access tokens and serves
-   them to clients over a Unix domain socket. It is intended for environments where the
-   OS keyring is unavailable (containers, VMs, minimal Linux, etc.). Select it with
-   GHTKN_BACKEND=agent or backend.type: agent in the config.
+Usage:
+  ghtkn agent [command]
 
-   The agent starts locked; unlock it with a passphrase to make cached tokens available.
-   Tokens are encrypted at rest with AES-256-GCM.
+Available Commands:
+  lock        Lock the running ghtkn agent by discarding its in-memory data key
+  reset       Reset the agent after a forgotten passphrase (deletes the key and cached tokens)
+  start       Start the ghtkn agent in the foreground (locked)
+  status      Show whether the ghtkn agent is running
+  stop        Stop the running ghtkn agent
+  unlock      Unlock the running ghtkn agent by entering the passphrase
 
-COMMANDS:
-   start   Start the ghtkn agent in the foreground (locked)
-   stop    Stop the running ghtkn agent
-   status  Show whether the ghtkn agent is running
-   unlock  Unlock the running ghtkn agent by entering the passphrase
-   lock    Lock the running ghtkn agent by discarding its in-memory data key
-   reset   Reset the agent after a forgotten passphrase (deletes the key and cached tokens)
+Flags:
+  -h, --help   help for agent
 
-OPTIONS:
-   --help, -h  show help
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
 
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
+Use "ghtkn agent [command] --help" for more information about a command.
 ```
 
-### agent start
+### ghtkn agent lock
 
 ```console
-$ agent start --help
-NAME:
-   ghtkn agent start - Start the ghtkn agent in the foreground (locked)
+$ ghtkn agent lock --help
+Lock the running ghtkn agent.
 
-USAGE:
-   ghtkn agent start [options]
+It asks the agent to discard the data key it holds in memory and return to the
+locked state, without stopping the process or deleting the key file. Cached tokens
+become unreadable until you run 'ghtkn agent unlock' again with the same passphrase.
+Unlike 'ghtkn agent stop', the process and socket keep running, and unlike 'unlock',
+locking needs no passphrase, so it can be wired to a screen-lock or logout hook to
+shrink the window in which the agent holds decrypted tokens.
 
-DESCRIPTION:
-   Start the ghtkn agent in the foreground.
+$ ghtkn agent lock
 
-   The agent starts locked and listens on a Unix domain socket without asking for a
-   passphrase, so it can run as a background service (e.g. systemd). Use
-   'ghtkn agent unlock' to enter the passphrase and make cached tokens available.
-   It keeps running until it receives SIGINT or SIGTERM, then removes the socket and exits.
+Usage:
+  ghtkn agent lock [flags]
 
-   $ ghtkn agent start
+Flags:
+  -h, --help   help for lock
 
-OPTIONS:
-   --help, -h  show help
-
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
 ```
 
-### agent stop
+### ghtkn agent reset
 
 ```console
-$ agent stop --help
-NAME:
-   ghtkn agent stop - Stop the running ghtkn agent
+$ ghtkn agent reset --help
+Reset the ghtkn agent when you have forgotten the passphrase.
 
-USAGE:
-   ghtkn agent stop [options]
+It stops the agent if it is running, deletes the key file and all encrypted access
+token files, and creates a new key from a freshly entered passphrase. The old
+passphrase is not needed and the cached tokens are discarded (they are reminted from
+GitHub on the next 'ghtkn get'). It asks for confirmation first.
 
-DESCRIPTION:
-   Stop the running ghtkn agent.
+It leaves the agent stopped, so start it again and unlock it with the new passphrase
+afterwards; until then every 'ghtkn get' fails.
 
-   It connects to the agent's Unix domain socket and asks it to shut down.
+$ ghtkn agent reset
+$ ghtkn agent start
+$ ghtkn agent unlock
 
-   $ ghtkn agent stop
+Usage:
+  ghtkn agent reset [flags]
 
-OPTIONS:
-   --help, -h  show help
+Flags:
+  -h, --help   help for reset
 
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
 ```
 
-### agent status
+### ghtkn agent start
 
 ```console
-$ agent status --help
-NAME:
-   ghtkn agent status - Show whether the ghtkn agent is running
+$ ghtkn agent start --help
+Start the ghtkn agent in the foreground.
 
-USAGE:
-   ghtkn agent status [options]
+The agent starts locked and listens on a Unix domain socket without asking for a
+passphrase, so it can run as a background service (e.g. systemd). Use
+'ghtkn agent unlock' to enter the passphrase and make cached tokens available.
+It keeps running until it receives SIGINT or SIGTERM, then removes the socket and exits.
 
-DESCRIPTION:
-   Show whether the ghtkn agent is running.
+$ ghtkn agent start
 
-   It connects to the agent's Unix domain socket and reports the number of cached
-   access tokens, along with the ghtkn version the running agent was built from and
-   the agent protocol version it speaks. The agent keeps running the binary it was
-   started with, so an agent version older than 'ghtkn --version' means the agent
-   must be restarted. It exits 0 whether or not the agent is running.
+Usage:
+  ghtkn agent start [flags]
 
-   $ ghtkn agent status
+Flags:
+  -h, --help   help for start
 
-OPTIONS:
-   --help, -h  show help
-
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
 ```
 
-### agent unlock
+### ghtkn agent status
 
 ```console
-$ agent unlock --help
-NAME:
-   ghtkn agent unlock - Unlock the running ghtkn agent by entering the passphrase
+$ ghtkn agent status --help
+Show whether the ghtkn agent is running.
 
-USAGE:
-   ghtkn agent unlock [options]
+It connects to the agent's Unix domain socket and reports the number of cached
+access tokens, along with the ghtkn version the running agent was built from and
+the agent protocol version it speaks. The agent keeps running the binary it was
+started with, so an agent version older than 'ghtkn --version' means the agent
+must be restarted. It exits 0 whether or not the agent is running.
 
-DESCRIPTION:
-   Unlock the running ghtkn agent.
+$ ghtkn agent status
 
-   The agent starts locked. This command prompts for the passphrase on the terminal
-   and sends it to the agent over the socket so it can decrypt cached tokens. On first
-   use it asks for a new passphrase twice to confirm it.
+Usage:
+  ghtkn agent status [flags]
 
-   Pass --enable-refresh to let the agent refresh an expiring access token with a
-   stored refresh token instead of re-running the device flow. This is bound to the
-   passphrase on purpose: it cannot be enabled without unlocking the agent. It is
-   unsupported on Windows, where --enable-refresh is rejected, because the file
-   permissions and process hardening that protect a stored refresh token are
-   POSIX-specific.
+Flags:
+  -h, --help   help for status
 
-   With refresh enabled, the agent periodically discards tokens left unused for longer
-   than --refresh-token-ttl (default 7 days) so an unused refresh token does not linger.
-   The TTL takes a number with a d (day), w (week), or m (30-day month) suffix, e.g.
-   14d, 4w, 2m, and must be less than 6 months.
-
-   $ ghtkn agent unlock
-
-OPTIONS:
-   --enable-refresh            Enable refreshing expiring access tokens with stored refresh tokens
-   --refresh-token-ttl string  How long a stored token may sit unused before the agent discards it, e.g. 14d/4w/2m (default 7d; only with --enable-refresh)
-   --help, -h                  show help
-
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
 ```
 
-### agent lock
+### ghtkn agent stop
 
 ```console
-$ agent lock --help
-NAME:
-   ghtkn agent lock - Lock the running ghtkn agent by discarding its in-memory data key
+$ ghtkn agent stop --help
+Stop the running ghtkn agent.
 
-USAGE:
-   ghtkn agent lock [options]
+It connects to the agent's Unix domain socket and asks it to shut down.
 
-DESCRIPTION:
-   Lock the running ghtkn agent.
+$ ghtkn agent stop
 
-   It asks the agent to discard the data key it holds in memory and return to the
-   locked state, without stopping the process or deleting the key file. Cached tokens
-   become unreadable until you run 'ghtkn agent unlock' again with the same passphrase.
-   Unlike 'ghtkn agent stop', the process and socket keep running, and unlike 'unlock',
-   locking needs no passphrase, so it can be wired to a screen-lock or logout hook to
-   shrink the window in which the agent holds decrypted tokens.
+Usage:
+  ghtkn agent stop [flags]
 
-   $ ghtkn agent lock
+Flags:
+  -h, --help   help for stop
 
-OPTIONS:
-   --help, -h  show help
-
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
 ```
 
-### agent reset
+### ghtkn agent unlock
 
 ```console
-$ agent reset --help
-NAME:
-   ghtkn agent reset - Reset the agent after a forgotten passphrase (deletes the key and cached tokens)
+$ ghtkn agent unlock --help
+Unlock the running ghtkn agent.
 
-USAGE:
-   ghtkn agent reset [options]
+The agent starts locked. This command prompts for the passphrase on the terminal
+and sends it to the agent over the socket so it can decrypt cached tokens. On first
+use it asks for a new passphrase twice to confirm it.
 
-DESCRIPTION:
-   Reset the ghtkn agent when you have forgotten the passphrase.
+Pass --enable-refresh to let the agent refresh an expiring access token with a
+stored refresh token instead of re-running the device flow. This is bound to the
+passphrase on purpose: it cannot be enabled without unlocking the agent. It is
+unsupported on Windows, where --enable-refresh is rejected, because the file
+permissions and process hardening that protect a stored refresh token are
+POSIX-specific.
 
-   It stops the agent if it is running, deletes the key file and all encrypted access
-   token files, and creates a new key from a freshly entered passphrase. The old
-   passphrase is not needed and the cached tokens are discarded (they are reminted from
-   GitHub on the next 'ghtkn get'). It asks for confirmation first.
+With refresh enabled, the agent periodically discards tokens left unused for longer
+than --refresh-token-ttl (default 7 days) so an unused refresh token does not linger.
+The TTL takes a number with a d (day), w (week), or m (30-day month) suffix, e.g.
+14d, 4w, 2m, and must be less than 6 months.
 
-   It leaves the agent stopped, so start it again and unlock it with the new passphrase
-   afterwards; until then every 'ghtkn get' fails.
+$ ghtkn agent unlock
 
-   $ ghtkn agent reset
-   $ ghtkn agent start
-   $ ghtkn agent unlock
+Usage:
+  ghtkn agent unlock [flags]
 
-OPTIONS:
-   --help, -h  show help
+Flags:
+      --enable-refresh             Enable refreshing expiring access tokens with stored refresh tokens
+  -h, --help                       help for unlock
+      --refresh-token-ttl string   How long a stored token may sit unused before the agent discards it, e.g. 14d/4w/2m (default 7d; only with --enable-refresh)
 
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
 ```
 
-## ghtkn revoke
+## ghtkn auth
 
 ```console
-$ ghtkn revoke --help
-NAME:
-   ghtkn revoke - Revoke GitHub App User Access Tokens
+$ ghtkn auth --help
+Authenticate to GitHub and cache an access token without printing it.
 
-USAGE:
-   ghtkn revoke [options] [<access token | app name>...]
+Unlike 'ghtkn get', this regenerates the token regardless of any cached token, so
+running it proactively refreshes the cached token before it expires. Regeneration
+normally runs the OAuth device flow; with the agent backend and refresh enabled, a
+valid stored refresh token is used to refresh silently and the device flow runs
+only when no usable refresh token exists. This is the only command that runs the
+device flow, so it is only ever started by you, never on your behalf by 'ghtkn get',
+'ghtkn exec', the Git credential helper, or a tool built on the ghtkn SDK. Run it in
+your own interactive terminal: it waits for you to enter a one-time code.
+It does not accept --min-expiration. Use --clipboard to copy the one-time code to the
+clipboard. If an app name is omitted, GHTKN_APP or the default app is used.
 
-DESCRIPTION:
-   Revoke GitHub App User Access Tokens via GitHub's credential revocation API and remove them from the backend.
+$ ghtkn auth
+$ ghtkn auth my-app
+$ ghtkn auth -p
 
-   Each argument is classified by its prefix: arguments starting with a GitHub token prefix (ghp_, github_pat_, gho_, ghu_, ghr_) are revoked directly as raw access tokens, and all other arguments are treated as app names whose stored tokens are revoked and removed from the backend.
-   When no argument is given, the token stored for GHTKN_APP (or the default app) is revoked.
+Usage:
+  ghtkn auth [<app-name>] [flags]
 
-   With --all, the stored tokens of every app in the config are revoked. This is meant for incident response: when the environment running ghtkn is compromised, all stored tokens can be revoked at once. App name arguments are ignored when --all is set, but raw access tokens are still revoked as usual.
+Flags:
+  -p, --clipboard   Copy the device flow one-time code to the clipboard
+  -h, --help        help for auth
 
-OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
-   --all                       Revoke the stored tokens of every app in the config
-   --help, -h                  show help
-
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
-```
-
-## ghtkn info
-
-```console
-$ ghtkn info --help
-NAME:
-   ghtkn info - Output information about the environment which is useful for troubleshooting
-
-USAGE:
-   ghtkn info [options] app-name 
-
-DESCRIPTION:
-   Output environment information useful for troubleshooting.
-
-   It prints, as JSON, the OS, architecture, ghtkn version, relevant GHTKN_* and
-   related environment variables (with token values redacted), the selected backend,
-   the target app, and the resolved configuration file path. It does not authenticate
-   or modify any state.
-
-   With the agent backend it also reports the running agent's state, including the
-   ghtkn version it was built from and the agent protocol versions it speaks. The
-   agent keeps running the binary it was started with, so an agent version older than
-   the ghtkn version above it means the agent must be restarted; that case is called
-   out with a warning printed on stderr after the JSON, which leaves the output on
-   stdout untouched.
-
-   $ ghtkn info
-   $ ghtkn info my-app
-   $ ghtkn info | jq .envs
-
-OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
-   --help, -h                  show help
-
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
-```
-
-## ghtkn docs
-
-```console
-$ ghtkn docs --help
-NAME:
-   ghtkn docs - Output document for coding agent
-
-USAGE:
-   ghtkn docs [command [command options]]
-
-DESCRIPTION:
-   List and output documents. This command is useful for coding agent to read document and solve problems.
-
-COMMANDS:
-   show  Output the content of a given document
-   list  List document names and descriptions
-
-OPTIONS:
-   --help, -h  show help
-
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
-```
-
-### docs show
-
-```console
-$ docs show --help
-NAME:
-   ghtkn docs show - Output the content of a given document
-
-USAGE:
-   ghtkn docs show [options] doc 
-
-DESCRIPTION:
-   Output document. This is useful for coding agent to read the document and solve problems.
-   This command needs a document name.
-   To see the name, list documents with "ghtkn docs list"
-
-OPTIONS:
-   --log-level string  Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --help, -h          show help
-
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
-```
-
-### docs list
-
-```console
-$ docs list --help
-NAME:
-   ghtkn docs list - List document names and descriptions
-
-USAGE:
-   ghtkn docs list [options]
-
-OPTIONS:
-   --log-level string  Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --help, -h          show help
-
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
-```
-
-## ghtkn version
-
-```console
-$ ghtkn version --help
-NAME:
-   ghtkn version - Show version
-
-USAGE:
-   ghtkn version [options]
-
-OPTIONS:
-   --json, -j  Output version in JSON format
-   --help, -h  show help
-
-GLOBAL OPTIONS:
-   --log-level string          Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
-   --config string, -c string  configuration file path [$GHTKN_CONFIG]
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
 ```
 
 ## ghtkn completion
 
 ```console
 $ ghtkn completion --help
-NAME:
-   ghtkn completion - Output shell completion script for bash, zsh, fish, or Powershell
+Generate the autocompletion script for ghtkn for the specified shell.
+See each sub-command's help for details on how to use the generated script.
 
-USAGE:
-   ghtkn completion [command [command options]]
+Usage:
+  ghtkn completion [command]
 
-DESCRIPTION:
-   Output shell completion script for bash, zsh, fish, or Powershell.
-   Source the output to enable completion.
+Available Commands:
+  bash        Generate the autocompletion script for bash
+  fish        Generate the autocompletion script for fish
+  powershell  Generate the autocompletion script for powershell
+  zsh         Generate the autocompletion script for zsh
 
-   # .bashrc
-   source <(ghtkn completion bash)
+Flags:
+  -h, --help   help for completion
 
-   # .zshrc
-   source <(ghtkn completion zsh)
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
 
-   # fish
-   ghtkn completion fish > ~/.config/fish/completions/ghtkn.fish
-
-   # Powershell
-   Output the script to path/to/autocomplete/ghtkn.ps1 an run it.
-
-
-COMMANDS:
-   bash  Output bash completion script
-   zsh   Output zsh completion script
-   fish  Output fish completion script
-   pwsh  Output pwsh completion script
-
-OPTIONS:
-   --help, -h  show help
+Use "ghtkn completion [command] --help" for more information about a command.
 ```
 
-### completion bash
+### ghtkn completion bash
 
 ```console
-$ completion bash --help
-NAME:
-   ghtkn completion bash - Output bash completion script
+$ ghtkn completion bash --help
+Generate the autocompletion script for the bash shell.
 
-USAGE:
-   ghtkn completion bash [options]
+This script depends on the 'bash-completion' package.
+If it is not installed already, you can install it via your OS's package manager.
 
-OPTIONS:
-   --help, -h  show help
+To load completions in your current shell session:
+
+	source <(ghtkn completion bash)
+
+To load completions for every new session, execute once:
+
+#### Linux:
+
+	ghtkn completion bash > /etc/bash_completion.d/ghtkn
+
+#### macOS:
+
+	ghtkn completion bash > $(brew --prefix)/etc/bash_completion.d/ghtkn
+
+You will need to start a new shell for this setup to take effect.
+
+Usage:
+  ghtkn completion bash
+
+Flags:
+  -h, --help              help for bash
+      --no-descriptions   disable completion descriptions
+
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
 ```
 
-### completion zsh
+### ghtkn completion fish
 
 ```console
-$ completion zsh --help
-NAME:
-   ghtkn completion zsh - Output zsh completion script
+$ ghtkn completion fish --help
+Generate the autocompletion script for the fish shell.
 
-USAGE:
-   ghtkn completion zsh [options]
+To load completions in your current shell session:
 
-OPTIONS:
-   --help, -h  show help
+	ghtkn completion fish | source
+
+To load completions for every new session, execute once:
+
+	ghtkn completion fish > ~/.config/fish/completions/ghtkn.fish
+
+You will need to start a new shell for this setup to take effect.
+
+Usage:
+  ghtkn completion fish [flags]
+
+Flags:
+  -h, --help              help for fish
+      --no-descriptions   disable completion descriptions
+
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
 ```
 
-### completion fish
+### ghtkn completion powershell
 
 ```console
-$ completion fish --help
-NAME:
-   ghtkn completion fish - Output fish completion script
+$ ghtkn completion powershell --help
+Generate the autocompletion script for powershell.
 
-USAGE:
-   ghtkn completion fish [options]
+To load completions in your current shell session:
 
-OPTIONS:
-   --help, -h  show help
+	ghtkn completion powershell | Out-String | Invoke-Expression
+
+To load completions for every new session, add the output of the above command
+to your powershell profile.
+
+Usage:
+  ghtkn completion powershell [flags]
+
+Flags:
+  -h, --help              help for powershell
+      --no-descriptions   disable completion descriptions
+
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
 ```
 
-### completion pwsh
+### ghtkn completion zsh
 
 ```console
-$ completion pwsh --help
-NAME:
-   ghtkn completion pwsh - Output pwsh completion script
+$ ghtkn completion zsh --help
+Generate the autocompletion script for the zsh shell.
 
-USAGE:
-   ghtkn completion pwsh [options]
+If shell completion is not already enabled in your environment you will need
+to enable it.  You can execute the following once:
 
-OPTIONS:
-   --help, -h  show help
+	echo "autoload -U compinit; compinit" >> ~/.zshrc
+
+To load completions in your current shell session:
+
+	source <(ghtkn completion zsh)
+
+To load completions for every new session, execute once:
+
+#### Linux:
+
+	ghtkn completion zsh > "${fpath[1]}/_ghtkn"
+
+#### macOS:
+
+	ghtkn completion zsh > $(brew --prefix)/share/zsh/site-functions/_ghtkn
+
+You will need to start a new shell for this setup to take effect.
+
+Usage:
+  ghtkn completion zsh [flags]
+
+Flags:
+  -h, --help              help for zsh
+      --no-descriptions   disable completion descriptions
+
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
+```
+
+## ghtkn docs
+
+```console
+$ ghtkn docs --help
+List and output documents. This command is useful for coding agent to read document and solve problems.
+
+Usage:
+  ghtkn docs [command]
+
+Available Commands:
+  list        List document names and descriptions
+  show        Output the content of a given document
+
+Flags:
+  -h, --help   help for docs
+
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
+
+Use "ghtkn docs [command] --help" for more information about a command.
+```
+
+### ghtkn docs list
+
+```console
+$ ghtkn docs list --help
+List document names and descriptions
+
+Usage:
+  ghtkn docs list [flags]
+
+Flags:
+  -h, --help   help for list
+
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
+```
+
+### ghtkn docs show
+
+```console
+$ ghtkn docs show --help
+Output document. This is useful for coding agent to read the document and solve problems.
+This command needs a document name.
+To see the name, list documents with "ghtkn docs list"
+
+Usage:
+  ghtkn docs show [<doc>] [flags]
+
+Flags:
+  -h, --help   help for show
+
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
+```
+
+## ghtkn exec
+
+```console
+$ ghtkn exec --help
+Run a command with GitHub App User Access Tokens in its environment.
+
+Unlike 'ghtkn get', the token is never written to stdout, so it can't end up in a
+terminal transcript, a log, or a chat message. If you are a coding agent, prefer this
+command over 'ghtkn get': tokens leaked by agents printing what 'ghtkn get' returned
+are the reason it exists. The token is still an environment variable of the command,
+though, so a command that prints its environment still exposes it.
+
+The '--' in front of the command is required. Everything after it is the command and
+its arguments, so the command's own flags are passed through instead of being parsed
+by ghtkn.
+
+By default the token is set to GITHUB_TOKEN. -e replaces that default entirely, so
+GITHUB_TOKEN is not set implicitly once -e is given. '-e <env name>' uses the app
+ghtkn selects automatically, the same way 'ghtkn get' does, and
+'-e <env name>:<app name>' uses the given app. -e can be repeated to give several
+tools their own token. A token is created or read once per app, and an environment
+variable inherited from ghtkn's environment is replaced rather than duplicated.
+Everything else is inherited unchanged: the rest of the environment, the working
+directory, and stdin, stdout and stderr. Nothing ghtkn writes goes to stdout, so
+the command's stdout carries the command's output alone.
+
+The device flow behaves as in 'ghtkn get': it is never started here, so an app for which
+no token can be obtained without asking you fails instead of prompting. Run 'ghtkn auth'
+beforehand.
+
+On Linux and macOS, ghtkn doesn't stay around while the command runs: it replaces its
+own process with the command, which therefore keeps ghtkn's process id, process group
+and terminal. Signals, job control and 'wait' behave as if the command had been run
+directly, because it is the process you started. Windows has no such call, so there
+the command runs as a child, the signals ghtkn receives are forwarded to it, and the
+same signal twice kills it (except Ctrl-C, so that a second one doesn't kill an
+interactive command).
+
+The exit code is the command's exit code, or 128 plus the signal number when it is
+killed by a signal. 127 means the command was not found and 126 that it could not be
+executed. If an access token can't be created or read, the command is not run and
+ghtkn exits 111; with --continue-on-error it is run anyway, the environment variables
+whose tokens were acquired are still set, and the others keep the values inherited
+from ghtkn's environment.
+
+$ ghtkn exec -- gh pr view
+$ ghtkn exec -e GH_TOKEN -- gh pr view
+$ ghtkn exec -e PINACT_GITHUB_TOKEN:suzuki-shunsuke/read -e GH_TOKEN:suzuki-shunsuke/write -- bash foo.sh
+$ ghtkn exec -m 1h -- terraform plan
+
+Usage:
+  ghtkn exec [<flags>] -- <command> [<args>...]
+
+Flags:
+      --continue-on-error       Run the command even if an access token can't be created or read
+  -e, --env stringArray         environment variable set to an access token: <env name>[:<app name>]. Repeatable
+  -h, --help                    help for exec
+  -m, --min-expiration string   minimum expiration duration (e.g. 1h, 30m, 30s)
+
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
+```
+
+## ghtkn get
+
+```console
+$ ghtkn get --help
+Output a GitHub App User Access Token to stdout.
+
+Prefer 'ghtkn exec', which puts the token in the environment of a command instead of
+printing it: 'ghtkn exec -e GH_TOKEN -- gh issue list'. ghtkn then writes the token
+nowhere, though a command that prints its own environment still exposes it. For git,
+prefer the credential helper ('ghtkn git-credential'): git runs it and reads the
+credential itself, so the token never passes through your shell.
+
+The output is a secret. Do not print, echo, log, or include it in a chat message,
+a commit, or any other output, and do not run 'ghtkn get' (including -f json) just
+to display or inspect the token. If you are a coding agent, this applies to your
+responses too: a leaked token can be used until it is revoked.
+
+It returns the token cached in the backend (keyring, agent, or text) when one is
+available and still valid, and with the agent backend and refresh enabled it also
+renews an expiring one silently from the stored refresh token. Otherwise it fails
+immediately, because the only way left is GitHub's interactive OAuth device flow,
+which only 'ghtkn auth' starts, so no command ever starts one on your behalf. Run
+'ghtkn auth' in your own terminal to authenticate.
+
+If an app name is given, the token is issued for that app; otherwise GHTKN_APP or
+the default app in the config is used. Use --min-expiration to require a token with
+at least the given validity left; one with less counts as expiring, so it fails the
+same way, or is refreshed silently with the agent backend and refresh enabled.
+
+$ ghtkn get
+$ ghtkn get my-app
+$ ghtkn get -f json my-app
+$ ghtkn get -m 1h my-app
+
+Usage:
+  ghtkn get [<app-name>] [flags]
+
+Flags:
+  -f, --format string           output format (json) [$GHTKN_OUTPUT_FORMAT]
+  -h, --help                    help for get
+  -m, --min-expiration string   minimum expiration duration (e.g. 1h, 30m, 30s)
+
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
+```
+
+## ghtkn git-credential
+
+```console
+$ ghtkn git-credential --help
+Act as a Git credential helper that supplies GitHub App User Access Tokens.
+
+Git invokes this command following its credential helper protocol. Only the 'get'
+operation is handled; it outputs a token for the requested host in Git's credential
+format so that Git pushes and pulls authenticate with a ghtkn token automatically.
+The app is selected by apps[].git_owner or apps[].git_owners (with
+credential.useHttpPath true) or by GHTKN_GIT_APP.
+
+Configure it in Git (an empty helper first disables other helpers):
+
+$ git config --global credential.helper ''
+$ git config --global --add credential.helper '!ghtkn git-credential'
+
+Usage:
+  ghtkn git-credential [<subcommand>] [flags]
+
+Flags:
+  -h, --help                    help for git-credential
+  -m, --min-expiration string   minimum expiration duration (e.g. 1h, 30m, 30s)
+
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
+```
+
+## ghtkn info
+
+```console
+$ ghtkn info --help
+Output environment information useful for troubleshooting.
+
+It prints, as JSON, the OS, architecture, ghtkn version, relevant GHTKN_* and
+related environment variables (with token values redacted), the selected backend,
+the target app, and the resolved configuration file path. It does not authenticate
+or modify any state.
+
+With the agent backend it also reports the running agent's state, including the
+ghtkn version it was built from and the agent protocol versions it speaks. The
+agent keeps running the binary it was started with, so an agent version older than
+the ghtkn version above it means the agent must be restarted; that case is called
+out with a warning printed on stderr after the JSON, which leaves the output on
+stdout untouched.
+
+$ ghtkn info
+$ ghtkn info | jq .envs
+
+Usage:
+  ghtkn info [flags]
+
+Flags:
+  -h, --help   help for info
+
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
+```
+
+## ghtkn init
+
+```console
+$ ghtkn init --help
+Create a ghtkn configuration file if it does not exist.
+
+It writes a template ghtkn.yaml with an example app entry and commented-out optional
+settings. If the file already exists it is left untouched. The path is taken from the
+config-file-path argument, then the --config flag, then the default location for the OS.
+After creating it, edit the file to set your GitHub App's client_id.
+
+$ ghtkn init
+$ ghtkn init /path/to/ghtkn.yaml
+
+Usage:
+  ghtkn init [<config-file-path>] [flags]
+
+Flags:
+  -h, --help   help for init
+
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
+```
+
+## ghtkn json-schema
+
+```console
+$ ghtkn json-schema --help
+Output JSON Schema for the configuration file.
+
+The schema is embedded in the binary, so it always describes the configuration
+this version of ghtkn accepts. Editors such as VSCode use it to complete the
+configuration file and to warn about invalid settings.
+
+$ ghtkn json-schema > ghtkn.json
+
+Usage:
+  ghtkn json-schema [flags]
+
+Flags:
+  -h, --help   help for json-schema
+
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
+```
+
+## ghtkn revoke
+
+```console
+$ ghtkn revoke --help
+Revoke GitHub App User Access Tokens via GitHub's credential revocation API and remove them from the backend.
+
+Each argument is classified by its prefix: arguments starting with a GitHub token prefix (ghp_, github_pat_, gho_, ghu_, ghr_) are revoked directly as raw access tokens, and all other arguments are treated as app names whose stored tokens are revoked and removed from the backend.
+When no argument is given, the token stored for GHTKN_APP (or the default app) is revoked.
+
+With --all, the stored tokens of every app in the config are revoked. This is meant for incident response: when the environment running ghtkn is compromised, all stored tokens can be revoked at once. App name arguments are ignored when --all is set, but raw access tokens are still revoked as usual.
+
+Usage:
+  ghtkn revoke [<access token | app name>...] [flags]
+
+Flags:
+      --all    Revoke the stored tokens of every app in the config
+  -h, --help   help for revoke
+
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
+```
+
+## ghtkn version
+
+```console
+$ ghtkn version --help
+Show version
+
+Usage:
+  ghtkn version [flags]
+
+Flags:
+  -h, --help   help for version
+  -j, --json   Output version in JSON format
+
+Global Flags:
+  -c, --config string      configuration file path [$GHTKN_CONFIG]
+      --log-level string   Log level (debug, info, warn, error) [$GHTKN_LOG_LEVEL]
 ```
