@@ -91,10 +91,6 @@ Even after the agent starts, you can't get access tokens until you enter the pas
 ghtkn agent unlock
 ```
 
-> [!NOTE]
-> [There is a third-party tool `yokonao/ghtkn-touchid`, which unlocks a local ghtkn agent with a passphrase protected by Touch ID in macOS Keychain.](https://github.com/yokonao/ghtkn-touchid)
-> This is a third-party tool, so we don't guarantee anything about this tool, but if you're interested in, please check it out.
-
 There are also `status`, `stop`, and `lock` commands.
 
 ```sh
