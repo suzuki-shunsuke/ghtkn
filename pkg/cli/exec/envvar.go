@@ -55,6 +55,16 @@ func parseEnv(value string) (*exec.EnvVar, error) {
 		// -e takes an app name, not a value, so accepting '=' would invite reading
 		// 'GH_TOKEN=my-app' as "set GH_TOKEN to my-app".
 		return nil, fmt.Errorf("-e takes <env name>[:<app name>], not <env name>=<value>. Separate the app name with ':', like -e GH_TOKEN:my-app: %q", value)
+	case strings.Contains(name, ","):
+		// A comma is not valid in an environment variable name, and -e is repeated
+		// rather than given a list, so it can only be a mistake.
+		//
+		// It is worth its own error because it used to do something: urfave/cli's slice
+		// flags split their value on commas, so '-e A,B' set two variables. That was
+		// the flag library's doing rather than anything ghtkn meant to offer, and with
+		// cobra the value is taken as written, which would otherwise leave this setting
+		// a single variable named 'A,B' without a word about it.
+		return nil, fmt.Errorf("-e takes one environment variable. Repeat it, like -e A -e B, instead of separating them with a comma: %q", value)
 	case hasApp && appName == "":
 		return nil, fmt.Errorf("the app name after ':' is empty. Remove the ':' to use the app ghtkn selects automatically: %q", value)
 	}

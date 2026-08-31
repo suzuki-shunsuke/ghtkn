@@ -6,10 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
-	"github.com/urfave/cli/v3"
 )
 
 // TestNew_invalid checks the command line validation, which runs before any
@@ -23,27 +22,27 @@ func TestNew_invalid(t *testing.T) {
 	}{
 		{
 			name: "no command",
-			args: []string{"ghtkn", "exec"},
+			args: []string{"exec"},
 		},
 		{
 			name: "no separator",
-			args: []string{"ghtkn", "exec", "gh"},
+			args: []string{"exec", "gh"},
 		},
 		{
 			name: "an invalid -e",
-			args: []string{"ghtkn", "exec", "-e", "GH_TOKEN=my-app", "--", "gh"},
+			args: []string{"exec", "-e", "GH_TOKEN=my-app", "--", "gh"},
 		},
 		{
 			name: "the same environment variable twice",
-			args: []string{"ghtkn", "exec", "-e", "A", "-e", "A:app", "--", "gh"},
+			args: []string{"exec", "-e", "A", "-e", "A:app", "--", "gh"},
 		},
 		{
 			name: "an invalid min expiration",
-			args: []string{"ghtkn", "exec", "-m", "invalid", "--", "gh"},
+			args: []string{"exec", "-m", "invalid", "--", "gh"},
 		},
 		{
 			name: "an invalid log level",
-			args: []string{"ghtkn", "exec", "--log-level", "invalid", "--", "gh"},
+			args: []string{"exec", "--log-level", "invalid", "--", "gh"},
 		},
 	}
 	for _, tt := range tests {
@@ -55,17 +54,21 @@ func TestNew_invalid(t *testing.T) {
 			}
 			defer logFile.Close()
 			logger := slogutil.New(&slogutil.InputNew{Name: "ghtkn", Out: logFile})
-			env := &urfave.Env{
-				Program: "ghtkn",
-				Args:    tt.args,
-				Getenv:  func(string) string { return "" },
+			gFlags := &flag.GlobalFlags{}
+			cmd := &cobra.Command{
+				Use:           "ghtkn",
+				SilenceErrors: true,
+				SilenceUsage:  true,
 			}
-			cmd := &cli.Command{
-				Name:     "ghtkn",
-				Writer:   &bytes.Buffer{},
-				Commands: []*cli.Command{New(logger, env, &flag.GlobalFlags{})},
-			}
-			if err := cmd.Run(t.Context(), tt.args); err == nil {
+			// The real root registers these as persistent flags, and 'exec' reads
+			// --log-level through them.
+			flag.LogLevel(cmd.PersistentFlags(), &gFlags.LogLevel)
+			flag.Config(cmd.PersistentFlags(), &gFlags.Config)
+			cmd.AddCommand(New(logger, gFlags))
+			cmd.SetOut(&bytes.Buffer{})
+			cmd.SetErr(&bytes.Buffer{})
+			cmd.SetArgs(tt.args)
+			if err := cmd.ExecuteContext(t.Context()); err == nil {
 				t.Fatal("an error must be returned")
 			}
 		})

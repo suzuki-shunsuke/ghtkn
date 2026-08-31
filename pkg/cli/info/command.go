@@ -13,29 +13,28 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/server"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cobrautil"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/config"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/agent/status"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/controller/info"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
-	"github.com/suzuki-shunsuke/urfave-cli-v3-util/urfave"
-	"github.com/urfave/cli/v3"
 )
 
-// Args holds the flag and argument values for the info command.
+// Args holds the flag values for the info command.
 type Args struct {
 	*flag.GlobalFlags
 
-	AppName string // positional argument for 'info' command
 	Version string
 }
 
-func New(logger *slogutil.Logger, env *urfave.Env, gFlags *flag.GlobalFlags) *cli.Command {
+func New(logger *slogutil.Logger, env *cobrautil.Env, gFlags *flag.GlobalFlags) *cobra.Command {
 	args := &Args{
 		GlobalFlags: gFlags,
 		Version:     env.Version,
@@ -50,11 +49,11 @@ type runner struct {
 	stdin io.Reader
 }
 
-func (r *runner) Command(logger *slogutil.Logger, args *Args) *cli.Command {
-	return &cli.Command{
-		Name:  "info",
-		Usage: "Output information about the environment which is useful for troubleshooting",
-		Description: `Output environment information useful for troubleshooting.
+func (r *runner) Command(logger *slogutil.Logger, args *Args) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "info",
+		Short: "Output information about the environment which is useful for troubleshooting",
+		Long: `Output environment information useful for troubleshooting.
 
 It prints, as JSON, the OS, architecture, ghtkn version, relevant GHTKN_* and
 related environment variables (with token values redacted), the selected backend,
@@ -69,22 +68,13 @@ out with a warning printed on stderr after the JSON, which leaves the output on
 stdout untouched.
 
 $ ghtkn info
-$ ghtkn info my-app
 $ ghtkn info | jq .envs`,
-		Action: func(ctx context.Context, _ *cli.Command) error {
-			return r.action(ctx, logger, args)
-		},
-		Flags: []cli.Flag{
-			flag.LogLevel(&args.LogLevel),
-			flag.Config(&args.Config),
-		},
-		Arguments: []cli.Argument{
-			&cli.StringArg{
-				Name:        "app-name",
-				Destination: &args.AppName,
-			},
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return r.action(cmd.Context(), logger, args)
 		},
 	}
+	return cmd
 }
 
 // action implements the 'info' command. It sets the log level, resolves the
@@ -115,7 +105,7 @@ func (r *runner) action(ctx context.Context, logger *slogutil.Logger, args *Args
 	// info is a troubleshooting command and must never fail because the agent is down.
 	agentBackend := cfg != nil && cfg.Backend != nil && cfg.Backend.Type == "agent"
 	agent := buildAgentStatus(ctx, agentBackend, logger)
-	err = info.New(os.Stdout, os.Getenv).Info(configPath, args.AppName, args.Version, cfg, agent)
+	err = info.New(os.Stdout, os.Getenv).Info(configPath, args.Version, cfg, agent)
 	// After the output, not before: the JSON runs to dozens of lines, and a message
 	// scrolled off the top of it is a message nobody reads. The docs hint comes first so
 	// that a stale-agent warning, which is about this machine rather than about ghtkn in

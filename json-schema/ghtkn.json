@@ -6,19 +6,23 @@
     "App": {
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "The app name. It must be unique across apps. It is used to select the app by the -app flag and the GHTKN_APP environment variable"
         },
         "client_id": {
-          "type": "string"
+          "type": "string",
+          "description": "The client ID of the GitHub App. It must be unique across apps because access tokens are stored per client ID"
         },
         "git_owner": {
-          "type": "string"
+          "type": "string",
+          "description": "The repository owner which the app is used for. It must be unique across apps. It is used to select the app by the repository owner, such as in the git credential helper. git_owner and git_owners are mutually exclusive"
         },
         "git_owners": {
           "items": {
             "type": "string"
           },
-          "type": "array"
+          "type": "array",
+          "description": "git_owner for an app shared by several repository owners, such as an Enterprise GitHub App installed on several organizations. Each owner must be unique across apps. git_owner and git_owners are mutually exclusive"
         }
       },
       "additionalProperties": false,
@@ -31,7 +35,9 @@
     "Backend": {
       "properties": {
         "type": {
-          "type": "string"
+          "type": "string",
+          "description": "The backend type where access tokens are stored. Either 'keyring' (the default), 'text', or 'agent'. The GHTKN_BACKEND environment variable takes precedence over this value",
+          "default": "keyring"
         }
       },
       "additionalProperties": false,
@@ -40,7 +46,9 @@
     "Clipboard": {
       "properties": {
         "enable": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Copy the one-time code to the system clipboard in the device flow. The default value is false. The -clipboard flag and the GHTKN_CLIPBOARD environment variable take precedence over this value",
+          "default": false
         }
       },
       "additionalProperties": false,
@@ -52,22 +60,29 @@
           "items": {
             "$ref": "#/$defs/App"
           },
-          "type": "array"
+          "type": "array",
+          "description": "GitHub Apps which ghtkn creates access tokens from. At least one app is required. The first app is the default app, which is used when no app is selected by name or repository owner"
         },
         "skip_account_picker": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Skip the GitHub Device Flow account picker by appending GitHub's unofficial skip_account_picker query parameter to the verification URL. The default value is true. Set it to false to show the account picker",
+          "default": true
         },
         "open_browser": {
-          "$ref": "#/$defs/OpenBrowser"
+          "$ref": "#/$defs/OpenBrowser",
+          "description": "Control whether the device flow opens a browser automatically"
         },
         "min_expiration": {
-          "type": "string"
+          "type": "string",
+          "description": "The minimum time before token expiration that triggers renewal, as a Go duration string such as '1h' and '30m'. By default a token is renewed only once it has actually expired. The -min-expiration flag and the GHTKN_MIN_EXPIRATION environment variable take precedence over this value"
         },
         "backend": {
-          "$ref": "#/$defs/Backend"
+          "$ref": "#/$defs/Backend",
+          "description": "Select the storage backend for access tokens"
         },
         "clipboard": {
-          "$ref": "#/$defs/Clipboard"
+          "$ref": "#/$defs/Clipboard",
+          "description": "Configure whether the device flow copies the one-time code to the system clipboard"
         }
       },
       "additionalProperties": false,
@@ -79,7 +94,9 @@
     "OpenBrowser": {
       "properties": {
         "enable": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Open a browser automatically in the device flow. The default value is true. The GHTKN_OPEN_BROWSER environment variable takes precedence over this value",
+          "default": true
         }
       },
       "additionalProperties": false,

@@ -1,5 +1,5 @@
 ---
-description: Configure ghtkn via config file, environment variables, and CLI args. Use for configuration priority, disabling browser open, the GitHub account picker, enterprise GitHub App sharing, or GHTKN_GITHUB_TOKEN.
+description: Configure ghtkn via config file, environment variables, and CLI args. Use for configuration priority, disabling browser open, the GitHub account picker, enterprise GitHub App sharing, GHTKN_GITHUB_TOKEN, or shell completion.
 ---
 
 # Configuration
@@ -10,6 +10,22 @@ The priority order of configuration sources is as follows:
 1. command line arguments
 2. environment variables
 3. configuration files
+
+## Shell Completion
+
+ghtkn can output a shell completion script for bash, zsh, fish, and PowerShell.
+The setup differs per shell, so run the following command and follow the instructions it prints for your shell:
+
+```sh
+ghtkn help completion
+```
+
+Once it is set up, `ghtkn get`, `ghtkn auth`, and `ghtkn revoke` complete their app name argument with the apps in your configuration file, so you don't have to remember the names:
+
+```console
+$ ghtkn get <TAB>
+my-app  work-app
+```
 
 ## Disabling Browser Open
 
@@ -30,25 +46,6 @@ open_browser:
 This is useful in environments where those commands exist on PATH but don't work.
 For example, in WSL `xdg-open` exists but doesn't work.
 In that case, please open the browser yourself.
-
-## Enabling the GitHub Account Picker
-
-`version >= v0.2.7`
-
-ghtkn skips GitHub's account picker by opening the authorization URL with the `skip_account_picker=true` query parameter.
-
-https://github.com/login/device?skip_account_picker=true
-
-Note that this query parameter is undocumented and may not be supported in the future.
-
-Most users don't need to choose a different GitHub account.
-However, if you do want to choose another account, set skip_account_picker: false in the configuration file.
-
-~/.config/ghtkn/ghtkn.yaml
-
-```yaml
-skip_account_picker: false
-```
 
 ## Using ghtkn in Enterprise Organizations
 
@@ -75,3 +72,51 @@ apps:
 
 If the `GHTKN_GITHUB_TOKEN` environment variable is set, `ghtkn` will use it as the GitHub token.
 This is useful when a personal access token is required due to the limitations of user access tokens (see [Troubleshooting](troubleshooting.md)).
+
+`ghtkn auth` ignores `GHTKN_GITHUB_TOKEN` and authenticates as usual, since caching a GitHub App user access token is its whole job.
+
+## JSON Schema
+
+The configuration file has a JSON Schema, so editors such as VSCode can complete the settings and warn about invalid ones.
+
+- [ghtkn.json](../json-schema/ghtkn.json)
+- https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn/refs/heads/main/json-schema/ghtkn.json
+
+Add a `yaml-language-server` comment to the top of the configuration file. `ghtkn init` writes this comment for you.
+
+Version: `main`
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn/main/json-schema/ghtkn.json
+```
+
+Or pinning version:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/ghtkn/v0.3.6/json-schema/ghtkn.json
+```
+
+As of v0.4.0, ghtkn also has a `json-schema` command that outputs the schema embedded in the binary, which is the schema of the configuration that version accepts:
+
+```sh
+ghtkn json-schema
+```
+
+## Disabling the GitHub Account Picker
+
+`version >= v0.2.7`
+
+ghtkn skips GitHub's account picker by opening the authorization URL with the `skip_account_picker=true` query parameter.
+
+https://github.com/login/device?skip_account_picker=true
+
+Note that this query parameter is undocumented and may not be supported in the future.
+
+Most users don't need to choose a different GitHub account.
+However, if you do want to choose another account, set `skip_account_picker: false` in the configuration file.
+
+~/.config/ghtkn/ghtkn.yaml
+
+```yaml
+skip_account_picker: false
+```

@@ -140,7 +140,7 @@ func runTestCases() []*runTestCase { //nolint:funlen // A table of test cases.
 			wantExitCode: 111,
 		},
 		{
-			name: "-continue-on-error keeps the inherited value of the failed variable",
+			name: "--continue-on-error keeps the inherited value of the failed variable",
 			envVars: []*exec.EnvVar{
 				{Name: "A", AppName: "app-a"},
 				{Name: "GITHUB_TOKEN", AppName: "app-b"},
@@ -154,7 +154,7 @@ func runTestCases() []*runTestCase { //nolint:funlen // A table of test cases.
 			wantEnv:         []string{"A=inherited", "PATH=/bin", "GITHUB_TOKEN=token-b"},
 		},
 		{
-			name: "-continue-on-error asks a failed app only once",
+			name: "--continue-on-error asks a failed app only once",
 			envVars: []*exec.EnvVar{
 				{Name: "A", AppName: "app-a"},
 				{Name: "B", AppName: "app-a"},
@@ -167,7 +167,7 @@ func runTestCases() []*runTestCase { //nolint:funlen // A table of test cases.
 			wantEnv:         []string{"PATH=/bin"},
 		},
 		{
-			name:            "an interruption stops even with -continue-on-error",
+			name:            "an interruption stops even with --continue-on-error",
 			envVars:         []*exec.EnvVar{{Name: "GITHUB_TOKEN"}},
 			continueOnError: true,
 			errs:            map[string]error{"": context.Canceled},

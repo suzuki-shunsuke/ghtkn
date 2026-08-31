@@ -105,7 +105,7 @@ $ security add-generic-password -s "github.com/suzuki-shunsuke/ghtkn" -a "$CLIEN
 security: SecKeychainItemCreateFromContent (<default>): UNIX[Operation not permitted]
 ```
 
-In practice this rarely matters. Storing a token means minting one, which means the device flow, which is interactive and disabled by default.
+In practice this rarely matters. Storing a token means minting one, which means the device flow, which is interactive and runs only in `ghtkn auth`.
 Run `ghtkn auth` in your own terminal and let the sandboxed commands read the token it caches.
 
 To let a sandboxed command store tokens, allow the keychain directory:

@@ -1,15 +1,20 @@
 // Package flag provides common command-line flags for ghtkn CLI.
 // It defines reusable flag definitions for consistent flag handling across all commands.
+//
+// Each function registers its flag on the given flag set rather than returning a
+// definition, because that is how pflag works; the destination pointer is where the
+// value lands, as it was with urfave/cli.
 package flag
 
 import (
 	"fmt"
 	"time"
 
+	"github.com/spf13/pflag"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/env"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/cobrautil"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
-	"github.com/urfave/cli/v3"
 )
 
 // GlobalFlags holds the global flag values for the root command.
@@ -18,7 +23,7 @@ type GlobalFlags struct {
 	Config   string
 }
 
-// SetMinExpiration parses the -min-expiration flag value and sets it on inputGet.
+// SetMinExpiration parses the --min-expiration flag value and sets it on inputGet.
 // It lives next to the flag definition because the two share the precedence the
 // comment on MinExpiration describes, and both 'get' and 'exec' accept the flag.
 // When the flag is not set it leaves inputGet.MinExpiration nil, so the SDK falls
@@ -36,88 +41,45 @@ func SetMinExpiration(inputGet *ghtkn.InputGet, s string) error {
 	return nil
 }
 
-// LogLevel returns a flag for setting the logging level.
+// LogLevel registers the flag for setting the logging level.
 // Supported values are: debug, info, warn, error.
 // Can be set via GHTKN_LOG_LEVEL environment variable.
-func LogLevel(dest *string) *cli.StringFlag {
-	return &cli.StringFlag{
-		Name:        "log-level",
-		Usage:       "Log level (debug, info, warn, error)",
-		Sources:     cli.EnvVars(env.LogLevel),
-		Destination: dest,
-	}
+func LogLevel(fs *pflag.FlagSet, dest *string) {
+	fs.StringVar(dest, "log-level", "", "Log level (debug, info, warn, error)")
+	cobrautil.Envs(fs, "log-level", env.LogLevel)
 }
 
-// Config returns a flag for specifying the configuration file path.
+// Config registers the flag for specifying the configuration file path.
 // Can be set via GHTKN_CONFIG environment variable.
 // Alias: -c
-func Config(dest *string) *cli.StringFlag {
-	return &cli.StringFlag{
-		Name:        "config",
-		Aliases:     []string{"c"},
-		Usage:       "configuration file path",
-		Sources:     cli.EnvVars(env.Config),
-		Destination: dest,
-	}
+func Config(fs *pflag.FlagSet, dest *string) {
+	fs.StringVarP(dest, "config", "c", "", "configuration file path")
+	cobrautil.Envs(fs, "config", env.Config)
 }
 
-// Format returns a flag for specifying the output format.
+// Format registers the flag for specifying the output format.
 // Currently supports: json.
 // Can be set via GHTKN_OUTPUT_FORMAT environment variable.
 // Alias: -f
-func Format(dest *string) *cli.StringFlag {
-	return &cli.StringFlag{
-		Name:        "format",
-		Aliases:     []string{"f"},
-		Usage:       "output format (json)",
-		Sources:     cli.EnvVars(env.OutputFormat),
-		Destination: dest,
-	}
+func Format(fs *pflag.FlagSet, dest *string) {
+	fs.StringVarP(dest, "format", "f", "", "output format (json)")
+	cobrautil.Envs(fs, "format", env.OutputFormat)
 }
 
-// MinExpiration returns a flag for specifying the minimum token expiration duration.
+// MinExpiration registers the flag for specifying the minimum token expiration duration.
 // Accepts duration strings like "1h", "30m", "30s".
 // The GHTKN_MIN_EXPIRATION environment variable is read by the SDK, not this flag,
 // so that it applies to SDK consumers too; the flag only carries the explicit -m value.
 // Alias: -m
-func MinExpiration(dest *string) *cli.StringFlag {
-	return &cli.StringFlag{
-		Name:        "min-expiration",
-		Aliases:     []string{"m"},
-		Usage:       "minimum expiration duration (e.g. 1h, 30m, 30s)",
-		Destination: dest,
-	}
+func MinExpiration(fs *pflag.FlagSet, dest *string) {
+	fs.StringVarP(dest, "min-expiration", "m", "", "minimum expiration duration (e.g. 1h, 30m, 30s)")
 }
 
-// DeviceFlow returns a flag controlling whether the OAuth device flow may run to
-// create a new access token. It defaults to false, so the device flow is not
-// started automatically; ghtkn fails fast with an actionable error instead of
-// blocking in non-interactive environments. Pass -d (or -d=true) to allow it.
-// The GHTKN_ENABLE_DEVICE_FLOW environment variable is read by the SDK, not this
-// flag, so that it applies to SDK consumers too; the flag, when explicitly set,
-// overrides the environment variable.
-// Alias: -d
-func DeviceFlow(dest *bool) *cli.BoolFlag {
-	return &cli.BoolFlag{
-		Name:        "device-flow",
-		Aliases:     []string{"d"},
-		Usage:       "Allow the interactive device flow to create a new access token",
-		Value:       false,
-		Destination: dest,
-	}
-}
-
-// Clipboard returns the -clipboard (-p) flag, which copies the device flow one-time
+// Clipboard registers the --clipboard (-p) flag, which copies the device flow one-time
 // code to the system clipboard. The flag, when explicitly set, overrides both the
 // GHTKN_CLIPBOARD environment variable and the config's clipboard.enable (both read
 // by the SDK); it defaults to disabled.
 // Alias: -p
-func Clipboard(dest *bool) *cli.BoolFlag {
-	return &cli.BoolFlag{
-		Name:        "clipboard",
-		Aliases:     []string{"p"},
-		Usage:       "Copy the device flow one-time code to the clipboard",
-		Value:       false,
-		Destination: dest,
-	}
+func Clipboard(fs *pflag.FlagSet, dest *bool) {
+	fs.BoolVarP(dest, "clipboard", "p", false, "Copy the device flow one-time code to the clipboard")
 }

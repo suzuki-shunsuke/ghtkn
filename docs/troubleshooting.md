@@ -12,7 +12,7 @@ description: Diagnose ghtkn problems and known limitations. Use when ghtkn or th
 1. Check environment variables, ghtkn version, etc.
 
 ```sh
-ghtkn info [<app name>]
+ghtkn info
 ```
 
 If `ghtkn info` command isn't found or the version isn't latest, please upgrade ghtkn to the latest version.
@@ -99,14 +99,14 @@ In that case, you need to:
 1. Run `ghtkn auth [app for process A]` manually to renew the access token
 1. Re-run the process `A`
 
-As of ghtkn v0.3.0, the automatic device flow is disabled by default, so this kind of issue no longer happens. When the token expires, you need to run `ghtkn auth` to renew it.
+As of ghtkn v0.4.0, only `ghtkn auth` starts the device flow, so this kind of issue no longer happens. When the token expires, you need to run `ghtkn auth` to renew it.
 
 ## A browser opens when using tools like cmux and warp
 
 When using [cmux](https://github.com/manaflow-ai/cmux) and [warp](https://github.com/warpdotdev/warp), ghtkn may open a browser on its own.
 Worse, the one-time code isn't shown anywhere, so you can't complete the device flow and have to close the browser tab.
 
-As of ghtkn v0.3.0, the automatic device flow is disabled by default, so this kind of issue no longer happens. When the token expires, you need to run `ghtkn auth` to renew it.
+As of ghtkn v0.4.0, only `ghtkn auth` starts the device flow, so this kind of issue no longer happens. When the token expires, you need to run `ghtkn auth` to renew it.
 
 ## Limitations
 

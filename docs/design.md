@@ -13,7 +13,7 @@ ghtkn gets and outputs an access token in the following way:
 3. Determine the GitHub App (see [Using Multiple Apps](multiple-apps.md))
 4. Get the client id from the configuration file
 5. Get the access token by client id from the backend
-6. If the access token isn't found in the backend or the access token expires, create a new access token through [Device Flow](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app#using-the-device-flow-to-generate-a-user-access-token). A user needs to input the verification code and approve the request. The Device Flow is never started automatically: it runs only when it's explicitly enabled, by running `ghtkn auth`, passing `-device-flow`, or setting `GHTKN_ENABLE_DEVICE_FLOW=true`. Otherwise the command fails instead (see [Token Management](token-management.md))
+6. If the access token isn't found in the backend or the access token expires, create a new access token through [Device Flow](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app#using-the-device-flow-to-generate-a-user-access-token). A user needs to input the verification code and approve the request. The Device Flow is never started automatically: only `ghtkn auth` runs it. Otherwise the command fails instead (see [Token Management](token-management.md))
 7. Store the access token and its expiration date in the backend. With the agent backend and refresh enabled, the refresh token and its expiration date are stored too, and an expiring access token is refreshed with them instead of going through the Device Flow again (see [Refreshing tokens](refresh-token.md))
 8. Output the access token
 

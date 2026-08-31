@@ -1,5 +1,5 @@
 ---
-description: Manage the ghtkn access token lifecycle - regeneration, ghtkn auth, the automatic device flow, and clipboard. Use when tokens expire, configuring -min-expiration, authenticating, or copying the one-time code. The token ghtkn get outputs is a secret; never print or log it.
+description: Manage the ghtkn access token lifecycle - regeneration, ghtkn auth, the device flow, and clipboard. Use when tokens expire, configuring --min-expiration, authenticating, or copying the one-time code. The token ghtkn get outputs is a secret; never print or log it.
 ---
 
 # Token Management
@@ -28,12 +28,12 @@ If a token is exposed, revoke it immediately with `ghtkn revoke` (see [How To Re
 ## Access Token Regeneration
 
 ghtkn stores generated access tokens and their expiration dates in the backend.
-`ghtkn get` retrieves these, and if the expiration has passed, regenerates the access token through Device Flow.
-(With the agent backend and refresh enabled, an expired token is instead refreshed silently from the stored refresh token when a usable one exists, and Device Flow runs only otherwise. See [Refreshing tokens](refresh-token.md).)
+`ghtkn get` retrieves these, and if the expiration has passed, it fails: regenerating the access token needs the Device Flow, which only `ghtkn auth` runs. Run `ghtkn auth` and then `ghtkn get` again.
+(With the agent backend and refresh enabled, an expired token is instead refreshed silently from the stored refresh token when a usable one exists, and `ghtkn get` succeeds without you doing anything. See [Refreshing tokens](refresh-token.md).)
 The access token validity period is 8 hours.
 
 By default, if the access token hasn't expired, it returns it, but this may result in a short-lived access token being returned.
-By specifying `-min-expiration (-m) <minimum required validity period. Not a datetime but remaining time>`, the access token will be regenerated if its validity period is shorter than the specified duration.
+By specifying `--min-expiration (-m) <minimum required validity period. Not a datetime but remaining time>`, an access token whose validity period is shorter than the specified duration counts as expiring, so `ghtkn get` fails just as it does for an expired one (or refreshes it silently with the agent backend and refresh enabled).
 
 ```sh
 ghtkn get -m 1h
@@ -67,41 +67,41 @@ The whole value of ghtkn is to hand out short-lived access tokens, so that a lea
 Keep user access token expiration enabled on your GitHub App.
 
 For completeness, ghtkn does handle a non-expiring token correctly.
-It is stored with no expiration date and served from the cache, instead of running the device flow on every `ghtkn get` (a token with no expiration would otherwise read as already expired and be regenerated every time).
+It is stored with no expiration date and served from the cache, so `ghtkn get` keeps working (a token with no expiration would otherwise read as already expired, and `ghtkn get` would fail every time).
 `ghtkn auth` still regenerates it, because it asks for more validity than any token can have (see above), so you can replace a revoked non-expiring token by running `ghtkn auth`.
 
 ## ghtkn auth
 
 `ghtkn auth` command authenticates to GitHub and caches an access token without printing it to stdout.
 It regenerates the token regardless of any cached token. Regeneration normally runs the device flow, but with the agent backend and refresh enabled it silently refreshes from the stored refresh token when one is available, running the device flow only when no usable refresh token exists.
-Unlike `ghtkn get`, the device flow is always allowed even though it is disabled by default (and even when `GHTKN_ENABLE_DEVICE_FLOW=false`).
-Also unlike `ghtkn get`, it does not accept `-min-expiration (-m)`, nor read `GHTKN_MIN_EXPIRATION` or `min_expiration` in the configuration file.
+It is the only command that runs the device flow (see below).
+Unlike `ghtkn get`, it does not accept `--min-expiration (-m)`, nor read `GHTKN_MIN_EXPIRATION` or `min_expiration` in the configuration file.
 
-## Disabling Automatic Device Flow
+## Only ghtkn auth starts the device flow
 
 > [!IMPORTANT]
-> As of v0.3.0, the automatic device flow is disabled by default.
-> We plan to remove the `GHTKN_ENABLE_DEVICE_FLOW=true` / `ghtkn get -d` opt-in entirely at v0.4.0.
+> As of v0.4.0, the device flow is started by `ghtkn auth` alone.
+> v0.3.0 disabled the automatic device flow by default while keeping `GHTKN_ENABLE_DEVICE_FLOW=true` / `ghtkn get -d` as a temporary opt-in; both are now removed.
 > For details, see https://github.com/suzuki-shunsuke/ghtkn/issues/474
 
 `ghtkn` obtains a GitHub App User access token via the OAuth Device Flow, which is interactive: it prints a one-time (user) code and waits for the user.
 A coding agent (or any background / non-interactive process) cannot complete this, so it would block until a device code expires.
-The automatic device flow is disabled by default, so `ghtkn get` and `git-credential` fail fast with an actionable error instead of blocking. Run `ghtkn auth` explicitly in your own interactive terminal to authenticate.
+Worse, these commands are often run indirectly, by a wrapper script, the Git credential helper, or a third-party tool built on the ghtkn SDK. A device flow started that way is a phishing risk: you could be led to approve one you never initiated.
 
-If you want `ghtkn get` to start the device flow automatically (the behavior before v0.3.0), enable it explicitly with `GHTKN_ENABLE_DEVICE_FLOW=true` or `ghtkn get -d`.
+So `ghtkn get`, `ghtkn exec`, `ghtkn git-credential`, and the SDK never start one. They serve whatever token the backend can supply without asking you anything, which is the cached one, or a silently refreshed one with the agent backend and [refresh](refresh-token.md) enabled, and otherwise fail fast with an actionable error. Run `ghtkn auth` in your own interactive terminal to authenticate; then the one-time code you are shown is always one you asked for.
 
 ## :bulb: Copying a one-time code to clipboard automatically
 
 [#446](https://github.com/suzuki-shunsuke/ghtkn/issues/446) [#309](https://github.com/suzuki-shunsuke/ghtkn/issues/309#issuecomment-4726483175)
 
 > [!WARNING]
-> Some applications, such as coding agents, cmux, and Warp, can start the device flow via ghtkn automatically. However, it is dangerous to use a one-time code when you didn't execute ghtkn explicitly, as this could be a phishing attack.
+> It is dangerous to use a one-time code you didn't ask for, as this could be a phishing attack.
 > An attacker could initiate the device flow, copy the one-time code to your clipboard, trick you into submitting it, and compromise your access token.
-> As of v0.3.0 the automatic device flow is disabled by default, which mitigates this; if you use this tip, keep it disabled and always start the device flow explicitly with `ghtkn auth`.
+> As of v0.4.0 only `ghtkn auth` starts the device flow (see above), so a code you are shown is always one you asked for. Applications that used to start it via ghtkn - coding agents, cmux, Warp - no longer can.
 
 `ghtkn auth` can copy the one-time code to the system clipboard for you.
 This is only available on `ghtkn auth`, the explicit, interactive authentication command - not on `ghtkn get` or `ghtkn git-credential`, which must not start the device flow on your behalf.
-It is disabled by default; enable it with the `-clipboard` (`-p`) flag, the `GHTKN_CLIPBOARD` environment variable, or the `clipboard.enable` config field.
+It is disabled by default; enable it with the `--clipboard` (`-p`) flag, the `GHTKN_CLIPBOARD` environment variable, or the `clipboard.enable` config field.
 
 ```sh
 ghtkn auth -p

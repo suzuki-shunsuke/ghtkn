@@ -120,7 +120,7 @@ func tokenResponse(raw json.RawMessage) *agentapi.Response {
 	// The extracted access-token bytes are copied into the marshaled response below;
 	// zero this intermediate copy once done.
 	defer scrub(token.AccessToken)
-	//nolint:gosec // G117: serializing only the access token; the refresh token is kept server-side.
+	// Only the access token is serialized here; the refresh token is kept server-side.
 	b, err := json.Marshal(token)
 	if err != nil {
 		return &agentapi.Response{Error: fmt.Sprintf("%s: %s", errMsgGet, err)}

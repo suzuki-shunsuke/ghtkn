@@ -1,6 +1,8 @@
 // Package get provides functionality to retrieve GitHub App access tokens.
 // It serves both the standard 'get' command and the 'git-credential' helper command.
-// It handles token retrieval from the keyring cache and token generation/renewal when needed.
+// It reads the token cached in the backend, which on the agent backend with refresh
+// enabled includes one renewed silently from the stored refresh token. It never starts
+// the device flow, which only 'ghtkn auth' does.
 package get
 
 import (
@@ -12,7 +14,6 @@ import (
 	"os"
 
 	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn"
-	"github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/deviceflow"
 )
 
 // Controller manages the process of retrieving GitHub App access tokens.
@@ -30,7 +31,6 @@ func New(input *Input) *Controller {
 
 type Client interface {
 	Get(ctx context.Context, logger *slog.Logger, input *ghtkn.InputGet) (*ghtkn.AccessToken, *ghtkn.AppConfig, error)
-	SetCopyOnetimeCodeToClipboard(f deviceflow.CopyTextToClipboard)
 }
 
 // Input contains all the dependencies and configuration needed by the Controller.
