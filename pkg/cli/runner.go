@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"github.com/suzuki-shunsuke/cobra-util/cobrautil"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/auth"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs"
@@ -19,7 +20,6 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/initcmd"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/jsonschema"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/revoke"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/cobrautil"
 	"github.com/suzuki-shunsuke/go-error-with-exit-code/ecerror"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
 	"github.com/suzuki-shunsuke/slog-util/slogutil"
