@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/suzuki-shunsuke/cobra-util/cobrautil"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/cobrautil"
 )
 
 var version = ""
