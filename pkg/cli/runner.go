@@ -10,6 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/suzuki-shunsuke/cobra-util/cobrautil"
+	"github.com/suzuki-shunsuke/cobra-util/jsonschema"
+	schema "github.com/suzuki-shunsuke/ghtkn/json-schema"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/agent"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/auth"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs"
@@ -18,7 +20,6 @@ import (
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/get"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/info"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/initcmd"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/jsonschema"
 	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/revoke"
 	"github.com/suzuki-shunsuke/go-error-with-exit-code/ecerror"
 	"github.com/suzuki-shunsuke/slog-error/slogerr"
@@ -76,8 +77,11 @@ troubleshooting its errors.`,
 		revoke.New(logger, gFlags),
 		info.New(logger, env, gFlags),
 		docs.New(logger, gFlags),
-		jsonschema.New(),
 	)
+	// json-schema is added on its own because it is the one command that takes
+	// neither the logger nor the global flags: it only writes the embedded schema.
+	// With names the program in the example in its help, taking the name from cmd.
+	jsonschema.With(cmd, schema.Schema)
 	return cobrautil.Command(env, cmd, &cobrautil.Options{
 		AfterVersion: func() {
 			hintDocsOnVersion(logger, gFlags)
