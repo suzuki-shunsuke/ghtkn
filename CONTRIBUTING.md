@@ -17,7 +17,7 @@ Please read the following document.
 
 ## Documentation
 
-[docs/*.md](docs) is embedded in the binary ([docs/doc.go](docs/doc.go)) and served by `ghtkn docs list` and `ghtkn docs show <name>`. The README and the skill both point at it, so editing a document updates every surface at once. Nothing here is generated, so there is no script to run.
+[docs/*.md](docs) is embedded in the binary ([docs/doc.go](docs/doc.go)) and served by `ghtkn docs list` and `ghtkn docs show <name>`. The README and the skill both point at it, so editing a document updates every surface at once. Nothing here is generated, so there is no script to run. The command itself is [cobra-util](https://github.com/suzuki-shunsuke/cobra-util)'s `docs` package, so ghtkn only supplies the files; [docs/docs_test.go](docs/docs_test.go) checks that every one of them has a description.
 
 These documents are read by humans and by coding agents, and the guides below keep them useful to both.
 
