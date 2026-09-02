@@ -1,12 +1,34 @@
+// Package docs adds the docs command to ghtkn and holds the hint that points coding
+// agents at it.
+//
+// The command itself is cobra-util's, which lists the documents embedded in the
+// binary and outputs them; ghtkn only says which documents those are and what the
+// program is called.
 package docs
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs/list"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/docs/show"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/cli/flag"
-	"github.com/suzuki-shunsuke/slog-util/slogutil"
+	cobradocs "github.com/suzuki-shunsuke/cobra-util/docs"
+	docsfs "github.com/suzuki-shunsuke/ghtkn/docs"
 )
+
+// command describes the documents ghtkn embeds. It is built per call rather than
+// kept in a package variable so that New and Hint say the same thing without sharing
+// state.
+func command() *cobradocs.Command {
+	return &cobradocs.Command{
+		FS:   docsfs.FS,
+		Name: "ghtkn",
+	}
+}
+
+// New returns the `ghtkn docs` command and its `list` and `show` subcommands.
+//
+// Unlike the other commands it takes neither the logger nor the global flags: it
+// reads no configuration and logs nothing.
+func New() *cobra.Command {
+	return cobradocs.New(command())
+}
 
 // Hint points coding agents at `ghtkn docs`. It lives here, next to the command it
 // advertises, because several commands emit it: an agent that never makes ghtkn fail
@@ -15,32 +37,6 @@ import (
 // Callers log it to stderr rather than writing it to stdout, so that it doesn't break
 // scripts that parse the output, and at the info level so that `--log-level warn`
 // silences it.
-const Hint = "If you are a coding agent, run `ghtkn docs list` to list the documentation and `ghtkn docs show <name>` to read it before answering questions about ghtkn or troubleshooting its errors."
-
-// Args holds the flag and argument values for the info command.
-type Args struct {
-	*flag.GlobalFlags
-}
-
-func New(logger *slogutil.Logger, gFlags *flag.GlobalFlags) *cobra.Command {
-	args := &Args{
-		GlobalFlags: gFlags,
-	}
-	r := &runner{}
-	return r.Command(logger, args)
-}
-
-type runner struct{}
-
-func (r *runner) Command(logger *slogutil.Logger, args *Args) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "docs",
-		Short: "Output document for coding agent",
-		Long:  `List and output documents. This command is useful for coding agent to read document and solve problems.`,
-	}
-	cmd.AddCommand(
-		show.New(logger, args.GlobalFlags),
-		list.New(logger, args.GlobalFlags),
-	)
-	return cmd
+func Hint() string {
+	return command().Hint()
 }

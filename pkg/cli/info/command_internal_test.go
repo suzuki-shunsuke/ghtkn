@@ -59,7 +59,7 @@ func TestHintDocs(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if gotHint := strings.Contains(string(logs), docs.Hint); gotHint != tt.wantHint {
+			if gotHint := strings.Contains(string(logs), docs.Hint()); gotHint != tt.wantHint {
 				t.Errorf("the docs hint is logged = %v, want %v: %s", gotHint, tt.wantHint, logs)
 			}
 		})

@@ -131,7 +131,7 @@ func hintDocs(logger *slogutil.Logger, err error) {
 	if err != nil {
 		return
 	}
-	logger.Info(docs.Hint)
+	logger.Info(docs.Hint())
 }
 
 // warnStaleAgent warns when the running agent was built from a different ghtkn version

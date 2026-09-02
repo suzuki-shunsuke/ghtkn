@@ -8,7 +8,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
-	github.com/suzuki-shunsuke/cobra-util v0.0.2
+	github.com/suzuki-shunsuke/cobra-util v0.0.3
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
 	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.6.1
 	github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0
@@ -20,7 +20,6 @@ require (
 	golang.org/x/crypto v0.55.0
 	golang.org/x/sys v0.47.0
 	golang.org/x/term v0.45.0
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -42,4 +41,5 @@ require (
 	golang.org/x/image v0.41.0 // indirect
 	golang.org/x/mobile v0.0.0-20250606033058-a2a15c67f36f // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

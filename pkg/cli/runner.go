@@ -76,11 +76,10 @@ troubleshooting its errors.`,
 		agent.New(logger, env, gFlags),
 		revoke.New(logger, gFlags),
 		info.New(logger, env, gFlags),
-		docs.New(logger, gFlags),
+		docs.New(),
 	)
-	// json-schema is added on its own because it is the one command that takes
-	// neither the logger nor the global flags: it only writes the embedded schema.
-	// With names the program in the example in its help, taking the name from cmd.
+	// json-schema is added on its own because With takes the name of the program
+	// from cmd, which is what the example in the command's help says.
 	jsonschema.With(cmd, schema.Schema)
 	return cobrautil.Command(env, cmd, &cobrautil.Options{
 		AfterVersion: func() {
@@ -126,5 +125,5 @@ func hintDocsOnVersion(logger *slogutil.Logger, gFlags *flag.GlobalFlags) {
 	// An invalid log level is ignored here because the version output must
 	// succeed regardless. Subcommands report it when they set the level.
 	_ = logger.SetLevel(gFlags.LogLevel)
-	logger.Info(docs.Hint)
+	logger.Info(docs.Hint())
 }
