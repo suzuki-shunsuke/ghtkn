@@ -78,7 +78,7 @@ gh api \
   /user/installations
 ```
 
-If the response `installations` is empty, it means the app is not installed.
+If the response `installations` is empty, the app is either not installed or not installed on any account you have access to.
 
 ```json
 {
@@ -144,7 +144,8 @@ ghtkn obtains a user access token, but unfortunately it has some limitations so 
 
 Probably `--attach` doesn't work with user access tokens.
 
-https://github.com/cli/cli/issues/14309
+- https://github.com/cli/cli/issues/14309
+- https://github.com/cli/cli/issues/14495
 
 ### It's difficult to write other user's repositories
 
