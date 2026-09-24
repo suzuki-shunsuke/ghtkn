@@ -69,6 +69,26 @@ command -v gh
 ```
 
 1. Check if another access token like personal access token is set
+1. Check if the correct app is used
+
+```sh
+gh api \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2026-03-10" \
+  /user/installations
+```
+
+If the response `installations` is empty, it means the app is not installed.
+
+```json
+{
+  "total_count": 0,
+  "installations": []
+}
+```
+
+If a wrong app is used, please specify the correct app via the environment variable `GHTKN_APP`.
+
 1. Add the debug log to the wrapper.
 
 e.g.
@@ -119,6 +139,12 @@ ghtkn obtains a user access token, but unfortunately it has some limitations so 
 
 - https://docs.github.com/en/rest/packages/packages?apiVersion=2026-03-10
 - > To use the REST API to manage GitHub Packages, you must authenticate using a personal access token (classic).
+
+### GitHub CLI's `--attach` doesn't work
+
+Probably `--attach` doesn't work with user access tokens.
+
+https://github.com/cli/cli/issues/14309
 
 ### It's difficult to write other user's repositories
 
