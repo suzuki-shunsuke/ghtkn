@@ -46,8 +46,6 @@ github.com/suzuki-shunsuke/ghtkn-go-sdk v0.6.1 h1:IDvTocqxIfZVMK8Km/5Zk4/bMjDKKY
 github.com/suzuki-shunsuke/ghtkn-go-sdk v0.6.1/go.mod h1:HzPUgGvdUg/TFZM2U0ih81zk2y0fflbFZBzHT70AN0w=
 github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0 h1:oVXrrYNGBq4POyITQNWKzwsYz7B2nUcqtDbeX4BfeEc=
 github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0/go.mod h1:kDFtLeftDiIUUHXGI3xq5eJ+uAOi50FPrxPENTHktJ0=
-github.com/suzuki-shunsuke/go-github-device-flow v0.0.2 h1:5O17Yay7cpf9XN0JaP4vyZ7FVm2KcyQjnkgTekURwpc=
-github.com/suzuki-shunsuke/go-github-device-flow v0.0.2/go.mod h1:6a3G2e2J7jo2vVe0n3cYmG8K/QQSelSikc5U/CR9b/4=
 github.com/suzuki-shunsuke/go-github-device-flow v0.0.3 h1:KSXO8yDfQw2wHmThJ38QJbEQXLr2SQ+MmMufsRvpONw=
 github.com/suzuki-shunsuke/go-github-device-flow v0.0.3/go.mod h1:6a3G2e2J7jo2vVe0n3cYmG8K/QQSelSikc5U/CR9b/4=
 github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.2 h1:Z0WwKKueiGuh0dzrJQelnN2+HXR//Ac+ER8EoRr6O7g=
