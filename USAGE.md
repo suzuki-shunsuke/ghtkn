@@ -30,7 +30,7 @@ Available Commands:
   agent          Manage the ghtkn agent that caches access tokens and serves them over a Unix socket
   auth           Authenticate to GitHub and cache an access token without outputting it
   completion     Generate the autocompletion script for the specified shell
-  docs           Output document for coding agent
+  docs           Output documents for coding agents
   exec           Run a command with access tokens in environment variables
   get            Output a GitHub App User Access Token to stdout
   git-credential Git Credential Helper
@@ -439,13 +439,14 @@ Global Flags:
 
 ```console
 $ ghtkn docs --help
-List and output documents. This command is useful for coding agent to read document and solve problems.
+List and output the documents embedded in the binary.
+This command is for coding agents to read the documents and solve problems.
 
 Usage:
   ghtkn docs [command]
 
 Available Commands:
-  list        List document names and descriptions
+  list        List the name and the description of every document
   show        Output the content of a given document
 
 Flags:
@@ -462,7 +463,9 @@ Use "ghtkn docs [command] --help" for more information about a command.
 
 ```console
 $ ghtkn docs list --help
-List document names and descriptions
+List the name and the description of every document as JSON.
+The name is what "ghtkn docs show" takes, and the description says what the document
+covers, so that only the documents worth reading are read.
 
 Usage:
   ghtkn docs list [flags]
@@ -479,9 +482,9 @@ Global Flags:
 
 ```console
 $ ghtkn docs show --help
-Output document. This is useful for coding agent to read the document and solve problems.
+Output the content of a given document.
 This command needs a document name.
-To see the name, list documents with "ghtkn docs list"
+To see the names, list the documents with "ghtkn docs list".
 
 Usage:
   ghtkn docs show [<doc>] [flags]
