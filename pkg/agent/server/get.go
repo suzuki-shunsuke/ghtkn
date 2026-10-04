@@ -311,13 +311,7 @@ func (s *Server) refreshAccessToken(ctx context.Context, st *tokenstore.Store, c
 	//nolint:bodyclose // RefreshToken reads and closes the response body internally; it returns the decoded value.
 	newToken, _, _, err := s.client.RefreshToken(ctx, clientID, refreshToken)
 	if err != nil {
-		// The refresh token was still valid, and no other GET in this agent can have spent it
-		// (refreshes are serialized per client), yet the refresh failed: warn the user of a
-		// possible leak/revocation, then fall back to the device flow.
-		if s.logger != nil {
-			slogerr.WithError(s.logger, err).Error("a still-valid refresh token failed to refresh; possible incident", "client_id", clientID)
-		}
-		return nil, incidentWarning(clientID)
+		return s.refreshFailed(st, clientID, minExpiration, err)
 	}
 
 	fresh, err := s.encodeToken(newToken, true)
@@ -341,6 +335,29 @@ func (s *Server) refreshAccessToken(ctx context.Context, st *tokenstore.Store, c
 		s.dropStaleAfterFailedStore(st, clientID, minExpiration)
 	}
 	return tokenResponse(fresh), ""
+}
+
+// refreshFailed handles a failed refresh of a still-valid refresh token. No other GET in
+// this agent can have spent it (refreshes are serialized per client), so the failure is a
+// possible incident (leak or revocation): it is logged and the warning is returned for the
+// user. The response falls back to the device flow (nil), unless a token that satisfies
+// minExpiration was stored meanwhile by a writer that skips the refresh lock because it
+// does not spend the refresh token (a device flow completing, or a legacy client's SET);
+// that token is served instead of starting a redundant device flow, still with the warning.
+func (s *Server) refreshFailed(st *tokenstore.Store, clientID string, minExpiration time.Duration, err error) (*agentapi.Response, string) {
+	if s.logger != nil {
+		slogerr.WithError(s.logger, err).Error("a still-valid refresh token failed to refresh; possible incident", "client_id", clientID)
+	}
+	warning := incidentWarning(clientID)
+	stored, resp := s.reloadExpiringToken(st, clientID, minExpiration)
+	if stored != nil {
+		scrub(stored)
+		return nil, warning
+	}
+	if resp != nil && resp.OK {
+		return resp, warning
+	}
+	return nil, warning
 }
 
 // dropStaleAfterFailedStore best-effort discards the cached token for clientID after a

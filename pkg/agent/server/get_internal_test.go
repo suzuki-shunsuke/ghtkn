@@ -404,6 +404,42 @@ func TestServer_handleGet_concurrentRefresh(t *testing.T) {
 	})
 }
 
+// TestServer_handleGet_refreshFailedStoredMeanwhile verifies that when a refresh fails
+// but a writer that skips the refresh lock (a device flow completing, or a legacy SET)
+// stored a valid token meanwhile, that token is served. The failure is still genuine (that
+// writer did not spend the refresh token), so the incident warning is kept.
+func TestServer_handleGet_refreshFailedStoredMeanwhile(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedServer(t)
+		now := time.Now()
+		const clientID = "Iv1.storedmeanwhile"
+		seedExpiredWithRefresh(t, c, clientID, now.Add(24*time.Hour))
+
+		fresh := fmt.Sprintf(`{"access_token":"set-access","expiration_date":"%s"}`, now.Add(8*time.Hour).Format(time.RFC3339))
+		setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
+			if err := c.store.Set(clientID, json.RawMessage(fresh)); err != nil {
+				t.Errorf("store the token written meanwhile: %v", err)
+			}
+			return &http.Response{StatusCode: http.StatusInternalServerError, Body: io.NopCloser(strings.NewReader("{}")), Header: make(http.Header)}, nil
+		}))
+
+		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+		//nolint:gosec // G117: serializing a token in a test to build the expected bytes.
+		wantToken, err := json.Marshal(&struct {
+			AccessToken    string    `json:"access_token"`
+			ExpirationDate time.Time `json:"expiration_date"`
+		}{AccessToken: "set-access", ExpirationDate: now.Add(8 * time.Hour)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := &agentapi.Response{OK: true, Token: wantToken, Warning: incidentWarning(clientID)}
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Fatalf("GET after a failed refresh (-want +got):\n%s", diff)
+		}
+	})
+}
+
 // TestServer_lockRefresh_canceled verifies that a GET waiting for another GET's refresh
 // of the same client gives up when its context is canceled, and that the lock is per
 // client: a different client is not blocked.
