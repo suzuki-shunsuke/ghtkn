@@ -1,6 +1,6 @@
 module github.com/suzuki-shunsuke/ghtkn
 
-go 1.27.1
+go 1.27.2
 
 // replace github.com/suzuki-shunsuke/ghtkn-go-sdk => ../ghtkn-go-sdk
 
