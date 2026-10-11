@@ -2,13 +2,10 @@
 name: integration test
 on:
   workflow_call:
-    secrets:
-      TAKUMI_GUARD_BOT_ID:
-        required: true
 jobs:
   integration-test:
+    # Go modules are downloaded by the gomodule job in the caller workflow
     permissions:
-      id-token: write
       contents: read
     timeout-minutes: 20
     runs-on: ${{ matrix.runs-on }}
@@ -24,10 +21,10 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+          cache: false
 
-      - uses: flatt-security/setup-takumi-guard-golang@2e3c7c40b538cd68b2ac483def12982ebc8bc02e # v1
-        with:
-          bot-id: ${{secrets.TAKUMI_GUARD_BOT_ID}}
+      - name: Restore Go modules
+        uses: suzuki-shunsuke/download-go-module-action/restore@9b315459d80513111c52b004d15ad89e7b3e46b7 # v0.0.4
 
       - run: |
           go install -ldflags "-X main.version=v1.0.0 -X main.commit=$GITHUB_SHA -X main.date=$(date +"%Y-%m-%dT%H:%M:%SZ%:z" | tr -d '+')" ./cmd/ghtkn
