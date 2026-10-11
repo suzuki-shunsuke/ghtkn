@@ -61,6 +61,13 @@ type Server struct {
 	// the one-time code info so any client polling GET can display it. An entry means
 	// a flow is running; it is deleted when the flow finishes (success or failure).
 	status map[string]*deviceFlowState
+	// refreshLocksMu guards refreshLocks.
+	refreshLocksMu sync.Mutex
+	// refreshLocks serializes refreshes per client ID (see lockRefresh). GitHub's refresh
+	// tokens are single-use, so concurrent GETs for the same app must not each spend the
+	// same stored refresh token. Each value is a one-slot semaphore; entries are never
+	// removed, which is fine since there is one per configured app.
+	refreshLocks map[string]chan struct{}
 	// client runs the GitHub device flow (device-code request and access-token poll).
 	client *deviceflow.Client
 	// revoker revokes stored tokens via GitHub's credential revocation API.
@@ -131,10 +138,11 @@ func New(version string) *Server {
 	// timeout so no GitHub call can block a handler goroutine indefinitely.
 	httpClient := &http.Client{Timeout: githubHTTPTimeout}
 	return &Server{
-		status:  map[string]*deviceFlowState{},
-		client:  deviceflow.New(&deviceflow.Input{HTTPClient: httpClient}),
-		revoker: revoke.New(httpClient),
-		goos:    runtime.GOOS,
-		version: version,
+		status:       map[string]*deviceFlowState{},
+		refreshLocks: map[string]chan struct{}{},
+		client:       deviceflow.New(&deviceflow.Input{HTTPClient: httpClient}),
+		revoker:      revoke.New(httpClient),
+		goos:         runtime.GOOS,
+		version:      version,
 	}
 }
