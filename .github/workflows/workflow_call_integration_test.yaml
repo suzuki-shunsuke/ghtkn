@@ -24,7 +24,7 @@ jobs:
           cache: false
 
       - name: Restore Go modules
-        uses: suzuki-shunsuke/download-go-module-action/restore@e41b50de59a715fcc3dc9fd54f43d030749942c8 # v0.0.6
+        uses: suzuki-shunsuke/download-go-module-action/restore@dc4640ee5d5a7bea22008b5eac92a560ce90f1fb # v0.0.7
 
       - run: |
           go install -ldflags "-X main.version=v1.0.0 -X main.commit=$GITHUB_SHA -X main.date=$(date +"%Y-%m-%dT%H:%M:%SZ%:z" | tr -d '+')" ./cmd/ghtkn
