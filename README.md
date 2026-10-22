@@ -190,6 +190,7 @@ Detailed documentation is split by topic under [`docs/`](docs). These documents 
 - [Sandbox Configuration: Codex](docs/sandbox-codex.md) - settings ghtkn needs to run inside Codex's sandbox, per backend.
 - [Configuration](docs/configuration.md) - configuration priority, browser open, account picker, enterprise sharing, and one-off PAT use.
 - [Design](docs/design.md) - how ghtkn works, a comparison with other access tokens, and API rate limits.
+- [Advantages over GitHub CLI's expiring tokens](docs/advantage-over-gh-expiring-token.md) - why `gh auth login --expiring` doesn't make ghtkn unnecessary.
 - [Refreshing Tokens](docs/refresh-token.md) - automatically refresh expiring GitHub access tokens with refresh tokens.
 - [How To Revoke Access Tokens](docs/revoke-tokens.md) - invalidate leaked or compromised tokens.
 - [Go SDK](docs/go-sdk.md) - how tools such as aqua and pinact reuse ghtkn tokens, and how to embed ghtkn in your own Go CLI.

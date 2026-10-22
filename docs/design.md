@@ -32,6 +32,10 @@ While you can restrict the scope (permission) and target Organizations, these te
 Also, it's basically indefinite.
 Therefore, the risk when this token is leaked is very high.
 
+Since gh v2.103.0, GitHub CLI can opt into expiring, auto-refreshing tokens with `gh auth login --expiring`.
+This shortens the token's lifetime, but the scopes, the organization's lack of control over the GitHub CLI OAuth app, and the way the refresh token is stored remain.
+See [Advantages over GitHub CLI's expiring tokens](advantage-over-gh-expiring-token.md) for the comparison.
+
 So, a more secure mechanism is needed.
 
 ### fine-grained Personal Access Token
