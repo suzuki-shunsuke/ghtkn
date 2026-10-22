@@ -41,10 +41,16 @@ Refresh tokens rotate, so if an attacker uses yours first, your next refresh is 
 gh then deletes your credential and prints only `the token for <host> has expired; please run 'gh auth login' to re-authenticate`.
 Nothing tells you the token may have leaked, and the deleted credential leaves nothing to investigate.
 
-### You may not get an expiring token at all
+### In some cases the token doesn't expire
 
-`--expiring` is only a request. If the server doesn't support expiring credentials, gh falls back to a non-expiring token.
-The documentation says only that the access token expires "within hours", and gives no lifetime for the refresh token.
+`--expiring` is only a request, and gh falls back to a non-expiring token without failing when it can't get an expiring one.
+On github.com and ghe.com this rarely matters, but it happens in two cases:
+
+- GitHub Enterprise Server older than 3.23, which doesn't support expiring credentials.
+- Pasting a token into `gh auth login` instead of signing in through the browser. The pasted token is stored as is, even with `expiring_credentials` enabled.
+
+Run `gh auth status` to check whether your token expires: it shows when an expiring access token expires.
+Even when you do get an expiring token, the documentation says only that the access token expires "within hours", and gives no lifetime for the refresh token.
 
 ## Why use ghtkn
 
@@ -86,7 +92,7 @@ Tools such as aqua, pinact, ghir, and ghaperf embed the ghtkn Go SDK and get tok
 | Organization control | Exempt from OAuth app access restrictions, so it can't be disabled; not recorded in the audit log | The organization manages the App's installations |
 | Access scope | Every repository the user can access | Can be limited to the repositories the App is installed on |
 | Permissions | `repo`, `read:org`, `gist` at minimum | Can be narrowed to the minimum needed via the App's permissions |
-| Access token lifetime | "Within hours" per the docs; up to the server (no guarantee it expires) | 8 hours |
+| Access token lifetime | "Within hours" per the docs; non-expiring on GHES older than 3.23 or with a pasted token | 8 hours |
 | Refresh token storage | OS keyring; plain text in `hosts.yml` on keyring failure or with `--insecure-storage` | Agent backend only, stored encrypted |
 | Encryption at rest | None (relies on the keyring) | AES-256-GCM; the passphrase is never persisted |
 | API to extract the refresh token | Readable directly from storage | None |
