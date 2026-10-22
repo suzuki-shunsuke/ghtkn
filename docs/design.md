@@ -29,7 +29,7 @@ Also, when scopes across Users or Organizations are needed, it's difficult with 
 
 However, this access token is not very good from a security perspective.
 While you can restrict the scope (permission) and target Organizations, these tend to be quite broad for convenience.
-Also, it's basically indefinite.
+Also, by default it's basically indefinite.
 Therefore, the risk when this token is leaked is very high.
 
 Since gh v2.103.0, GitHub CLI can opt into expiring, auto-refreshing tokens with `gh auth login --expiring`.

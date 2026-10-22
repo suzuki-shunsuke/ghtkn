@@ -30,10 +30,11 @@ The token reaches every repository of every organization you belong to, so a lea
 
 gh stores the access token and the refresh token in the OS keyring.
 If writing to the keyring fails, gh falls back to plain text in `hosts.yml`, prints a one-line warning, and the login succeeds anyway. On headless Linux or in containers without a keyring, this is what you are likely to get, and it is easy to miss.
-On macOS, the keyring is accessed through `/usr/bin/security`, so any process running as your user can read the item without a confirmation dialog.
+On macOS, the keyring is accessed through `/usr/bin/security`, so any process running as your user can read the item by calling `security` itself, without a confirmation dialog. GitHub CLI's own [macOS keyring document](https://github.com/cli/cli/blob/trunk/docs/macos-keyring.md) acknowledges this.
 
 So if your user account is compromised, for example by a malicious package in a supply chain attack, the refresh token itself can be exfiltrated.
 Unlike an access token, it keeps minting new access tokens off your machine until it is revoked or rejected, which makes the short access-token lifetime much less meaningful.
+According to [GitHub's documentation](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps), a refresh token expires only after six months without use, and each refresh issues a new one, so an attacker who keeps refreshing can keep it alive indefinitely.
 
 ### A leak goes unnoticed
 
@@ -50,7 +51,7 @@ On github.com and ghe.com this rarely matters, but it happens in two cases:
 - Pasting a token into `gh auth login` instead of signing in through the browser. The pasted token is stored as is, even with `expiring_credentials` enabled.
 
 Run `gh auth status` to check whether your token expires: it shows when an expiring access token expires.
-Even when you do get an expiring token, the documentation says only that the access token expires "within hours", and gives no lifetime for the refresh token.
+When you do get an expiring token, GitHub's OAuth documentation says the access token expires after eight hours and the refresh token after six months without use, the same lifetimes as ghtkn's tokens.
 
 ## Why use ghtkn
 
@@ -92,12 +93,12 @@ Tools such as aqua, pinact, ghir, and ghaperf embed the ghtkn Go SDK and get tok
 | Organization control | Exempt from OAuth app access restrictions, so it can't be disabled; not recorded in the audit log | The organization manages the App's installations |
 | Access scope | Every repository the user can access | Can be limited to the repositories the App is installed on |
 | Permissions | `repo`, `read:org`, `gist` at minimum | Can be narrowed to the minimum needed via the App's permissions |
-| Access token lifetime | "Within hours" per the docs; non-expiring on GHES older than 3.23 or with a pasted token | 8 hours |
+| Access token lifetime | 8 hours; non-expiring on GHES older than 3.23 or with a pasted token | 8 hours |
 | Refresh token storage | OS keyring; plain text in `hosts.yml` on keyring failure or with `--insecure-storage` | Agent backend only, stored encrypted |
 | Encryption at rest | None (relies on the keyring) | AES-256-GCM; the passphrase is never persisted |
 | API to extract the refresh token | Readable directly from storage | None |
-| Locking | None | `ghtkn agent lock` makes tokens unobtainable altogether |
-| Removal of unused tokens | None | Removed automatically after `--refresh-token-ttl` (7 days by default) |
+| User-controlled lock (refreshes are serialized separately in both) | None | `ghtkn agent lock` makes tokens unobtainable altogether |
+| Local removal of unused tokens | None (the refresh token expires after six months without use) | Removed automatically after `--refresh-token-ttl` (7 days by default) |
 | Leak detection | Only deletes the credential and prompts re-login | Emits an incident warning when a refresh token still within its expiry is rejected |
 | Memory protection | None | `PR_SET_DUMPABLE=0` on Linux |
 | Supported OS | All | Refresh on macOS and Linux only (intentionally unsupported on Windows, where the defenses don't hold) |
