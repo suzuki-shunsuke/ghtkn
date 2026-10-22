@@ -1,5 +1,5 @@
 ---
-description: Compare ghtkn with GitHub CLI's expiring, auto-refreshing OAuth tokens (gh auth login --expiring). Use when asked whether GitHub CLI's expiring tokens make ghtkn unnecessary, or to weigh gh's token storage, scopes, and organization control against ghtkn's.
+description: Why use ghtkn even though GitHub CLI now offers expiring, auto-refreshing OAuth tokens (gh auth login --expiring), and the risks that remain with them. Use when asked whether GitHub CLI's expiring tokens make ghtkn unnecessary, or when weighing the security of gh's tokens against ghtkn's.
 ---
 
 # Advantages over GitHub CLI's expiring tokens
@@ -7,59 +7,76 @@ description: Compare ghtkn with GitHub CLI's expiring, auto-refreshing OAuth tok
 GitHub CLI can issue expiring, auto-refreshing OAuth access tokens, opted into with `gh auth login --expiring` or `gh config set expiring_credentials enabled`.
 It was released as an opt-in public preview in gh v2.103.0 ([changelog](https://github.blog/changelog/2026-10-21-github-cli-opt-in-to-expiring-auto-refreshing-oauth-tokens/), [docs](https://docs.github.com/github-cli/github-cli/authenticating-with-github-cli#using-expiring-refreshable-tokens)), and the changelog says it will become the default for new sign-ins in a future release.
 
-Short-lived tokens are one of the problems ghtkn solves, and official support is welcome: it reduces the impact of a leaked non-expiring token.
-It does not make ghtkn unnecessary, though, because it only changes the token's lifetime.
-This document compares the two. The description of GitHub CLI is based on gh v2.103.0 (October 2026) and may become outdated in later versions; the research behind it is in [#651](https://github.com/suzuki-shunsuke/ghtkn/issues/651).
+This is welcome: a leaked access token stops working within hours instead of never.
+But it only shortens the access token's lifetime. Everything else about the token stays the same, and storing a long-lived refresh token on your machine adds a new risk.
+ghtkn still has a clear advantage in security, and this document explains why.
 
-## How GitHub CLI's expiring tokens work
+The description of GitHub CLI is based on gh v2.103.0 (October 2026) and may become outdated in later versions; the research behind it is in [#651](https://github.com/suzuki-shunsuke/ghtkn/issues/651).
 
-`--expiring` adds the `offline_access` scope to the OAuth request, and the server may then issue an expiring access token together with a rotating, single-use refresh token.
-gh refreshes the access token transparently wherever it is consumed: API calls, `gh auth token`, `gh auth status`, and the git credential helper.
-To keep concurrent gh processes from spending the same refresh token twice, refreshes are serialized with an in-process mutex and a best-effort file lock.
+## Risks that remain with GitHub CLI's expiring tokens
 
-## Differences
+### Your organization can't control or audit it
 
-### The client is a privileged OAuth app
+The tokens are still issued to the GitHub CLI OAuth app, one of GitHub's [privileged OAuth apps](https://docs.github.com/en/apps/oauth-apps/using-oauth-apps/privileged-oauth-apps).
+According to that document, users can authorize and use a privileged app even when an organization has restricted OAuth app access to its data, so the organization can't turn GitHub CLI off.
+Its use is recorded in the user's security log but not in the organization's audit log, so administrators can't see it being authorized or used.
 
-The tokens are still issued to the GitHub CLI OAuth app, which is one of GitHub's [privileged OAuth apps](https://docs.github.com/en/apps/oauth-apps/using-oauth-apps/privileged-oauth-apps).
-According to that document, users can authorize and use a privileged app even when an organization has restricted OAuth app access to its data, so an organization cannot disable GitHub CLI that way.
-Its use is recorded in the user's security log but not in the organization's audit log.
+### The token can reach everything you can, with broad permissions
 
-ghtkn uses a GitHub App that you or your organization create and manage, and the organization controls where it is installed.
+The minimum scopes are still `repo`, `read:org`, and `gist`, and `--scopes` can add scopes but can't go below that minimum.
+The token reaches every repository of every organization you belong to, so a leaked token exposes all of them at once.
 
-### Scopes and permissions are unchanged
-
-The minimum scopes are still `repo`, `read:org`, and `gist`; `--scopes` can add scopes but cannot go below that minimum.
-The token can reach every repository the user can access, with the same broad permissions as before.
-
-With ghtkn, the token is limited to the repositories the GitHub App is installed on and to the permissions the App is granted.
-
-### How the refresh token is stored
+### The refresh token can be stolen and used off your machine
 
 gh stores the access token and the refresh token in the OS keyring.
-If writing to the keyring fails, it falls back to plain text in `hosts.yml` and only prints a warning; `--insecure-storage` writes plain text on purpose.
-On headless Linux or in containers without a keyring, plain text is what you are likely to get.
-There is no encryption beyond the keyring, no passphrase, and no way to lock the credential.
-On macOS the keyring is accessed through `/usr/bin/security`, so any process running as the same user can read the item without a confirmation dialog; this is also why ghtkn's keyring backend does not support refresh tokens.
+If writing to the keyring fails, gh falls back to plain text in `hosts.yml`, prints a one-line warning, and the login succeeds anyway. On headless Linux or in containers without a keyring, this is what you are likely to get, and it is easy to miss.
+On macOS, the keyring is accessed through `/usr/bin/security`, so any process running as your user can read the item without a confirmation dialog.
 
-So if the user account is compromised, the refresh token itself can be exfiltrated and used off the machine to keep minting access tokens.
+So if your user account is compromised, for example by a malicious package in a supply chain attack, the refresh token itself can be exfiltrated.
+Unlike an access token, it keeps minting new access tokens off your machine until it is revoked or rejected, which makes the short access-token lifetime much less meaningful.
 
-ghtkn stores refresh tokens only in the agent backend, encrypted with AES-256-GCM using a data key that is itself wrapped by a key derived from your passphrase (the passphrase is never saved to disk), and offers no API that returns the refresh token.
-See [Refreshing tokens](refresh-token.md) and [Backend](backend.md).
+### A leak goes unnoticed
 
-### Leak detection
+Refresh tokens rotate, so if an attacker uses yours first, your next refresh is rejected.
+gh then deletes your credential and prints only `the token for <host> has expired; please run 'gh auth login' to re-authenticate`.
+Nothing tells you the token may have leaked, and the deleted credential leaves nothing to investigate.
 
-Because refresh tokens rotate, if an attacker uses one first, the user's next refresh is rejected.
-gh then deletes the credential and prints only `the token for <host> has expired; please run 'gh auth login' to re-authenticate`, with no hint that the token may have leaked, and the deleted credential leaves nothing to investigate.
+### You may not get an expiring token at all
 
-ghtkn's agent emits an incident warning when a refresh token that is still within its expiration fails to refresh.
-
-### No guarantee that an expiring token is issued
-
-`--expiring` is only a request. If the server does not support expiring credentials, gh falls back to a non-expiring token.
+`--expiring` is only a request. If the server doesn't support expiring credentials, gh falls back to a non-expiring token.
 The documentation says only that the access token expires "within hours", and gives no lifetime for the refresh token.
 
-A ghtkn access token expires after eight hours.
+## Why use ghtkn
+
+### Least privilege, under your organization's control
+
+ghtkn issues user access tokens from a GitHub App that you or your organization create and manage.
+A token can only reach the accounts and repositories the App is installed on, such as a single organization, and only with the permissions the App is granted.
+You can keep several Apps with different permissions and pick one per task (see [Using Multiple Apps](multiple-apps.md)), and the organization decides where its Apps are installed.
+
+### Tokens are never stored in plain text unless you choose to
+
+ghtkn stores access tokens in plain text only when you explicitly select the text backend (see [Backend](backend.md)).
+Refresh tokens are supported only on the agent backend, so they are never stored in plain text.
+The agent encrypts tokens with AES-256-GCM using a data key that is itself wrapped by a key derived from your passphrase, and the passphrase is never saved to disk.
+There is no API that returns a refresh token: a client can only obtain an access token.
+
+### A compromise has a short, controllable window
+
+What an attacker on your account can take from ghtkn is an access token valid for at most eight hours, never the refresh token, so they can't keep minting tokens off your machine.
+ghtkn also narrows the window in which even that is possible (see [Refreshing tokens](refresh-token.md)):
+
+- `ghtkn agent lock` makes tokens unobtainable altogether until you unlock the agent with your passphrase.
+- Tokens that have gone unused for `--refresh-token-ttl` (seven days by default) are removed from the backend automatically.
+- On Linux, the agent marks its process non-dumpable (`PR_SET_DUMPABLE=0`), so a same-user, non-root process can't read its memory.
+
+### A suspected leak is reported
+
+When a refresh token that is still within its expiration fails to refresh, the agent returns an incident warning that the client shows to you, instead of silently asking you to log in again.
+
+### Your tools can share the token
+
+Tools such as aqua, pinact, ghir, and ghaperf embed the ghtkn Go SDK and get tokens from ghtkn directly, so you don't need a PAT for them (see [Go SDK](go-sdk.md)).
 
 ## Comparison table
 
@@ -81,7 +98,7 @@ A ghtkn access token expires after eight hours.
 
 ## What ghtkn does not protect against
 
-Don't overstate the difference. While the ghtkn agent is unlocked, a process running as the same user can still obtain access tokens (see [Refreshing tokens](refresh-token.md)), so it is not true that tokens can't leak when the user account is compromised.
+Don't overstate the advantage. While the ghtkn agent is unlocked, a process running as your user can still obtain access tokens (see [Refreshing tokens](refresh-token.md)), so it is not true that tokens can't leak when your user account is compromised.
 The precise difference is:
 
 - ghtkn: only access tokens valid for at most eight hours can be taken, never the refresh token. Locking the agent, the TTL-based removal, and incident warnings shorten the window an attacker has.
