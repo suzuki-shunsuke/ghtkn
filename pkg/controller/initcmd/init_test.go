@@ -131,8 +131,6 @@ func TestController_Init(t *testing.T) {
 
 // TestController_Init_relativePath verifies that a config path with no directory part
 // works: the directory to create is ".", which already exists.
-//
-//nolint:paralleltest // t.Chdir, which keeps the relative path inside a temporary directory, cannot be used in a parallel test.
 func TestController_Init_relativePath(t *testing.T) {
 	t.Chdir(t.TempDir())
 
