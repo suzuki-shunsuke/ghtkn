@@ -1,11 +1,14 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -343,48 +346,123 @@ func TestServer_handleGet_refreshHTTPError(t *testing.T) {
 	})
 }
 
-// TestServer_handleGet_refreshPeerAlreadyRefreshed verifies that when a refresh fails
-// but a concurrent GET for the same client has already stored a fresh token (the likely
-// cause with single-use rotating refresh tokens), the request serves that token silently
-// instead of raising a false incident warning.
-func TestServer_handleGet_refreshPeerAlreadyRefreshed(t *testing.T) {
+// TestServer_handleGet_concurrentRefresh verifies that concurrent GETs for the same
+// client that all find the same expiring token refresh it once: GitHub's refresh tokens
+// are single-use, so a second refresh with the already rotated token would fail and raise
+// a false incident warning (#665). The fake token endpoint succeeds only for its first
+// call, and stalls so the other GETs arrive while the refresh is in flight.
+func TestServer_handleGet_concurrentRefresh(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedServer(t)
+		const clientID = "Iv1.concurrent"
+		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
+
+		var mu sync.Mutex
+		calls := 0
+		setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
+			mu.Lock()
+			calls++
+			n := calls
+			mu.Unlock()
+			if n > 1 {
+				// The refresh token was already spent by the first call.
+				return &http.Response{StatusCode: http.StatusInternalServerError, Body: io.NopCloser(strings.NewReader("{}")), Header: make(http.Header)}, nil
+			}
+			time.Sleep(time.Second)
+			body := `{"access_token":"new-access","refresh_token":"new-refresh","expires_in":28800,"refresh_token_expires_in":15897600}`
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+		}))
+
+		const n = 5
+		resps := make([]*agentapi.Response, n)
+		var wg sync.WaitGroup
+		for i := range n {
+			wg.Go(func() {
+				resps[i] = c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+			})
+		}
+		wg.Wait()
+
+		if calls != 1 {
+			t.Fatalf("the refresh endpoint was called %d times, want 1", calls)
+		}
+		for i, resp := range resps {
+			if !resp.OK || resp.Warning != "" || resp.Error != "" {
+				t.Fatalf("GET %d: OK=%v warning=%q error=%q, want a token with no warning", i, resp.OK, resp.Warning, resp.Error)
+			}
+			token := &struct {
+				AccessToken string `json:"access_token"`
+			}{}
+			if err := json.Unmarshal(resp.Token, token); err != nil {
+				t.Fatal(err)
+			}
+			if token.AccessToken != "new-access" {
+				t.Fatalf("GET %d: access token %q, want the refreshed one", i, token.AccessToken)
+			}
+		}
+	})
+}
+
+// TestServer_handleGet_refreshFailedStoredMeanwhile verifies that when a refresh fails
+// but a writer that skips the refresh lock (a device flow completing, or a legacy SET)
+// stored a valid token meanwhile, that token is served. The failure is still genuine (that
+// writer did not spend the refresh token), so the incident warning is kept.
+func TestServer_handleGet_refreshFailedStoredMeanwhile(t *testing.T) {
 	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
 		c := newUnlockedServer(t)
 		now := time.Now()
-		const clientID = "Iv1.peerrefresh"
+		const clientID = "Iv1.storedmeanwhile"
 		seedExpiredWithRefresh(t, c, clientID, now.Add(24*time.Hour))
 
-		// The refresh call fails, but as a side effect it stores a fresh, valid token, standing
-		// in for a sibling GET that consumed the rotating refresh token first.
-		fresh := fmt.Sprintf(`{"access_token":"peer-access","expiration_date":"%s","refresh_token":"peer-refresh","refresh_token_expiration_date":"%s"}`,
-			now.Add(8*time.Hour).Format(time.RFC3339), now.Add(24*time.Hour).Format(time.RFC3339))
-		var called bool
+		fresh := fmt.Sprintf(`{"access_token":"set-access","expiration_date":"%s"}`, now.Add(8*time.Hour).Format(time.RFC3339))
 		setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
-			called = true
 			if err := c.store.Set(clientID, json.RawMessage(fresh)); err != nil {
-				t.Errorf("seed the peer-refreshed token: %v", err)
+				t.Errorf("store the token written meanwhile: %v", err)
 			}
 			return &http.Response{StatusCode: http.StatusInternalServerError, Body: io.NopCloser(strings.NewReader("{}")), Header: make(http.Header)}, nil
 		}))
 
 		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
-		if !called {
-			t.Fatal("the refresh endpoint should have been called")
-		}
-		// The peer's fresh access token is served with no incident warning.
 		//nolint:gosec // G117: serializing a token in a test to build the expected bytes.
-		wantResp, err := json.Marshal(&struct {
+		wantToken, err := json.Marshal(&struct {
 			AccessToken    string    `json:"access_token"`
 			ExpirationDate time.Time `json:"expiration_date"`
-		}{AccessToken: "peer-access", ExpirationDate: now.Add(8 * time.Hour)})
+		}{AccessToken: "set-access", ExpirationDate: now.Add(8 * time.Hour)})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if diff := cmp.Diff(&agentapi.Response{OK: true, Token: wantResp}, got); diff != "" {
-			t.Fatalf("peer-refreshed GET (-want +got):\n%s", diff)
+		want := &agentapi.Response{OK: true, Token: wantToken, Warning: incidentWarning(clientID)}
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Fatalf("GET after a failed refresh (-want +got):\n%s", diff)
 		}
 	})
+}
+
+// TestServer_lockRefresh_canceled verifies that a GET waiting for another GET's refresh
+// of the same client gives up when its context is canceled, and that the lock is per
+// client: a different client is not blocked.
+func TestServer_lockRefresh_canceled(t *testing.T) {
+	t.Parallel()
+	c := newUnlockedServer(t)
+	unlock, err := c.lockRefresh(t.Context(), "Iv1.a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unlock()
+
+	unlockB, err := c.lockRefresh(t.Context(), "Iv1.b")
+	if err != nil {
+		t.Fatalf("another client must not be blocked: %v", err)
+	}
+	unlockB()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if _, err := c.lockRefresh(ctx, "Iv1.a"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("lockRefresh with a canceled context: got %v, want context.Canceled", err)
+	}
 }
 
 // TestServer_dropStaleAfterFailedStore verifies the recovery after a refresh whose
