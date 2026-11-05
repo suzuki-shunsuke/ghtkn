@@ -1,10 +1,11 @@
 ---
-description: Run the ghtkn agent as a long-lived process. Use to set it up as a systemd user service, to start it from a container entrypoint, or to run it on the host so that containers use it as a client, which is what refresh tokens need.
+description: Run the ghtkn agent as a long-lived process. Use to set it up as a systemd user service, to run it on the host so that containers use it as a client, which is what refresh tokens need, or to start it from a container entrypoint without refresh tokens.
 ---
 
 # Running the agent
 
-Where to run the ghtkn agent process: under a service manager, inside a container, or on the host with containers talking to it as clients.
+Where to run the ghtkn agent process: under a service manager, on the host with containers talking to it as clients, or inside a container.
+To use ghtkn from a development container, running the agent on the host is the recommended way.
 See [backend.md](backend.md) for what the agent backend is, how it encrypts tokens, and how to drive it with `ghtkn agent`.
 
 ## Running the agent as a service
@@ -43,43 +44,11 @@ Notes:
 - Use `Restart=on-failure`, not `Restart=always`. `ghtkn agent stop` exits successfully, so `Restart=always` would immediately start the agent again.
 - To keep the agent running even when you are not logged in, enable lingering with `loginctl enable-linger "$USER"`.
 
-### Containers (Docker / devcontainer)
-
-Containers usually have no init system, so start the agent from the container's entrypoint.
-Use a wrapper that starts the agent in the background and then runs the container's main process:
-
-```sh
-#!/usr/bin/env bash
-# entrypoint.sh
-set -eu
-ghtkn agent start &
-exec "$@"
-```
-
-```dockerfile
-ENV GHTKN_BACKEND=agent
-ENTRYPOINT ["entrypoint.sh"]
-```
-
-Setting `GHTKN_BACKEND=agent` with `ENV` in the Dockerfile selects the backend for every process in the container, so you don't have to `export` it in each shell.
-
-After attaching to the container (for example `docker exec -it <container> bash`), unlock the agent once:
-
-```sh
-ghtkn agent unlock
-ghtkn get
-```
-
-The encryption key and the encrypted access tokens live on the container's filesystem, so they are lost when the container is removed (the tokens are reminted on the next `ghtkn get`).
-To persist them, mount a volume for `$XDG_DATA_HOME` (the key) and `$XDG_CACHE_HOME` (the tokens).
-
-A microVM (Firecracker, Cloud Hypervisor, Kata Containers, Lima, etc.) fits one of the two patterns above: use the systemd service if it boots a minimal Linux with systemd, or the entrypoint approach if it runs a single application like a container.
-
 ## Using the host's agent from a container
 
 Giving a container its own agent puts the key file and the encrypted tokens inside the container, which rules out [refresh tokens](refresh-token.md): they shouldn't be enabled where malware can escalate to root without a password, and development containers usually allow exactly that.
 
-Running the agent on the host and letting the container talk to it as a client avoids this. Only access tokens cross the socket; the refresh token, the key file, and the passphrase stay on the host, so a container whose user can become root still can't reach them.
+Running the agent on the host and letting the container talk to it as a client avoids this, so it is the recommended way to use ghtkn from a container. Only access tokens cross the socket; the refresh token, the key file, and the passphrase stay on the host, so a container whose user can become root still can't reach them.
 
 On a Linux host, bind mount the socket. It is `0600`, so the container has to run as the same uid as the host user:
 
@@ -150,3 +119,44 @@ Notes on the forward:
 - Relaying the socket over TCP with `socat` works too, but then every container and every process in the VM can reach the agent over the network. The SSH forward keeps it a unix socket, which a container sees only if you mount it.
 
 While the agent is unlocked and the forward is up, anything in the container can ask for access tokens repeatedly, including forcing a renewal, and a `0666` socket is reachable by any process in the VM as well. What it can't obtain is the refresh token, the data key, or the passphrase. Drop the forward when you don't need it, or run `ghtkn agent lock` on the host to close the window immediately.
+
+## Containers (Docker / devcontainer)
+
+You can also run the agent inside a container, for example when you can't run it on the host.
+
+> [!WARNING]
+> Don't enable [refresh tokens](refresh-token.md) (`ghtkn agent unlock --enable-refresh`) with an agent running inside a container.
+> Development containers usually run as root or allow passwordless sudo, and even when they don't, anyone who compromises the host user can enter the container as root with `docker exec -u root`, so the key file, the encrypted tokens, and the agent's memory are all within reach.
+> To use refresh tokens, [use the host's agent](#using-the-hosts-agent-from-a-container) instead.
+> Without refresh tokens, the agent only holds access tokens valid for at most eight hours, which a process in the container can obtain from an unlocked agent anyway.
+
+Containers usually have no init system, so start the agent from the container's entrypoint.
+Use a wrapper that starts the agent in the background and then runs the container's main process:
+
+```sh
+#!/usr/bin/env bash
+# entrypoint.sh
+set -eu
+ghtkn agent start &
+exec "$@"
+```
+
+```dockerfile
+ENV GHTKN_BACKEND=agent
+ENTRYPOINT ["entrypoint.sh"]
+```
+
+Setting `GHTKN_BACKEND=agent` with `ENV` in the Dockerfile selects the backend for every process in the container, so you don't have to `export` it in each shell.
+
+After attaching to the container (for example `docker exec -it <container> bash`), unlock the agent once:
+
+```sh
+ghtkn agent unlock
+ghtkn get
+```
+
+The encryption key and the encrypted access tokens live on the container's filesystem, so they are lost when the container is removed (the tokens are reminted on the next `ghtkn get`).
+To persist them, mount a volume for `$XDG_DATA_HOME` (the key) and `$XDG_CACHE_HOME` (the tokens).
+
+A microVM (Firecracker, Cloud Hypervisor, Kata Containers, Lima, etc.) fits one of two patterns: use the [systemd service](#linux-systemd-user-service) if it boots a minimal Linux with systemd, or the entrypoint approach above if it runs a single application like a container.
+The same warning about refresh tokens applies if malware in it can easily escalate to root.

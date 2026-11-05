@@ -7,22 +7,43 @@ on:
         required: true
 permissions: {}
 jobs:
-  integration-test:
-    uses: ./.github/workflows/workflow_call_integration_test.yaml
+  # Download Go modules once and share them with integration-test and test
+  gomodule:
+    uses: suzuki-shunsuke/download-go-module-action/.github/workflows/download.yaml@e03acd0c9d3d230019ebb7bd4a62507431fe4316 # v0.0.10
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      aqua_version: v2.66.1
+      aqua_packages: go-licenses # go-test-workflow requires go-licenses
     secrets:
       TAKUMI_GUARD_BOT_ID: ${{secrets.TAKUMI_GUARD_BOT_ID}}
+
+  integration-test:
+    needs: [gomodule]
+    uses: ./.github/workflows/workflow_call_integration_test.yaml
     permissions:
-      id-token: write
       contents: read
 
   test:
-    uses: suzuki-shunsuke/go-test-full-workflow/.github/workflows/test.yaml@6e3ab6f9508fec552b5890e7710d6cdef4489d22 # v6.0.1
+    needs: [gomodule]
+    uses: suzuki-shunsuke/go-test-workflow/.github/workflows/test.yaml@ff8934b3958ec0c1b0a6fce445052e2d2a42e8c9 # v3.2.4
     with:
-      aqua_version: v2.63.0
+      aqua_version: v2.66.1
       golangci-lint-timeout: 120s
+      gomodule_artifact_name: gomodule
+      go-version-file: go.mod
     secrets:
       TAKUMI_GUARD_BOT_ID: ${{secrets.TAKUMI_GUARD_BOT_ID}}
     permissions:
       pull-requests: write
       contents: read
       id-token: write
+
+  test-workflow:
+    uses: suzuki-shunsuke/test-workflow/.github/workflows/test.yaml@0b89b9b4314282810bc944364380568708208eaa # v0.0.2
+    with:
+      aqua_version: v2.66.1
+    permissions:
+      contents: read
+      pull-requests: read

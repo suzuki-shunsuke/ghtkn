@@ -185,11 +185,12 @@ Detailed documentation is split by topic under [`docs/`](docs). These documents 
 - [Using Multiple Apps](docs/multiple-apps.md) - configure multiple GitHub Apps and switch between them per command, env var, or directory.
 - [Token Management](docs/token-management.md) - token regeneration, `ghtkn auth`, the device flow, and clipboard.
 - [Backend](docs/backend.md) - where tokens are stored (`keyring`, `text`, `agent`); useful for containers and microVMs.
-- [Running the agent](docs/agent-deployment.md) - run the agent as a systemd user service, from a container entrypoint, or on the host with containers as clients.
+- [Running the agent](docs/agent-deployment.md) - run the agent as a systemd user service, on the host with containers as clients, or from a container entrypoint.
 - [Sandbox Configuration: Claude Code](docs/sandbox-claude-code.md) - settings ghtkn needs to run inside Claude Code's sandbox, per backend.
 - [Sandbox Configuration: Codex](docs/sandbox-codex.md) - settings ghtkn needs to run inside Codex's sandbox, per backend.
 - [Configuration](docs/configuration.md) - configuration priority, browser open, account picker, enterprise sharing, and one-off PAT use.
 - [Design](docs/design.md) - how ghtkn works, a comparison with other access tokens, and API rate limits.
+- [Advantages over GitHub CLI's expiring tokens](docs/advantage-over-gh-expiring-token.md) - the risks that remain with `gh auth login --expiring`, and why to use ghtkn.
 - [Refreshing Tokens](docs/refresh-token.md) - automatically refresh expiring GitHub access tokens with refresh tokens.
 - [How To Revoke Access Tokens](docs/revoke-tokens.md) - invalidate leaked or compromised tokens.
 - [Go SDK](docs/go-sdk.md) - how tools such as aqua and pinact reuse ghtkn tokens, and how to embed ghtkn in your own Go CLI.

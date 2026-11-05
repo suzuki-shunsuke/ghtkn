@@ -172,7 +172,7 @@ An agent version older than the ghtkn version means the agent is still running t
 ### Where to run the agent
 
 `ghtkn agent start &` runs the agent for the current shell session, which is enough while you are trying it out.
-For a long-lived agent, read [agent-deployment.md](agent-deployment.md): it covers running the agent as a systemd user service, starting it from a container's entrypoint, and running it on the host so that containers use it as a client instead of holding their own key and tokens.
+For a long-lived agent, read [agent-deployment.md](agent-deployment.md): it covers running the agent as a systemd user service, running it on the host so that containers use it as a client instead of holding their own key and tokens (the recommended way for containers), and starting it from a container's entrypoint.
 
 ### Socket path
 
