@@ -236,23 +236,6 @@ func (s *Server) lockRefresh(ctx context.Context, clientID string) (func(), erro
 	}
 }
 
-// reloadExpiringToken re-reads the stored token under the refresh lock. It returns the
-// token when it still needs a refresh (not valid for minExpiration); the caller scrubs it.
-// Otherwise it returns nil and the response to serve: the token a GET that held the lock
-// before this one already refreshed, an error response on a store error, or nil (no token,
-// fall back to the device flow).
-func (s *Server) reloadExpiringToken(st *tokenstore.Store, clientID string, minExpiration time.Duration) (json.RawMessage, *agentapi.Response) {
-	raw, ok, resp := s.readStoredToken(st, clientID)
-	if resp != nil || !ok {
-		return nil, resp
-	}
-	if s.tokenValid(raw, minExpiration) {
-		defer scrub(raw)
-		return nil, tokenResponse(raw)
-	}
-	return raw, nil
-}
-
 // validRefreshToken returns the stored refresh token if it is present and still valid
 // (per the clock), or "" otherwise.
 func (s *Server) validRefreshToken(raw json.RawMessage) string {
@@ -277,13 +260,8 @@ func (s *Server) validRefreshToken(raw json.RawMessage) string {
 // refreshAccessToken tries to silently refresh an expiring access token using a stored,
 // still-valid refresh token. It returns a response carrying the new token on success, or
 // a nil response to fall back to the device flow (no usable refresh token, or the refresh
-// request failed). On success the refreshed token (which GitHub returns with a rotated
-// refresh token) is stored before it is returned.
-//
-// The second result is a warning to surface to the user. When the refresh token is still
-// within its expiration yet the refresh fails, that is a possible incident (the refresh
-// token may have leaked or been revoked), so the warning is set even though the response
-// falls back to the device flow.
+// request failed). The second result is a warning to surface to the user (see
+// refreshFailed); it may be non-empty even when the response is nil.
 //
 // A rotating refresh token is single-use, so refreshes are serialized per client ID (see
 // lockRefresh). Under the lock the stored token is re-read and re-checked against
@@ -297,12 +275,29 @@ func (s *Server) refreshAccessToken(ctx context.Context, st *tokenstore.Store, c
 	}
 	defer unlock()
 
-	raw, resp := s.reloadExpiringToken(st, clientID, minExpiration)
-	if raw == nil {
+	// The same check as cachedToken, repeated under the lock: the token read there may be
+	// stale by now.
+	raw, ok, resp := s.readStoredToken(st, clientID)
+	if resp != nil {
 		return resp, ""
 	}
+	if !ok {
+		return nil, ""
+	}
 	defer scrub(raw)
+	if s.tokenValid(raw, minExpiration) {
+		// A GET that held the lock before this one already refreshed the token.
+		return tokenResponse(raw), ""
+	}
+	return s.exchangeRefreshToken(ctx, st, clientID, raw, minExpiration)
+}
 
+// exchangeRefreshToken exchanges the refresh token in the stored token raw for a new
+// access token, stores the result (which GitHub returns with a rotated refresh token),
+// and returns it. The caller must hold the refresh lock for clientID. It returns a nil
+// response to fall back to the device flow when raw has no usable refresh token or the
+// exchange fails; see refreshFailed for the warning.
+func (s *Server) exchangeRefreshToken(ctx context.Context, st *tokenstore.Store, clientID string, raw json.RawMessage, minExpiration time.Duration) (*agentapi.Response, string) {
 	refreshToken := s.validRefreshToken(raw)
 	if refreshToken == "" {
 		return nil, ""
@@ -349,15 +344,25 @@ func (s *Server) refreshFailed(st *tokenstore.Store, clientID string, minExpirat
 		slogerr.WithError(s.logger, err).Error("a still-valid refresh token failed to refresh; possible incident", "client_id", clientID)
 	}
 	warning := incidentWarning(clientID)
-	stored, resp := s.reloadExpiringToken(st, clientID, minExpiration)
-	if stored != nil {
-		scrub(stored)
-		return nil, warning
-	}
-	if resp != nil && resp.OK {
+	if resp := s.validStoredToken(st, clientID, minExpiration); resp != nil {
 		return resp, warning
 	}
 	return nil, warning
+}
+
+// validStoredToken returns a token response for the stored token when it is valid for
+// minExpiration, or nil otherwise: no token, not valid, or a store error. A store error
+// is not returned because the caller falls back to the device flow either way.
+func (s *Server) validStoredToken(st *tokenstore.Store, clientID string, minExpiration time.Duration) *agentapi.Response {
+	raw, ok, resp := s.readStoredToken(st, clientID)
+	if resp != nil || !ok {
+		return nil
+	}
+	defer scrub(raw)
+	if !s.tokenValid(raw, minExpiration) {
+		return nil
+	}
+	return tokenResponse(raw)
 }
 
 // dropStaleAfterFailedStore best-effort discards the cached token for clientID after a
