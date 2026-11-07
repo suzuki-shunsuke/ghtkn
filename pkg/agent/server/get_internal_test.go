@@ -1,14 +1,13 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -404,6 +403,82 @@ func TestServer_handleGet_concurrentRefresh(t *testing.T) {
 	})
 }
 
+// TestServer_handleGet_concurrentRefreshFailure verifies that when a refresh fails, the
+// GETs queued behind it do not retry the same refresh token: the token endpoint is called
+// once, only the GET whose refresh failed carries the incident warning, and the rest fall
+// back without one. The endpoint stalls before failing, standing in for a timeout, so the
+// other GETs queue up on the refresh lock.
+func TestServer_handleGet_concurrentRefreshFailure(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedServer(t)
+		const clientID = "Iv1.concurrentfailure"
+		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
+
+		var calls atomic.Int32
+		setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
+			calls.Add(1)
+			time.Sleep(time.Second)
+			return &http.Response{StatusCode: http.StatusInternalServerError, Body: io.NopCloser(strings.NewReader("{}")), Header: make(http.Header)}, nil
+		}))
+
+		const n = 5
+		resps := make([]*agentapi.Response, n)
+		var wg sync.WaitGroup
+		for i := range n {
+			wg.Go(func() {
+				resps[i] = c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+			})
+		}
+		wg.Wait()
+
+		if got := calls.Load(); got != 1 {
+			t.Fatalf("the refresh endpoint was called %d times, want 1", got)
+		}
+		warnings := 0
+		for i, resp := range resps {
+			if resp.Error != agentapi.RespNotFound {
+				t.Fatalf("GET %d: error %q, want %q (fall back to the device flow)", i, resp.Error, agentapi.RespNotFound)
+			}
+			if resp.Warning != "" {
+				warnings++
+			}
+		}
+		if warnings != 1 {
+			t.Fatalf("%d GETs carried the incident warning, want 1", warnings)
+		}
+	})
+}
+
+// TestServer_handleGet_refreshRetriedAfterWindow verifies that a failed refresh token is
+// only skipped within refreshFailureWindow: a GET after the window tries it again, so a
+// transient failure does not disable refresh until a device flow replaces the token.
+func TestServer_handleGet_refreshRetriedAfterWindow(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedServer(t)
+		const clientID = "Iv1.retrywindow"
+		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
+		rt := &refreshRoundTripper{status: http.StatusInternalServerError, body: `{}`}
+		setClientTransport(c, rt)
+		get := func() *agentapi.Response {
+			return c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+		}
+
+		if resp := get(); resp.Warning == "" {
+			t.Fatal("the first failed refresh should carry the incident warning")
+		}
+		rt.called = false
+		if resp := get(); rt.called || resp.Warning != "" {
+			t.Fatalf("within the window: called=%v warning=%q, want no retry and no warning", rt.called, resp.Warning)
+		}
+		time.Sleep(refreshFailureWindow)
+		if resp := get(); !rt.called || resp.Warning == "" {
+			t.Fatalf("after the window: called=%v warning=%q, want a retry with the warning", rt.called, resp.Warning)
+		}
+	})
+}
+
 // TestServer_handleGet_refreshFailedStoredMeanwhile verifies that when a refresh fails
 // but a writer that skips the refresh lock (a device flow completing, or a legacy SET)
 // stored a valid token meanwhile, that token is served. The failure is still genuine (that
@@ -438,31 +513,6 @@ func TestServer_handleGet_refreshFailedStoredMeanwhile(t *testing.T) {
 			t.Fatalf("GET after a failed refresh (-want +got):\n%s", diff)
 		}
 	})
-}
-
-// TestServer_lockRefresh_canceled verifies that a GET waiting for another GET's refresh
-// of the same client gives up when its context is canceled, and that the lock is per
-// client: a different client is not blocked.
-func TestServer_lockRefresh_canceled(t *testing.T) {
-	t.Parallel()
-	c := newUnlockedServer(t)
-	unlock, err := c.lockRefresh(t.Context(), "Iv1.a")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer unlock()
-
-	unlockB, err := c.lockRefresh(t.Context(), "Iv1.b")
-	if err != nil {
-		t.Fatalf("another client must not be blocked: %v", err)
-	}
-	unlockB()
-
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	if _, err := c.lockRefresh(ctx, "Iv1.a"); !errors.Is(err, context.Canceled) {
-		t.Fatalf("lockRefresh with a canceled context: got %v, want context.Canceled", err)
-	}
 }
 
 // TestServer_dropStaleAfterFailedStore verifies the recovery after a refresh whose
