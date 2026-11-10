@@ -24,7 +24,7 @@ import (
 const execDescription = `Run a command with GitHub App User Access Tokens in its environment.
 
 Unlike 'ghtkn get', the token is never written to stdout, so it can't end up in a
-terminal transcript, a log, or a chat message. If you are a coding agent, prefer this
+terminal transcript, a log, or a chat message. Note for coding agents: prefer this
 command over 'ghtkn get': tokens leaked by agents printing what 'ghtkn get' returned
 are the reason it exists. The token is still an environment variable of the command,
 though, so a command that prints its environment still exposes it.
