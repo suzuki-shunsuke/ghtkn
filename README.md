@@ -6,7 +6,7 @@
 **Stop risking token leaks - Use secure, short-lived GitHub tokens for local development**
 
 > [!NOTE]
-> If you are a coding agent and ghtkn is installed, run `ghtkn docs list` to list the documentation and `ghtkn docs show <name>` to read it before answering questions about ghtkn or troubleshooting its errors.
+> Note for coding agents: if ghtkn is installed, run `ghtkn docs list` to list the documentation and `ghtkn docs show <name>` to read it before answering questions about ghtkn or troubleshooting its errors.
 > The embedded documentation matches the installed version. If ghtkn isn't installed, read the documents listed in [Documentation and skills](#documentation-and-skills).
 
 ## :warning: The Security Problem

@@ -32,7 +32,7 @@ credential itself, so the token never passes through your shell.
 
 The output is a secret. Do not print, echo, log, or include it in a chat message,
 a commit, or any other output, and do not run 'ghtkn get' (including -f json) just
-to display or inspect the token. If you are a coding agent, this applies to your
+to display or inspect the token. Note for coding agents: this applies to your
 responses too: a leaked token can be used until it is revoked.
 
 It returns the token cached in the backend (keyring, agent, or text) when one is
