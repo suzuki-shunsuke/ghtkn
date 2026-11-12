@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -180,14 +181,27 @@ func (s *Server) handleGet(ctx context.Context, req *agentapi.Request, enableRef
 
 	// No valid cached token. Start the flow only when the client asked to; the server
 	// mints and stores the token and the client polls (AwaitDeviceFlow) until ready.
-	if req.StartDeviceFlow {
-		state, err := s.startDeviceFlow(ctx, s.logger, req.ClientID, enableRefreshToken)
-		if err != nil {
-			return withWarning(&agentapi.Response{Error: fmt.Sprintf("%s: %s", errMsgStartDeviceFlow, err)}, warning)
-		}
-		return withWarning(pendingResponse(state), warning)
+	if !req.StartDeviceFlow {
+		return withWarning(&agentapi.Response{Error: agentapi.RespNotFound}, warning)
 	}
-	return withWarning(&agentapi.Response{Error: agentapi.RespNotFound}, warning)
+	return withWarning(s.startDeviceFlowForGet(ctx, req.ClientID, enableRefreshToken), warning)
+}
+
+// startDeviceFlowForGet starts (or joins) the device flow for a GET that found no usable
+// token and asked for one, returning the pending response or an error response.
+func (s *Server) startDeviceFlowForGet(ctx context.Context, clientID string, enableRefreshToken bool) *agentapi.Response {
+	if s.tokenStore() == nil {
+		// The agent was locked while this request was being served; the flow could not
+		// store its token anyway, so don't make the user complete it. This narrows rather
+		// than closes the window: a lock right after this check still lets the flow start,
+		// and pollAndStore then discards its token.
+		return &agentapi.Response{Error: agentapi.RespLocked}
+	}
+	state, err := s.startDeviceFlow(ctx, s.logger, clientID, enableRefreshToken)
+	if err != nil {
+		return &agentapi.Response{Error: fmt.Sprintf("%s: %s", errMsgStartDeviceFlow, err)}
+	}
+	return pendingResponse(state)
 }
 
 // cachedToken serves the stored token for the request: the token itself when it is still
@@ -296,6 +310,10 @@ func (s *Server) refreshAccessToken(ctx context.Context, st *tokenstore.Store, c
 		// false incident warning. Drop the stale stored token so the next get re-authenticates
 		// via the device flow instead.
 		s.dropStaleAfterFailedStore(st, clientID, minExpiration)
+		if errors.Is(err, tokenstore.ErrZeroed) {
+			// The agent was locked during the refresh: don't hand out a token from it.
+			return &agentapi.Response{Error: agentapi.RespLocked}, ""
+		}
 	}
 	return tokenResponse(fresh), ""
 }
@@ -314,9 +332,24 @@ func (s *Server) refreshAccessToken(ctx context.Context, st *tokenstore.Store, c
 // remains, but then the agent cannot store any token at all, a louder problem than one
 // false incident warning, and this is no worse than leaving it in place.
 func (s *Server) dropStaleAfterFailedStore(st *tokenstore.Store, clientID string, minExpiration time.Duration) {
-	if _, err := st.DeleteIf(clientID, func(raw json.RawMessage) bool {
+	_, err := st.DeleteIf(clientID, func(raw json.RawMessage) bool {
 		return !s.tokenValid(raw, minExpiration)
-	}); err != nil && s.logger != nil {
+	})
+	if errors.Is(err, tokenstore.ErrZeroed) {
+		// The agent was locked, so DeleteIf cannot decrypt the token to check it; delete it
+		// unconditionally (Delete needs no key). Left in place, the spent refresh token would
+		// raise a false incident warning after the next unlock.
+		//
+		// This is not race-free: the store created by a later unlock shares the token files,
+		// so if the agent was unlocked again and a fresh token was stored for clientID before
+		// this refresh returned, that token is deleted too. That needs a lock and an unlock
+		// within one refresh (at most githubHTTPTimeout), and costs only a device flow,
+		// whereas keeping the stale token would raise a false security warning after every
+		// lock during a refresh. Closing it fully needs one store shared across lock and
+		// unlock.
+		err = st.Delete(clientID)
+	}
+	if err != nil && s.logger != nil {
 		slogerr.WithError(s.logger, err).Warn("drop the stale cached token after a failed refresh store", "client_id", clientID)
 	}
 }

@@ -29,6 +29,9 @@ func (s *Server) handleSet(req *agentapi.Request, legacy bool) *agentapi.Respons
 		if errors.Is(err, tokenstore.ErrInvalidClientID) {
 			return &agentapi.Response{Error: errMsgInvalidClientID}
 		}
+		if errors.Is(err, tokenstore.ErrZeroed) {
+			return &agentapi.Response{Error: agentapi.RespLocked}
+		}
 		return &agentapi.Response{Error: fmt.Sprintf("%s: %s", errMsgSet, err)}
 	}
 	return &agentapi.Response{OK: true}

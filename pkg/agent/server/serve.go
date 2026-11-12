@@ -204,6 +204,9 @@ func (s *Server) readStoredToken(st *tokenstore.Store, clientID string) (json.Ra
 	switch {
 	case errors.Is(err, tokenstore.ErrInvalidClientID):
 		return nil, false, &agentapi.Response{Error: errMsgInvalidClientID}
+	case errors.Is(err, tokenstore.ErrZeroed):
+		// The agent was locked after this request obtained the store.
+		return nil, false, &agentapi.Response{Error: agentapi.RespLocked}
 	case errors.Is(err, tokenstore.ErrDecryptToken):
 		if s.logger != nil {
 			slogerr.WithError(s.logger, err).Warn("discard an undecryptable cached token", "client_id", clientID)
