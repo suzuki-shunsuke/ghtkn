@@ -2,34 +2,35 @@ package server
 
 import (
 	"context"
-	"crypto/sha256"
-	"time"
+	"sync/atomic"
 )
-
-// refreshFailureWindow is how long a failed refresh token is remembered (see
-// refreshLock.recentlyFailed). It only needs to cover the GETs that queued up behind the
-// failed attempt, which run right after it. Keeping it short means a refresh token that
-// failed for a transient reason (a GitHub 5xx or a timeout) is tried again by a later GET
-// rather than being given up until a device flow replaces it.
-const refreshFailureWindow = time.Minute
 
 // refreshLock is the per-client refresh lock (see lockRefresh) and the state guarded by
 // it. sem is a one-slot semaphore: a channel rather than a sync.Mutex so the wait can be
 // abandoned on ctx cancellation, as the holder may be blocked on a GitHub request for up
-// to githubHTTPTimeout. The other fields are read and written only while holding sem.
+// to githubHTTPTimeout.
 type refreshLock struct {
 	sem chan struct{}
-	// failedDigest is the SHA-256 of the last refresh token that failed to refresh, and
-	// failedAt when it failed. A digest is kept rather than the token itself so no
-	// plaintext refresh token outlives the request.
-	failedDigest [sha256.Size]byte
-	failedAt     time.Time
+	// failures counts the refreshes that failed under this lock. It is only incremented
+	// while holding sem, but it is atomic because lockRefresh reads it before waiting on
+	// sem, to tell whether a refresh failed while the caller waited.
+	failures atomic.Uint64
+	// failureWarning is the warning of the last failed refresh. Read and written only
+	// while holding sem.
+	failureWarning string
 }
 
 // lockRefresh acquires the per-client refresh lock for clientID, waiting while another
 // GET for the same client is refreshing. It returns the held lock, to be released with
 // unlock, or ctx's error if ctx is done first (the agent is shutting down).
-func (s *Server) lockRefresh(ctx context.Context, clientID string) (*refreshLock, error) {
+//
+// The second result is non-empty when a refresh for clientID failed while this caller
+// was waiting: it is that refresh's warning. Such a caller is queued behind the failed
+// attempt and would retry the same refresh token, so it should fall back with the same
+// warning instead (see refreshAccessToken). A refresh that failed before this caller
+// started waiting does not count, so a later GET tries the refresh token again: the
+// earlier failure may have been transient.
+func (s *Server) lockRefresh(ctx context.Context, clientID string) (*refreshLock, string, error) {
 	s.refreshLocksMu.Lock()
 	lock, ok := s.refreshLocks[clientID]
 	if !ok {
@@ -37,12 +38,16 @@ func (s *Server) lockRefresh(ctx context.Context, clientID string) (*refreshLock
 		s.refreshLocks[clientID] = lock
 	}
 	s.refreshLocksMu.Unlock()
+	failures := lock.failures.Load()
 	select {
 	case lock.sem <- struct{}{}:
-		return lock, nil
 	case <-ctx.Done():
-		return nil, ctx.Err() //nolint:wrapcheck
+		return nil, "", ctx.Err() //nolint:wrapcheck
 	}
+	if lock.failures.Load() != failures {
+		return lock, lock.failureWarning, nil
+	}
+	return lock, "", nil
 }
 
 // unlock releases the lock acquired by lockRefresh.
@@ -50,17 +55,9 @@ func (l *refreshLock) unlock() {
 	<-l.sem
 }
 
-// markFailed records that refreshToken failed to refresh. The caller must hold the lock.
-func (l *refreshLock) markFailed(refreshToken string) {
-	l.failedDigest = sha256.Sum256([]byte(refreshToken))
-	l.failedAt = time.Now()
-}
-
-// recentlyFailed reports whether refreshToken is the one that failed to refresh within
-// refreshFailureWindow. The caller must hold the lock.
-func (l *refreshLock) recentlyFailed(refreshToken string) bool {
-	if l.failedAt.IsZero() || time.Since(l.failedAt) >= refreshFailureWindow {
-		return false
-	}
-	return sha256.Sum256([]byte(refreshToken)) == l.failedDigest
+// markFailed records that a refresh failed with warning, so the callers waiting on the
+// lock fall back with it (see lockRefresh). The caller must hold the lock.
+func (l *refreshLock) markFailed(warning string) {
+	l.failureWarning = warning
+	l.failures.Add(1)
 }

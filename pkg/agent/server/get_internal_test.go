@@ -405,9 +405,9 @@ func TestServer_handleGet_concurrentRefresh(t *testing.T) {
 
 // TestServer_handleGet_concurrentRefreshFailure verifies that when a refresh fails, the
 // GETs queued behind it do not retry the same refresh token: the token endpoint is called
-// once, only the GET whose refresh failed carries the incident warning, and the rest fall
-// back without one. The endpoint stalls before failing, standing in for a timeout, so the
-// other GETs queue up on the refresh lock.
+// once, and every GET falls back with the incident warning, so the signal reaches every
+// client. The endpoint stalls before failing, standing in for a timeout, so the other
+// GETs queue up on the refresh lock.
 func TestServer_handleGet_concurrentRefreshFailure(t *testing.T) {
 	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
@@ -435,29 +435,23 @@ func TestServer_handleGet_concurrentRefreshFailure(t *testing.T) {
 		if got := calls.Load(); got != 1 {
 			t.Fatalf("the refresh endpoint was called %d times, want 1", got)
 		}
-		warnings := 0
+		want := &agentapi.Response{Error: agentapi.RespNotFound, Warning: incidentWarning(clientID)}
 		for i, resp := range resps {
-			if resp.Error != agentapi.RespNotFound {
-				t.Fatalf("GET %d: error %q, want %q (fall back to the device flow)", i, resp.Error, agentapi.RespNotFound)
+			if diff := cmp.Diff(want, resp); diff != "" {
+				t.Fatalf("GET %d (-want +got):\n%s", i, diff)
 			}
-			if resp.Warning != "" {
-				warnings++
-			}
-		}
-		if warnings != 1 {
-			t.Fatalf("%d GETs carried the incident warning, want 1", warnings)
 		}
 	})
 }
 
-// TestServer_handleGet_refreshRetriedAfterWindow verifies that a failed refresh token is
-// only skipped within refreshFailureWindow: a GET after the window tries it again, so a
-// transient failure does not disable refresh until a device flow replaces the token.
-func TestServer_handleGet_refreshRetriedAfterWindow(t *testing.T) {
+// TestServer_handleGet_refreshRetriedByLaterGET verifies that only the GETs queued behind
+// a failed refresh skip it: a GET that starts after the failure tries the refresh token
+// again, so a transient failure does not keep refresh off for that app.
+func TestServer_handleGet_refreshRetriedByLaterGET(t *testing.T) {
 	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
 		c := newUnlockedServer(t)
-		const clientID = "Iv1.retrywindow"
+		const clientID = "Iv1.laterget"
 		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
 		rt := &refreshRoundTripper{status: http.StatusInternalServerError, body: `{}`}
 		setClientTransport(c, rt)
@@ -465,18 +459,31 @@ func TestServer_handleGet_refreshRetriedAfterWindow(t *testing.T) {
 			return c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
 		}
 
-		if resp := get(); resp.Warning == "" {
-			t.Fatal("the first failed refresh should carry the incident warning")
+		if resp := get(); !rt.called || resp.Warning == "" {
+			t.Fatalf("first GET: called=%v warning=%q, want a failed refresh with the warning", rt.called, resp.Warning)
 		}
 		rt.called = false
-		if resp := get(); rt.called || resp.Warning != "" {
-			t.Fatalf("within the window: called=%v warning=%q, want no retry and no warning", rt.called, resp.Warning)
-		}
-		time.Sleep(refreshFailureWindow)
 		if resp := get(); !rt.called || resp.Warning == "" {
-			t.Fatalf("after the window: called=%v warning=%q, want a retry with the warning", rt.called, resp.Warning)
+			t.Fatalf("later GET: called=%v warning=%q, want a retry with the warning", rt.called, resp.Warning)
 		}
 	})
+}
+
+// TestServer_handleGet_zeroedStore verifies that a GET reaching a store that was zeroed by
+// a lock after the GET obtained it is answered as locked, rather than reading tokens with
+// the zeroed key.
+func TestServer_handleGet_zeroedStore(t *testing.T) {
+	t.Parallel()
+	c := newUnlockedServer(t)
+	const clientID = "Iv1.zeroed"
+	if err := c.store.Set(clientID, json.RawMessage(`{"access_token":"a"}`)); err != nil {
+		t.Fatal(err)
+	}
+	c.store.Zero()
+	got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, got); diff != "" {
+		t.Fatalf("GET on a zeroed store (-want +got):\n%s", diff)
+	}
 }
 
 // TestServer_handleGet_refreshFailedStoredMeanwhile verifies that when a refresh fails

@@ -2,6 +2,7 @@ package tokenstore_test
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -303,5 +304,31 @@ func BenchmarkStore_Get(b *testing.B) {
 		if _, _, err := s.Get("Iv1.abc"); err != nil {
 			b.Fatal(err)
 		}
+	}
+}
+
+// TestStore_zeroed verifies that after Zero the operations that use the data key fail with
+// ErrZeroed, so a request still holding the store can neither seal a token with the
+// zeroed key nor read one back, while Delete (which needs no key) still works.
+func TestStore_zeroed(t *testing.T) {
+	t.Parallel()
+	st := tokenstore.New(testDataKey(t), t.TempDir())
+	const clientID = "Iv1.zeroed"
+	if err := st.Set(clientID, json.RawMessage(`{"access_token":"abc"}`)); err != nil {
+		t.Fatal(err)
+	}
+	st.Zero()
+
+	if err := st.Set(clientID, json.RawMessage(`{"access_token":"new"}`)); !errors.Is(err, tokenstore.ErrZeroed) {
+		t.Fatalf("Set after Zero: got %v, want ErrZeroed", err)
+	}
+	if _, _, err := st.Get(clientID); !errors.Is(err, tokenstore.ErrZeroed) {
+		t.Fatalf("Get after Zero: got %v, want ErrZeroed", err)
+	}
+	if _, err := st.DeleteIf(clientID, func(json.RawMessage) bool { return true }); !errors.Is(err, tokenstore.ErrZeroed) {
+		t.Fatalf("DeleteIf after Zero: got %v, want ErrZeroed", err)
+	}
+	if err := st.Delete(clientID); err != nil {
+		t.Fatalf("Delete after Zero: %v", err)
 	}
 }

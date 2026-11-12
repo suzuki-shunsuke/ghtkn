@@ -248,7 +248,7 @@ func (s *Server) validRefreshToken(raw json.RawMessage) string {
 // it and the rest are served the token it stored, instead of each spending the already
 // rotated refresh token and raising a false incident warning.
 func (s *Server) refreshAccessToken(ctx context.Context, st *tokenstore.Store, clientID string, minExpiration time.Duration) (*agentapi.Response, string) {
-	lock, err := s.lockRefresh(ctx, clientID)
+	lock, failureWarning, err := s.lockRefresh(ctx, clientID)
 	if err != nil {
 		return &agentapi.Response{Error: fmt.Sprintf("%s: %s", errMsgGet, err)}, ""
 	}
@@ -268,6 +268,15 @@ func (s *Server) refreshAccessToken(ctx context.Context, st *tokenstore.Store, c
 		// A GET that held the lock before this one already refreshed the token.
 		return tokenResponse(raw), ""
 	}
+	if failureWarning != "" {
+		// A refresh failed while this GET waited, and the stored token was re-read just
+		// above, so it still carries the refresh token that failed. Retrying it would make
+		// one more GitHub call per queued GET, each waiting for the previous one (up to
+		// githubHTTPTimeout apiece). Fall back with the same warning instead: every queued
+		// client surfaces it, so the signal is not lost if the failed GET's client never
+		// shows it.
+		return nil, failureWarning
+	}
 	return s.exchangeRefreshToken(ctx, st, lock, clientID, raw, minExpiration)
 }
 
@@ -275,27 +284,20 @@ func (s *Server) refreshAccessToken(ctx context.Context, st *tokenstore.Store, c
 // access token, stores the result (which GitHub returns with a rotated refresh token),
 // and returns it. The caller must hold lock, the refresh lock for clientID. It returns a
 // nil response to fall back to the device flow when raw has no usable refresh token or the
-// exchange fails; see refreshFailed for the warning.
-//
-// A refresh token that just failed is not tried again (see refreshLock.recentlyFailed):
-// the GETs queued behind a failed refresh re-read the same stored token, and retrying it
-// would make one more GitHub call and raise one more incident warning per queued GET,
-// each waiting for the previous one (up to githubHTTPTimeout apiece). They fall back to
-// the device flow without a warning instead; the GET whose refresh failed carries it.
+// exchange fails; see refreshFailed for the warning. A failure is recorded in lock so the
+// GETs queued behind it do not retry the same refresh token (see lockRefresh).
 func (s *Server) exchangeRefreshToken(ctx context.Context, st *tokenstore.Store, lock *refreshLock, clientID string, raw json.RawMessage, minExpiration time.Duration) (*agentapi.Response, string) {
 	refreshToken := s.validRefreshToken(raw)
 	if refreshToken == "" {
-		return nil, ""
-	}
-	if lock.recentlyFailed(refreshToken) {
 		return nil, ""
 	}
 
 	//nolint:bodyclose // RefreshToken reads and closes the response body internally; it returns the decoded value.
 	newToken, _, _, err := s.client.RefreshToken(ctx, clientID, refreshToken)
 	if err != nil {
-		lock.markFailed(refreshToken)
-		return s.refreshFailed(st, clientID, minExpiration, err)
+		resp, warning := s.refreshFailed(st, clientID, minExpiration, err)
+		lock.markFailed(warning)
+		return resp, warning
 	}
 
 	fresh, err := s.encodeToken(newToken, true)
@@ -303,6 +305,9 @@ func (s *Server) exchangeRefreshToken(ctx context.Context, st *tokenstore.Store,
 		if s.logger != nil {
 			slogerr.WithError(s.logger, err).Error("encode the refreshed access token", "client_id", clientID)
 		}
+		// GitHub already rotated the refresh token, so the stored one is spent. Drop it for
+		// the same reason as after a failed store below.
+		s.dropStaleAfterFailedStore(st, clientID, minExpiration)
 		return nil, ""
 	}
 	defer scrub(fresh)
