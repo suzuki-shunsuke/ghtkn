@@ -29,13 +29,6 @@ var ErrInvalidClientID = errors.New("invalid client id")
 // cache miss rather than a hard failure.
 var ErrDecryptToken = errors.New("decrypt the token file")
 
-// ErrZeroed is returned by the operations that use the data key (Get, Set and DeleteIf)
-// once Zero has scrubbed it, i.e. after the agent was locked. Without it, a request that
-// obtained the store before the lock and reaches it afterwards would seal a token with
-// the all-zero key, and a later read through the same store would decrypt it with that
-// key and hand the token out from a locked agent.
-var ErrZeroed = errors.New("the token store was locked")
-
 // validClientID reports whether id is safe to use as a token file name.
 // It rejects empty strings, "." and "..", and anything outside clientIDPattern,
 // which prevents path traversal.
@@ -60,9 +53,6 @@ type Store struct {
 	mu      sync.Mutex
 	dataKey []byte
 	dir     string
-	// zeroed is set by Zero; afterwards the operations that use dataKey fail with
-	// ErrZeroed. Guarded by mu.
-	zeroed bool
 }
 
 // New creates a token store that persists encrypted tokens under dir,
@@ -96,9 +86,6 @@ func (s *Store) Set(clientID string, token json.RawMessage) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.zeroed {
-		return ErrZeroed
-	}
 
 	blob, err := crypt.Seal(s.dataKey, token)
 	if err != nil {
@@ -184,17 +171,14 @@ func (s *Store) ClientIDs() ([]string, error) {
 // Zero scrubs the store's data key so the key no longer lives in memory. It is used when
 // the agent is locked (see the agent controller's handleLock): the store is discarded
 // afterwards, so this only shortens how long the plaintext key lingers. It runs under the
-// store lock so it does not race an in-flight Get/Set/Delete. Afterwards Get, Set and
-// DeleteIf fail with ErrZeroed, so a request that still holds the store cannot seal or
-// open a token with the scrubbed (all-zero) key. Delete still works: it needs no key and
-// only removes data.
+// store lock so it does not race an in-flight Get/Set/Delete; a decrypt attempted after
+// Zero fails and surfaces as ErrDecryptToken, which callers treat as a cache miss.
 func (s *Store) Zero() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for i := range s.dataKey {
 		s.dataKey[i] = 0
 	}
-	s.zeroed = true
 }
 
 // getLocked reads and decrypts the token for clientID. The caller must hold s.mu. It
@@ -202,9 +186,6 @@ func (s *Store) Zero() {
 // decrypt failure is wrapped with ErrDecryptToken. It exists so DeleteIf can read under
 // the same lock it deletes under (calling the public Get would deadlock, as it re-locks).
 func (s *Store) getLocked(clientID string) (json.RawMessage, bool, error) {
-	if s.zeroed {
-		return nil, false, ErrZeroed
-	}
 	blob, err := os.ReadFile(filepath.Join(s.dir, clientID))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {

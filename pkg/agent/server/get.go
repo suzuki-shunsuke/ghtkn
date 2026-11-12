@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
@@ -181,27 +180,14 @@ func (s *Server) handleGet(ctx context.Context, req *agentapi.Request, enableRef
 
 	// No valid cached token. Start the flow only when the client asked to; the server
 	// mints and stores the token and the client polls (AwaitDeviceFlow) until ready.
-	if !req.StartDeviceFlow {
-		return withWarning(&agentapi.Response{Error: agentapi.RespNotFound}, warning)
+	if req.StartDeviceFlow {
+		state, err := s.startDeviceFlow(ctx, s.logger, req.ClientID, enableRefreshToken)
+		if err != nil {
+			return withWarning(&agentapi.Response{Error: fmt.Sprintf("%s: %s", errMsgStartDeviceFlow, err)}, warning)
+		}
+		return withWarning(pendingResponse(state), warning)
 	}
-	return withWarning(s.startDeviceFlowForGet(ctx, req.ClientID, enableRefreshToken), warning)
-}
-
-// startDeviceFlowForGet starts (or joins) the device flow for a GET that found no usable
-// token and asked for one, returning the pending response or an error response.
-func (s *Server) startDeviceFlowForGet(ctx context.Context, clientID string, enableRefreshToken bool) *agentapi.Response {
-	if s.tokenStore() == nil {
-		// The agent was locked while this request was being served; the flow could not
-		// store its token anyway, so don't make the user complete it. This narrows rather
-		// than closes the window: a lock right after this check still lets the flow start,
-		// and pollAndStore then discards its token.
-		return &agentapi.Response{Error: agentapi.RespLocked}
-	}
-	state, err := s.startDeviceFlow(ctx, s.logger, clientID, enableRefreshToken)
-	if err != nil {
-		return &agentapi.Response{Error: fmt.Sprintf("%s: %s", errMsgStartDeviceFlow, err)}
-	}
-	return pendingResponse(state)
+	return withWarning(&agentapi.Response{Error: agentapi.RespNotFound}, warning)
 }
 
 // cachedToken serves the stored token for the request: the token itself when it is still
@@ -318,9 +304,10 @@ func (s *Server) exchangeRefreshToken(ctx context.Context, st *tokenstore.Store,
 	//nolint:bodyclose // RefreshToken reads and closes the response body internally; it returns the decoded value.
 	newToken, _, _, err := s.client.RefreshToken(ctx, clientID, refreshToken)
 	if err != nil {
-		resp, warning := s.refreshFailed(st, clientID, minExpiration, err)
+		// Fall back to the device flow, with the warning.
+		warning := s.refreshFailed(clientID, err)
 		lock.markFailed(refreshToken, warning)
-		return resp, warning
+		return nil, warning
 	}
 
 	fresh, err := s.encodeToken(newToken, true)
@@ -328,9 +315,6 @@ func (s *Server) exchangeRefreshToken(ctx context.Context, st *tokenstore.Store,
 		if s.logger != nil {
 			slogerr.WithError(s.logger, err).Error("encode the refreshed access token", "client_id", clientID)
 		}
-		// GitHub already rotated the refresh token, so the stored one is spent. Drop it for
-		// the same reason as after a failed store below.
-		s.dropStaleAfterFailedStore(st, clientID, minExpiration)
 		return nil, ""
 	}
 	defer scrub(fresh)
@@ -345,41 +329,19 @@ func (s *Server) exchangeRefreshToken(ctx context.Context, st *tokenstore.Store,
 		// false incident warning. Drop the stale stored token so the next get re-authenticates
 		// via the device flow instead.
 		s.dropStaleAfterFailedStore(st, clientID, minExpiration)
-		if errors.Is(err, tokenstore.ErrZeroed) {
-			// The agent was locked during the refresh: don't hand out a token from it.
-			return &agentapi.Response{Error: agentapi.RespLocked}, ""
-		}
 	}
 	return tokenResponse(fresh), ""
 }
 
 // refreshFailed handles a failed refresh of a still-valid refresh token. No other GET in
 // this agent can have spent it (refreshes are serialized per client), so the failure is a
-// possible incident (leak or revocation): it is logged and the warning is returned for the
-// user. The response falls back to the device flow (nil), unless a token that satisfies
-// minExpiration was stored meanwhile by a writer that skips the refresh lock because it
-// does not spend the refresh token (a device flow completing, or a legacy client's SET);
-// that token is served instead of starting a redundant device flow, still with the warning.
-func (s *Server) refreshFailed(st *tokenstore.Store, clientID string, minExpiration time.Duration, err error) (*agentapi.Response, string) {
+// possible incident (leak or revocation): it is logged, and the warning to return to the
+// user is returned.
+func (s *Server) refreshFailed(clientID string, err error) string {
 	if s.logger != nil {
 		slogerr.WithError(s.logger, err).Error("a still-valid refresh token failed to refresh; possible incident", "client_id", clientID)
 	}
-	return s.validStoredToken(st, clientID, minExpiration), incidentWarning(clientID)
-}
-
-// validStoredToken returns a token response for the stored token when it is valid for
-// minExpiration, or nil otherwise: no token, not valid, or a store error. A store error
-// is not returned because the caller falls back to the device flow either way.
-func (s *Server) validStoredToken(st *tokenstore.Store, clientID string, minExpiration time.Duration) *agentapi.Response {
-	raw, ok, resp := s.readStoredToken(st, clientID)
-	if resp != nil || !ok {
-		return nil
-	}
-	defer scrub(raw)
-	if !s.tokenValid(raw, minExpiration) {
-		return nil
-	}
-	return tokenResponse(raw)
+	return incidentWarning(clientID)
 }
 
 // dropStaleAfterFailedStore best-effort discards the cached token for clientID after a
@@ -396,24 +358,9 @@ func (s *Server) validStoredToken(st *tokenstore.Store, clientID string, minExpi
 // remains, but then the agent cannot store any token at all, a louder problem than one
 // false incident warning, and this is no worse than leaving it in place.
 func (s *Server) dropStaleAfterFailedStore(st *tokenstore.Store, clientID string, minExpiration time.Duration) {
-	_, err := st.DeleteIf(clientID, func(raw json.RawMessage) bool {
+	if _, err := st.DeleteIf(clientID, func(raw json.RawMessage) bool {
 		return !s.tokenValid(raw, minExpiration)
-	})
-	if errors.Is(err, tokenstore.ErrZeroed) {
-		// The agent was locked, so DeleteIf cannot decrypt the token to check it; delete it
-		// unconditionally (Delete needs no key). Left in place, the spent refresh token would
-		// raise a false incident warning after the next unlock.
-		//
-		// This is not race-free: the store created by a later unlock shares the token files,
-		// so if the agent was unlocked again and a fresh token was stored for clientID before
-		// this refresh returned, that token is deleted too. That needs a lock and an unlock
-		// within one refresh (at most githubHTTPTimeout), and costs only a device flow,
-		// whereas keeping the stale token would raise a false security warning after every
-		// lock during a refresh. Closing it fully needs one store shared across lock and
-		// unlock.
-		err = st.Delete(clientID)
-	}
-	if err != nil && s.logger != nil {
+	}); err != nil && s.logger != nil {
 		slogerr.WithError(s.logger, err).Warn("drop the stale cached token after a failed refresh store", "client_id", clientID)
 	}
 }

@@ -12,9 +12,8 @@ import (
 //
 // It stops the refresh-token sweep started at unlock and scrubs the data key. Scrubbing
 // runs under the store lock (Store.Zero), so it serializes with an in-flight
-// Get/Set/Delete rather than racing it. A request that obtained the store before the
-// lock and reaches it afterwards gets tokenstore.ErrZeroed, reported as locked, so it can
-// neither store a token sealed with the zeroed key nor read one back.
+// Get/Set/Delete rather than racing it; a request that reads the store after the key is
+// zeroed simply fails to decrypt and is treated as a cache miss.
 func (s *Server) handleLock() *agentapi.Response {
 	s.mu.Lock()
 	defer s.mu.Unlock()

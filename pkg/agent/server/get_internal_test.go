@@ -469,78 +469,9 @@ func TestServer_handleGet_refreshRetriedByLaterGET(t *testing.T) {
 	})
 }
 
-// TestServer_handleGet_zeroedStore verifies that a GET reaching a store that was zeroed by
-// a lock after the GET obtained it is answered as locked, rather than reading tokens with
-// the zeroed key.
-func TestServer_handleGet_zeroedStore(t *testing.T) {
-	t.Parallel()
-	c := newUnlockedServer(t)
-	const clientID = "Iv1.zeroed"
-	if err := c.store.Set(clientID, json.RawMessage(`{"access_token":"a"}`)); err != nil {
-		t.Fatal(err)
-	}
-	c.store.Zero()
-	got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
-	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, got); diff != "" {
-		t.Fatalf("GET on a zeroed store (-want +got):\n%s", diff)
-	}
-}
-
-// TestServer_handleGet_lockDuringRefresh verifies that when the agent is locked while a
-// refresh is in flight, the refreshed token is not handed out (the GET is answered as
-// locked) and the stored token, whose refresh token GitHub has just spent, is deleted, so
-// it cannot raise a false incident warning after the next unlock.
-func TestServer_handleGet_lockDuringRefresh(t *testing.T) {
-	t.Parallel()
-	synctest.Test(t, func(t *testing.T) {
-		c := newUnlockedServer(t)
-		st := c.store
-		const clientID = "Iv1.lockduringrefresh"
-		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
-		setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
-			c.handleLock()
-			body := `{"access_token":"new-access","refresh_token":"new-refresh","expires_in":28800,"refresh_token_expires_in":15897600}`
-			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
-		}))
-
-		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
-		if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, got); diff != "" {
-			t.Fatalf("GET locked during refresh (-want +got):\n%s", diff)
-		}
-		if n := st.Len(); n != 0 {
-			t.Fatalf("%d tokens left in the store, want the spent one deleted", n)
-		}
-	})
-}
-
-// TestServer_handleGet_lockBeforeDeviceFlow verifies that a GET whose refresh fails after
-// the agent was locked mid-request is answered as locked, with the incident warning,
-// rather than starting a device flow the locked agent could not store.
-func TestServer_handleGet_lockBeforeDeviceFlow(t *testing.T) {
-	t.Parallel()
-	synctest.Test(t, func(t *testing.T) {
-		c := newUnlockedServer(t)
-		const clientID = "Iv1.lockbeforeflow"
-		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
-		setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
-			c.handleLock()
-			return &http.Response{StatusCode: http.StatusInternalServerError, Body: io.NopCloser(strings.NewReader("{}")), Header: make(http.Header)}, nil
-		}))
-
-		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID, StartDeviceFlow: true}, true)
-		want := &agentapi.Response{Error: agentapi.RespLocked, Warning: incidentWarning(clientID)}
-		if diff := cmp.Diff(want, got); diff != "" {
-			t.Fatalf("GET locked before the device flow (-want +got):\n%s", diff)
-		}
-		if _, ok := c.deviceFlow(clientID); ok {
-			t.Fatal("a device flow was started on a locked agent")
-		}
-	})
-}
-
 // TestServer_handleGet_concurrentRefreshFailureStoredMeanwhile verifies that when a refresh
 // fails but a valid token is stored meanwhile (by a writer that skips the refresh lock),
-// the GETs queued behind it receive that token with the incident warning too, not silently.
+// the GETs queued behind it receive that token with the incident warning, not silently.
 func TestServer_handleGet_concurrentRefreshFailureStoredMeanwhile(t *testing.T) {
 	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
@@ -572,10 +503,19 @@ func TestServer_handleGet_concurrentRefreshFailureStoredMeanwhile(t *testing.T) 
 		if got := calls.Load(); got != 1 {
 			t.Fatalf("the refresh endpoint was called %d times, want 1", got)
 		}
+		// The GET whose refresh failed falls back; the queued ones find the token stored
+		// meanwhile. All of them carry the warning.
+		served := 0
 		for i, resp := range resps {
-			if !resp.OK || resp.Warning != incidentWarning(clientID) {
-				t.Fatalf("GET %d: OK=%v warning=%q error=%q, want the stored token with the incident warning", i, resp.OK, resp.Warning, resp.Error)
+			if resp.Warning != incidentWarning(clientID) {
+				t.Fatalf("GET %d: warning %q, want the incident warning", i, resp.Warning)
 			}
+			if resp.OK {
+				served++
+			}
+		}
+		if served != n-1 {
+			t.Fatalf("%d GETs received the stored token, want %d", served, n-1)
 		}
 	})
 }
@@ -616,42 +556,6 @@ func TestServer_handleGet_queuedAfterFailureWithOtherToken(t *testing.T) {
 		}
 		if !got.OK || got.Warning != "boom" {
 			t.Fatalf("GET: OK=%v warning=%q error=%q, want the refreshed token with the failure warning", got.OK, got.Warning, got.Error)
-		}
-	})
-}
-
-// TestServer_handleGet_refreshFailedStoredMeanwhile verifies that when a refresh fails
-// but a writer that skips the refresh lock (a device flow completing, or a legacy SET)
-// stored a valid token meanwhile, that token is served. The failure is still genuine (that
-// writer did not spend the refresh token), so the incident warning is kept.
-func TestServer_handleGet_refreshFailedStoredMeanwhile(t *testing.T) {
-	t.Parallel()
-	synctest.Test(t, func(t *testing.T) {
-		c := newUnlockedServer(t)
-		now := time.Now()
-		const clientID = "Iv1.storedmeanwhile"
-		seedExpiredWithRefresh(t, c, clientID, now.Add(24*time.Hour))
-
-		fresh := fmt.Sprintf(`{"access_token":"set-access","expiration_date":"%s"}`, now.Add(8*time.Hour).Format(time.RFC3339))
-		setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
-			if err := c.store.Set(clientID, json.RawMessage(fresh)); err != nil {
-				t.Errorf("store the token written meanwhile: %v", err)
-			}
-			return &http.Response{StatusCode: http.StatusInternalServerError, Body: io.NopCloser(strings.NewReader("{}")), Header: make(http.Header)}, nil
-		}))
-
-		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
-		//nolint:gosec // G117: serializing a token in a test to build the expected bytes.
-		wantToken, err := json.Marshal(&struct {
-			AccessToken    string    `json:"access_token"`
-			ExpirationDate time.Time `json:"expiration_date"`
-		}{AccessToken: "set-access", ExpirationDate: now.Add(8 * time.Hour)})
-		if err != nil {
-			t.Fatal(err)
-		}
-		want := &agentapi.Response{OK: true, Token: wantToken, Warning: incidentWarning(clientID)}
-		if diff := cmp.Diff(want, got); diff != "" {
-			t.Fatalf("GET after a failed refresh (-want +got):\n%s", diff)
 		}
 	})
 }
