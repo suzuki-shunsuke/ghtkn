@@ -74,3 +74,38 @@ func TestServer_lockRefresh_failureWarning(t *testing.T) {
 		}
 	})
 }
+
+// TestServer_lockRefresh_failureThenSuccess verifies that a refresh succeeding after a
+// failure clears the failure for the callers that waited across both, so they try the new
+// refresh token instead of falling back with the stale warning.
+func TestServer_lockRefresh_failureThenSuccess(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedServer(t)
+		const clientID = "Iv1.failurethensuccess"
+		holder, _, err := c.lockRefresh(t.Context(), clientID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		warning := "unset"
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			lock, w, err := c.lockRefresh(t.Context(), clientID)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			warning = w
+			lock.unlock()
+		}()
+		synctest.Wait()
+		holder.markFailed("boom")
+		holder.markSucceeded()
+		holder.unlock()
+		<-done
+		if warning != "" {
+			t.Fatalf("waiting caller: warning %q, want none after a later success", warning)
+		}
+	})
+}

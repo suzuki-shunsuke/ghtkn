@@ -15,8 +15,8 @@ type refreshLock struct {
 	// while holding sem, but it is atomic because lockRefresh reads it before waiting on
 	// sem, to tell whether a refresh failed while the caller waited.
 	failures atomic.Uint64
-	// failureWarning is the warning of the last failed refresh. Read and written only
-	// while holding sem.
+	// failureWarning is the warning of the last failed refresh, cleared by a later
+	// successful one. Read and written only while holding sem.
 	failureWarning string
 }
 
@@ -25,7 +25,7 @@ type refreshLock struct {
 // unlock, or ctx's error if ctx is done first (the agent is shutting down).
 //
 // The second result is non-empty when a refresh for clientID failed while this caller
-// was waiting: it is that refresh's warning. Such a caller is queued behind the failed
+// was waiting, and no refresh succeeded after it: it is that refresh's warning. Such a caller is queued behind the failed
 // attempt and would retry the same refresh token, so it should fall back with the same
 // warning instead (see refreshAccessToken). A refresh that failed before this caller
 // started waiting does not count, so a later GET tries the refresh token again: the
@@ -48,6 +48,13 @@ func (s *Server) lockRefresh(ctx context.Context, clientID string) (*refreshLock
 		return lock, lock.failureWarning, nil
 	}
 	return lock, "", nil
+}
+
+// markSucceeded records that a refresh succeeded, so the callers waiting on the lock
+// across an earlier failure try the new refresh token instead of falling back with the
+// stale warning. The caller must hold the lock.
+func (l *refreshLock) markSucceeded() {
+	l.failureWarning = ""
 }
 
 // unlock releases the lock acquired by lockRefresh.
