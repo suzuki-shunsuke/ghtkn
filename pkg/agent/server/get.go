@@ -192,7 +192,9 @@ func (s *Server) handleGet(ctx context.Context, req *agentapi.Request, enableRef
 func (s *Server) startDeviceFlowForGet(ctx context.Context, clientID string, enableRefreshToken bool) *agentapi.Response {
 	if s.tokenStore() == nil {
 		// The agent was locked while this request was being served; the flow could not
-		// store its token anyway, so don't make the user complete it.
+		// store its token anyway, so don't make the user complete it. This narrows rather
+		// than closes the window: a lock right after this check still lets the flow start,
+		// and pollAndStore then discards its token.
 		return &agentapi.Response{Error: agentapi.RespLocked}
 	}
 	state, err := s.startDeviceFlow(ctx, s.logger, clientID, enableRefreshToken)
@@ -260,7 +262,7 @@ func (s *Server) validRefreshToken(raw json.RawMessage) string {
 // it and the rest are served the token it stored, instead of each spending the already
 // rotated refresh token and raising a false incident warning.
 func (s *Server) refreshAccessToken(ctx context.Context, st *tokenstore.Store, clientID string, minExpiration time.Duration) (*agentapi.Response, string) {
-	lock, failureWarning, err := s.lockRefresh(ctx, clientID)
+	lock, failedWhileWaiting, err := s.lockRefresh(ctx, clientID)
 	if err != nil {
 		return &agentapi.Response{Error: fmt.Sprintf("%s: %s", errMsgGet, err)}, ""
 	}
@@ -276,22 +278,29 @@ func (s *Server) refreshAccessToken(ctx context.Context, st *tokenstore.Store, c
 		return nil, ""
 	}
 	defer scrub(raw)
+	// If a refresh failed while this GET waited, pass its warning on with whatever this
+	// GET returns, so every queued client surfaces it, not only the one whose refresh
+	// failed (which may never show it).
+	failureWarning := ""
+	if failedWhileWaiting {
+		failureWarning = lock.failureWarning
+	}
 	if s.tokenValid(raw, minExpiration) {
 		// A GET that held the lock before this one already refreshed the token, or a
-		// writer that skips the lock stored one. If a refresh failed while this GET
-		// waited, pass its warning on with the token (see below).
+		// writer that skips the lock stored one.
 		return tokenResponse(raw), failureWarning
 	}
-	if failureWarning != "" {
-		// A refresh failed while this GET waited, and the stored token was re-read just
-		// above, so it still carries the refresh token that failed. Retrying it would make
-		// one more GitHub call per queued GET, each waiting for the previous one (up to
-		// githubHTTPTimeout apiece). Fall back with the same warning instead: every queued
-		// client surfaces it, so the signal is not lost if the failed GET's client never
-		// shows it.
+	if failedWhileWaiting && lock.failedWith(s.validRefreshToken(raw)) {
+		// The stored refresh token is the one that just failed. Retrying it would make one
+		// more GitHub call per queued GET, each waiting for the previous one (up to
+		// githubHTTPTimeout apiece), so fall back instead.
 		return nil, failureWarning
 	}
-	return s.exchangeRefreshToken(ctx, st, lock, clientID, raw, minExpiration)
+	resp, warning := s.exchangeRefreshToken(ctx, st, lock, clientID, raw, minExpiration)
+	if warning == "" {
+		warning = failureWarning
+	}
+	return resp, warning
 }
 
 // exchangeRefreshToken exchanges the refresh token in the stored token raw for a new
@@ -310,12 +319,9 @@ func (s *Server) exchangeRefreshToken(ctx context.Context, st *tokenstore.Store,
 	newToken, _, _, err := s.client.RefreshToken(ctx, clientID, refreshToken)
 	if err != nil {
 		resp, warning := s.refreshFailed(st, clientID, minExpiration, err)
-		lock.markFailed(warning)
+		lock.markFailed(refreshToken, warning)
 		return resp, warning
 	}
-	// The refresh token was rotated, so an earlier failure no longer applies to the GETs
-	// waiting on the lock.
-	lock.markSucceeded()
 
 	fresh, err := s.encodeToken(newToken, true)
 	if err != nil {
@@ -394,10 +400,17 @@ func (s *Server) dropStaleAfterFailedStore(st *tokenstore.Store, clientID string
 		return !s.tokenValid(raw, minExpiration)
 	})
 	if errors.Is(err, tokenstore.ErrZeroed) {
-		// The agent was locked, so DeleteIf cannot decrypt the token to check it. Delete
-		// needs no key and is safe unconditionally here: after the lock nothing can store a
-		// fresher token in this store. Without it the spent refresh token would survive the
-		// lock and raise a false incident warning after the next unlock.
+		// The agent was locked, so DeleteIf cannot decrypt the token to check it; delete it
+		// unconditionally (Delete needs no key). Left in place, the spent refresh token would
+		// raise a false incident warning after the next unlock.
+		//
+		// This is not race-free: the store created by a later unlock shares the token files,
+		// so if the agent was unlocked again and a fresh token was stored for clientID before
+		// this refresh returned, that token is deleted too. That needs a lock and an unlock
+		// within one refresh (at most githubHTTPTimeout), and costs only a device flow,
+		// whereas keeping the stale token would raise a false security warning after every
+		// lock during a refresh. Closing it fully needs one store shared across lock and
+		// unlock.
 		err = st.Delete(clientID)
 	}
 	if err != nil && s.logger != nil {

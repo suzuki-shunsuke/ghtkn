@@ -580,6 +580,46 @@ func TestServer_handleGet_concurrentRefreshFailureStoredMeanwhile(t *testing.T) 
 	})
 }
 
+// TestServer_handleGet_queuedAfterFailureWithOtherToken verifies that a GET that waited
+// across a failed refresh still refreshes when the stored refresh token is no longer the
+// one that failed (e.g. a device flow replaced it), instead of falling back.
+func TestServer_handleGet_queuedAfterFailureWithOtherToken(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedServer(t)
+		const clientID = "Iv1.othertoken"
+		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
+		rt := &refreshRoundTripper{
+			status: http.StatusOK,
+			body:   `{"access_token":"new-access","refresh_token":"new-refresh","expires_in":28800,"refresh_token_expires_in":15897600}`,
+		}
+		setClientTransport(c, rt)
+
+		holder, _, err := c.lockRefresh(t.Context(), clientID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got *agentapi.Response
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			got = c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+		}()
+		synctest.Wait()
+		// A refresh with a refresh token other than the stored one failed while the GET waited.
+		holder.markFailed("ghr_replaced", "boom")
+		holder.unlock()
+		<-done
+
+		if !rt.called {
+			t.Fatal("the GET did not refresh the stored refresh token, which never failed")
+		}
+		if !got.OK || got.Warning != "boom" {
+			t.Fatalf("GET: OK=%v warning=%q error=%q, want the refreshed token with the failure warning", got.OK, got.Warning, got.Error)
+		}
+	})
+}
+
 // TestServer_handleGet_refreshFailedStoredMeanwhile verifies that when a refresh fails
 // but a writer that skips the refresh lock (a device flow completing, or a legacy SET)
 // stored a valid token meanwhile, that token is served. The failure is still genuine (that

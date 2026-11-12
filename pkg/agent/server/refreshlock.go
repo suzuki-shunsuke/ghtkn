@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"sync/atomic"
 )
 
@@ -15,8 +16,11 @@ type refreshLock struct {
 	// while holding sem, but it is atomic because lockRefresh reads it before waiting on
 	// sem, to tell whether a refresh failed while the caller waited.
 	failures atomic.Uint64
-	// failureWarning is the warning of the last failed refresh, cleared by a later
-	// successful one. Read and written only while holding sem.
+	// failedDigest is the SHA-256 of the refresh token the last failed refresh used, and
+	// failureWarning that refresh's warning. A digest is kept rather than the token so no
+	// plaintext refresh token outlives the request. Read and written only while holding
+	// sem.
+	failedDigest   [sha256.Size]byte
 	failureWarning string
 }
 
@@ -24,13 +28,13 @@ type refreshLock struct {
 // GET for the same client is refreshing. It returns the held lock, to be released with
 // unlock, or ctx's error if ctx is done first (the agent is shutting down).
 //
-// The second result is non-empty when a refresh for clientID failed while this caller
-// was waiting, and no refresh succeeded after it: it is that refresh's warning. Such a caller is queued behind the failed
-// attempt and would retry the same refresh token, so it should fall back with the same
-// warning instead (see refreshAccessToken). A refresh that failed before this caller
-// started waiting does not count, so a later GET tries the refresh token again: the
-// earlier failure may have been transient.
-func (s *Server) lockRefresh(ctx context.Context, clientID string) (*refreshLock, string, error) {
+// The second result reports whether a refresh for clientID failed while this caller was
+// waiting. Such a caller is queued behind the failed attempt; if the stored refresh token
+// is still the one that failed (see failedWith), it should fall back with that refresh's
+// warning instead of retrying it (see refreshAccessToken). A refresh that failed before
+// this caller started waiting does not count, so a later GET tries the refresh token
+// again: the earlier failure may have been transient.
+func (s *Server) lockRefresh(ctx context.Context, clientID string) (*refreshLock, bool, error) {
 	s.refreshLocksMu.Lock()
 	lock, ok := s.refreshLocks[clientID]
 	if !ok {
@@ -42,19 +46,9 @@ func (s *Server) lockRefresh(ctx context.Context, clientID string) (*refreshLock
 	select {
 	case lock.sem <- struct{}{}:
 	case <-ctx.Done():
-		return nil, "", ctx.Err() //nolint:wrapcheck
+		return nil, false, ctx.Err() //nolint:wrapcheck
 	}
-	if lock.failures.Load() != failures {
-		return lock, lock.failureWarning, nil
-	}
-	return lock, "", nil
-}
-
-// markSucceeded records that a refresh succeeded, so the callers waiting on the lock
-// across an earlier failure try the new refresh token instead of falling back with the
-// stale warning. The caller must hold the lock.
-func (l *refreshLock) markSucceeded() {
-	l.failureWarning = ""
+	return lock, lock.failures.Load() != failures, nil
 }
 
 // unlock releases the lock acquired by lockRefresh.
@@ -62,9 +56,17 @@ func (l *refreshLock) unlock() {
 	<-l.sem
 }
 
-// markFailed records that a refresh failed with warning, so the callers waiting on the
-// lock fall back with it (see lockRefresh). The caller must hold the lock.
-func (l *refreshLock) markFailed(warning string) {
+// markFailed records that a refresh with refreshToken failed with warning (see
+// lockRefresh). The caller must hold the lock.
+func (l *refreshLock) markFailed(refreshToken, warning string) {
+	l.failedDigest = sha256.Sum256([]byte(refreshToken))
 	l.failureWarning = warning
 	l.failures.Add(1)
+}
+
+// failedWith reports whether refreshToken is the one the last failed refresh used. A
+// refresh token that was rotated by a later successful refresh, or replaced by a device
+// flow, does not match. The caller must hold the lock.
+func (l *refreshLock) failedWith(refreshToken string) bool {
+	return refreshToken != "" && sha256.Sum256([]byte(refreshToken)) == l.failedDigest
 }
