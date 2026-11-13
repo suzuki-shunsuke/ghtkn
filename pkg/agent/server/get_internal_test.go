@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -343,46 +345,217 @@ func TestServer_handleGet_refreshHTTPError(t *testing.T) {
 	})
 }
 
-// TestServer_handleGet_refreshPeerAlreadyRefreshed verifies that when a refresh fails
-// but a concurrent GET for the same client has already stored a fresh token (the likely
-// cause with single-use rotating refresh tokens), the request serves that token silently
-// instead of raising a false incident warning.
-func TestServer_handleGet_refreshPeerAlreadyRefreshed(t *testing.T) {
+// TestServer_handleGet_concurrentRefresh verifies that concurrent GETs for the same
+// client that all find the same expiring token refresh it once: GitHub's refresh tokens
+// are single-use, so a second refresh with the already rotated token would fail and raise
+// a false incident warning (#665). The fake token endpoint succeeds only for its first
+// call, and stalls so the other GETs arrive while the refresh is in flight.
+func TestServer_handleGet_concurrentRefresh(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedServer(t)
+		const clientID = "Iv1.concurrent"
+		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
+
+		var mu sync.Mutex
+		calls := 0
+		setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
+			mu.Lock()
+			calls++
+			n := calls
+			mu.Unlock()
+			if n > 1 {
+				// The refresh token was already spent by the first call.
+				return &http.Response{StatusCode: http.StatusInternalServerError, Body: io.NopCloser(strings.NewReader("{}")), Header: make(http.Header)}, nil
+			}
+			time.Sleep(time.Second)
+			body := `{"access_token":"new-access","refresh_token":"new-refresh","expires_in":28800,"refresh_token_expires_in":15897600}`
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+		}))
+
+		const n = 5
+		resps := make([]*agentapi.Response, n)
+		var wg sync.WaitGroup
+		for i := range n {
+			wg.Go(func() {
+				resps[i] = c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+			})
+		}
+		wg.Wait()
+
+		if calls != 1 {
+			t.Fatalf("the refresh endpoint was called %d times, want 1", calls)
+		}
+		for i, resp := range resps {
+			if !resp.OK || resp.Warning != "" || resp.Error != "" {
+				t.Fatalf("GET %d: OK=%v warning=%q error=%q, want a token with no warning", i, resp.OK, resp.Warning, resp.Error)
+			}
+			token := &struct {
+				AccessToken string `json:"access_token"`
+			}{}
+			if err := json.Unmarshal(resp.Token, token); err != nil {
+				t.Fatal(err)
+			}
+			if token.AccessToken != "new-access" {
+				t.Fatalf("GET %d: access token %q, want the refreshed one", i, token.AccessToken)
+			}
+		}
+	})
+}
+
+// TestServer_handleGet_concurrentRefreshFailure verifies that when a refresh fails, the
+// GETs queued behind it do not retry the same refresh token: the token endpoint is called
+// once, and every GET falls back with the incident warning, so the signal reaches every
+// client. The endpoint stalls before failing, standing in for a timeout, so the other
+// GETs queue up on the refresh lock.
+func TestServer_handleGet_concurrentRefreshFailure(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedServer(t)
+		const clientID = "Iv1.concurrentfailure"
+		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
+
+		var calls atomic.Int32
+		setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
+			calls.Add(1)
+			time.Sleep(time.Second)
+			return &http.Response{StatusCode: http.StatusInternalServerError, Body: io.NopCloser(strings.NewReader("{}")), Header: make(http.Header)}, nil
+		}))
+
+		const n = 5
+		resps := make([]*agentapi.Response, n)
+		var wg sync.WaitGroup
+		for i := range n {
+			wg.Go(func() {
+				resps[i] = c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+			})
+		}
+		wg.Wait()
+
+		if got := calls.Load(); got != 1 {
+			t.Fatalf("the refresh endpoint was called %d times, want 1", got)
+		}
+		want := &agentapi.Response{Error: agentapi.RespNotFound, Warning: incidentWarning(clientID)}
+		for i, resp := range resps {
+			if diff := cmp.Diff(want, resp); diff != "" {
+				t.Fatalf("GET %d (-want +got):\n%s", i, diff)
+			}
+		}
+	})
+}
+
+// TestServer_handleGet_refreshRetriedByLaterGET verifies that only the GETs queued behind
+// a failed refresh skip it: a GET that starts after the failure tries the refresh token
+// again, so a transient failure does not keep refresh off for that app.
+func TestServer_handleGet_refreshRetriedByLaterGET(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedServer(t)
+		const clientID = "Iv1.laterget"
+		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
+		rt := &refreshRoundTripper{status: http.StatusInternalServerError, body: `{}`}
+		setClientTransport(c, rt)
+		get := func() *agentapi.Response {
+			return c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+		}
+
+		if resp := get(); !rt.called || resp.Warning == "" {
+			t.Fatalf("first GET: called=%v warning=%q, want a failed refresh with the warning", rt.called, resp.Warning)
+		}
+		rt.called = false
+		if resp := get(); !rt.called || resp.Warning == "" {
+			t.Fatalf("later GET: called=%v warning=%q, want a retry with the warning", rt.called, resp.Warning)
+		}
+	})
+}
+
+// TestServer_handleGet_concurrentRefreshFailureStoredMeanwhile verifies that when a refresh
+// fails but a valid token is stored meanwhile (by a writer that skips the refresh lock),
+// the GETs queued behind it receive that token with the incident warning, not silently.
+func TestServer_handleGet_concurrentRefreshFailureStoredMeanwhile(t *testing.T) {
 	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
 		c := newUnlockedServer(t)
 		now := time.Now()
-		const clientID = "Iv1.peerrefresh"
+		const clientID = "Iv1.concurrentmeanwhile"
 		seedExpiredWithRefresh(t, c, clientID, now.Add(24*time.Hour))
-
-		// The refresh call fails, but as a side effect it stores a fresh, valid token, standing
-		// in for a sibling GET that consumed the rotating refresh token first.
-		fresh := fmt.Sprintf(`{"access_token":"peer-access","expiration_date":"%s","refresh_token":"peer-refresh","refresh_token_expiration_date":"%s"}`,
-			now.Add(8*time.Hour).Format(time.RFC3339), now.Add(24*time.Hour).Format(time.RFC3339))
-		var called bool
+		fresh := fmt.Sprintf(`{"access_token":"set-access","expiration_date":"%s"}`, now.Add(8*time.Hour).Format(time.RFC3339))
+		var calls atomic.Int32
 		setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
-			called = true
+			calls.Add(1)
+			time.Sleep(time.Second)
 			if err := c.store.Set(clientID, json.RawMessage(fresh)); err != nil {
-				t.Errorf("seed the peer-refreshed token: %v", err)
+				t.Errorf("store the token written meanwhile: %v", err)
 			}
 			return &http.Response{StatusCode: http.StatusInternalServerError, Body: io.NopCloser(strings.NewReader("{}")), Header: make(http.Header)}, nil
 		}))
 
-		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
-		if !called {
-			t.Fatal("the refresh endpoint should have been called")
+		const n = 5
+		resps := make([]*agentapi.Response, n)
+		var wg sync.WaitGroup
+		for i := range n {
+			wg.Go(func() {
+				resps[i] = c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+			})
 		}
-		// The peer's fresh access token is served with no incident warning.
-		//nolint:gosec // G117: serializing a token in a test to build the expected bytes.
-		wantResp, err := json.Marshal(&struct {
-			AccessToken    string    `json:"access_token"`
-			ExpirationDate time.Time `json:"expiration_date"`
-		}{AccessToken: "peer-access", ExpirationDate: now.Add(8 * time.Hour)})
+		wg.Wait()
+
+		if got := calls.Load(); got != 1 {
+			t.Fatalf("the refresh endpoint was called %d times, want 1", got)
+		}
+		// The GET whose refresh failed falls back; the queued ones find the token stored
+		// meanwhile. All of them carry the warning.
+		served := 0
+		for i, resp := range resps {
+			if resp.Warning != incidentWarning(clientID) {
+				t.Fatalf("GET %d: warning %q, want the incident warning", i, resp.Warning)
+			}
+			if resp.OK {
+				served++
+			}
+		}
+		if served != n-1 {
+			t.Fatalf("%d GETs received the stored token, want %d", served, n-1)
+		}
+	})
+}
+
+// TestServer_handleGet_queuedAfterFailureWithOtherToken verifies that a GET that waited
+// across a failed refresh still refreshes when the stored refresh token is no longer the
+// one that failed (e.g. a device flow replaced it), instead of falling back.
+func TestServer_handleGet_queuedAfterFailureWithOtherToken(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedServer(t)
+		const clientID = "Iv1.othertoken"
+		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
+		rt := &refreshRoundTripper{
+			status: http.StatusOK,
+			body:   `{"access_token":"new-access","refresh_token":"new-refresh","expires_in":28800,"refresh_token_expires_in":15897600}`,
+		}
+		setClientTransport(c, rt)
+
+		holder, _, err := c.lockRefresh(t.Context(), clientID)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if diff := cmp.Diff(&agentapi.Response{OK: true, Token: wantResp}, got); diff != "" {
-			t.Fatalf("peer-refreshed GET (-want +got):\n%s", diff)
+		var got *agentapi.Response
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			got = c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+		}()
+		synctest.Wait()
+		// A refresh with a refresh token other than the stored one failed while the GET waited.
+		holder.markFailed("ghr_replaced", "boom")
+		holder.unlock()
+		<-done
+
+		if !rt.called {
+			t.Fatal("the GET did not refresh the stored refresh token, which never failed")
+		}
+		if !got.OK || got.Warning != "boom" {
+			t.Fatalf("GET: OK=%v warning=%q error=%q, want the refreshed token with the failure warning", got.OK, got.Warning, got.Error)
 		}
 	})
 }
