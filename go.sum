@@ -40,6 +40,8 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/suzuki-shunsuke/cobra-util v0.0.5 h1:/zJiPce7KnGZkfxFad2lXYS4Z2mQb14Aua8Q6u2eyJo=
 github.com/suzuki-shunsuke/cobra-util v0.0.5/go.mod h1:L5YbE333knVy60BdR1MxePKzsglMuiJgR6R0hb3PQ8Y=
+github.com/suzuki-shunsuke/cobra-util v0.0.6 h1:/w4lnGFX74+/OvbAS/ih3gxYCcHy0Ic3DX/c+LAP9tQ=
+github.com/suzuki-shunsuke/cobra-util v0.0.6/go.mod h1:z+IDyepHf683thMIRZCqvQJk5sJOSFCQaWJnUwNWQ94=
 github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0 h1:g7askc+nskCkKRWTVOdsAT8nMhwiaVT6Dmlnh6uvITM=
 github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0/go.mod h1:yFO7h5wwFejxi6jbtazqmk7b/JSBxHcit8DGwb1bhg0=
 github.com/suzuki-shunsuke/ghtkn-go-sdk v0.6.1 h1:IDvTocqxIfZVMK8Km/5Zk4/bMjDKKY9Z1bPK0mqX71s=
@@ -73,6 +75,8 @@ golang.org/x/mobile v0.0.0-20250606033058-a2a15c67f36f h1:/n+PL2HlfqeSiDCuhdBbRN
 golang.org/x/mobile v0.0.0-20250606033058-a2a15c67f36f/go.mod h1:ESkJ836Z6LpG6mTVAhA48LpfW/8fNR0ifStlH2axyfg=
 golang.org/x/oauth2 v0.36.0 h1:peZ/1z27fi9hUOFCAZaHyrpWG5lwe0RJEEEeH0ThlIs=
 golang.org/x/oauth2 v0.36.0/go.mod h1:YDBUJMTkDnJS+A4BP4eZBjCqtokkg1hODuPjwiGPO7Q=
+golang.org/x/oauth2 v0.38.0 h1:uW7XQbcu1eoiQS7uMJvLOjPMl04bTbmY1VeRPxvbspI=
+golang.org/x/oauth2 v0.38.0/go.mod h1:IxwZNxUULJmpBFf9K/9NTMSIfZZuvuTy1gGxhigP/58=
 golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.50.0 h1:dkKZEFTEKaLr1sjhs0WiKqoi8Jj5nHbS3Njmx1UoMJs=
 golang.org/x/sys v0.50.0/go.mod h1:hNLxWAXmnKAxqDtdwIYC4bM9oQPEecfsnNMuSxOs3og=
