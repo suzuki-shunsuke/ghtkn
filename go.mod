@@ -1,6 +1,6 @@
 module github.com/suzuki-shunsuke/ghtkn
 
-go 1.27.3
+go 1.27.4
 
 // replace github.com/suzuki-shunsuke/ghtkn-go-sdk => ../ghtkn-go-sdk
 
@@ -8,9 +8,9 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.1.0
-	github.com/suzuki-shunsuke/cobra-util v0.0.5
+	github.com/suzuki-shunsuke/cobra-util v0.0.6
 	github.com/suzuki-shunsuke/gen-go-jsonschema v0.1.0
-	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.6.1
+	github.com/suzuki-shunsuke/ghtkn-go-sdk v0.6.2
 	github.com/suzuki-shunsuke/go-error-with-exit-code v1.0.0
 	github.com/suzuki-shunsuke/go-github-device-flow v0.0.3
 	github.com/suzuki-shunsuke/go-revoke-github-access-token v0.0.2
@@ -19,7 +19,7 @@ require (
 	golang.design/x/clipboard v0.11.0
 	golang.org/x/crypto v0.58.0
 	golang.org/x/sys v0.50.0
-	golang.org/x/term v0.47.0
+	golang.org/x/term v0.48.0
 )
 
 require (
@@ -40,6 +40,6 @@ require (
 	golang.org/x/exp/shiny v0.0.0-20250606033433-dcc06ee1d476 // indirect
 	golang.org/x/image v0.41.0 // indirect
 	golang.org/x/mobile v0.0.0-20250606033058-a2a15c67f36f // indirect
-	golang.org/x/oauth2 v0.36.0 // indirect
+	golang.org/x/oauth2 v0.38.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

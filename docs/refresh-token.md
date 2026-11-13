@@ -123,4 +123,10 @@ e.g. set it to four weeks
 ghtkn agent unlock --enable-refresh --refresh-token-ttl=4w
 ```
 
-When a refresh token that is still within its expiration fails to refresh, the response carries an incident warning (a possible-leak signal) that the client surfaces to the user.
+## Concurrent requests and the incident warning
+
+A refresh token can be used only once: GitHub rotates it on every refresh. So the agent refreshes one app's token for one request at a time. When several commands ask for the same app's token at once, for example `ghq get --update --parallel` running many `git pull`s through the git credential helper, the first request refreshes the token and the others wait for it, then receive the token it stored. Requests for different apps do not wait for each other.
+
+When a refresh token that is still within its expiration fails to refresh, the agent logs `a still-valid refresh token failed to refresh; possible incident` and the response carries an incident warning that the client surfaces to the user. It can mean the refresh token leaked and was used elsewhere, or the app's authorization was revoked. The requests that were waiting for that refresh do not retry the same refresh token. They receive the same warning, so every waiting command shows it, together with a valid token if one was stored meanwhile (for example by a device flow that another command completed), or else fall back to the device flow. A request that starts after the failure tries the refresh token again.
+
+The warning is currently also raised when the refresh fails for reasons unrelated to the refresh token, such as a GitHub 5xx error or a timeout ([#743](https://github.com/suzuki-shunsuke/ghtkn/issues/743)). Check the `error` attribute of that log line to tell them apart: `The refresh token passed is incorrect or expired.` means GitHub rejected the refresh token, while a status code or a timeout points to GitHub or the network.
