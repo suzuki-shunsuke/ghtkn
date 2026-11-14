@@ -614,3 +614,72 @@ func TestServer_tokenValid_neverExpires(t *testing.T) {
 		t.Error("a never-expiring token must count as invalid when min_expiration forces regeneration")
 	}
 }
+
+// TestServer_handleGet_zeroedStore verifies that a GET reaching a store that was zeroed by
+// a lock after the GET obtained it is answered as locked, rather than reading tokens with
+// the zeroed key.
+func TestServer_handleGet_zeroedStore(t *testing.T) {
+	t.Parallel()
+	c := newUnlockedServer(t)
+	const clientID = "Iv1.zeroed"
+	if err := c.store.Set(clientID, json.RawMessage(`{"access_token":"a"}`)); err != nil {
+		t.Fatal(err)
+	}
+	c.store.Zero()
+	got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+	if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, got); diff != "" {
+		t.Fatalf("GET on a zeroed store (-want +got):\n%s", diff)
+	}
+}
+
+// TestServer_handleGet_lockDuringRefresh verifies that when the agent is locked while a
+// refresh is in flight, the refreshed token is not handed out (the GET is answered as
+// locked) and the stored token, whose refresh token GitHub has just spent, is deleted, so
+// it cannot raise a false incident warning after the next unlock.
+func TestServer_handleGet_lockDuringRefresh(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedServer(t)
+		st := c.store
+		const clientID = "Iv1.lockduringrefresh"
+		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
+		setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
+			c.handleLock()
+			body := `{"access_token":"new-access","refresh_token":"new-refresh","expires_in":28800,"refresh_token_expires_in":15897600}`
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+		}))
+
+		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+		if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, got); diff != "" {
+			t.Fatalf("GET locked during refresh (-want +got):\n%s", diff)
+		}
+		if n := st.Len(); n != 0 {
+			t.Fatalf("%d tokens left in the store, want the spent one deleted", n)
+		}
+	})
+}
+
+// TestServer_handleGet_lockBeforeDeviceFlow verifies that a GET whose refresh fails after
+// the agent was locked mid-request is answered as locked, with the incident warning,
+// rather than starting a device flow the locked agent could not store.
+func TestServer_handleGet_lockBeforeDeviceFlow(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		c := newUnlockedServer(t)
+		const clientID = "Iv1.lockbeforeflow"
+		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
+		setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
+			c.handleLock()
+			return &http.Response{StatusCode: http.StatusInternalServerError, Body: io.NopCloser(strings.NewReader("{}")), Header: make(http.Header)}, nil
+		}))
+
+		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID, StartDeviceFlow: true}, true)
+		want := &agentapi.Response{Error: agentapi.RespLocked, Warning: incidentWarning(clientID)}
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Fatalf("GET locked before the device flow (-want +got):\n%s", diff)
+		}
+		if _, ok := c.deviceFlow(clientID); ok {
+			t.Fatal("a device flow was started on a locked agent")
+		}
+	})
+}
