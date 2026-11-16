@@ -380,20 +380,37 @@ func (s *Server) dropStaleAfterFailedStore(st *tokenstore.Store, clientID string
 		return !s.tokenValid(raw, minExpiration)
 	})
 	if errors.Is(err, tokenstore.ErrZeroed) {
-		// The agent was locked, so DeleteIf cannot decrypt the token to check it; delete it
-		// unconditionally (Delete needs no key). Left in place, the spent refresh token would
-		// raise a false incident warning after the next unlock.
-		//
-		// This is not race-free: the store created by a later unlock shares the token files,
-		// so if the agent was unlocked again and a fresh token was stored for clientID before
-		// this refresh returned, that token is deleted too. That needs a lock and an unlock
-		// within one refresh (at most githubHTTPTimeout), and costs only a device flow,
-		// whereas keeping the stale token would raise a false security warning after every
-		// lock during a refresh. Closing it fully needs one store shared across lock and
-		// unlock.
-		err = st.Delete(clientID)
+		// The agent was locked during the refresh. Left in place, the spent refresh token
+		// would raise a false incident warning after the next unlock.
+		err = s.dropStaleAfterLock(st, clientID, minExpiration)
 	}
 	if err != nil && s.logger != nil {
 		slogerr.WithError(s.logger, err).Warn("drop the stale cached token after a failed refresh store", "client_id", clientID)
 	}
+}
+
+// dropStaleAfterLock drops the stale token for clientID when zeroed, the store the refresh
+// used, was zeroed by a lock. It holds s.mu so no unlock can bind a new store while it
+// runs; the token files are shared across stores, so that is what keeps it from deleting a
+// fresh token stored after a later unlock.
+func (s *Server) dropStaleAfterLock(zeroed *tokenstore.Store, clientID string, minExpiration time.Duration) error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.store == nil {
+		// Still locked: every existing store is zeroed and refuses Set, so the file can only
+		// hold the spent token. Delete needs no key.
+		if err := zeroed.Delete(clientID); err != nil {
+			return fmt.Errorf("delete the token: %w", err)
+		}
+		return nil
+	}
+	// Unlocked again. The new store derives the same data key, so it can check the token
+	// and keep a fresh one stored since the unlock.
+	_, err := s.store.DeleteIf(clientID, func(raw json.RawMessage) bool {
+		return !s.tokenValid(raw, minExpiration)
+	})
+	if err != nil {
+		return fmt.Errorf("delete the token if stale: %w", err)
+	}
+	return nil
 }

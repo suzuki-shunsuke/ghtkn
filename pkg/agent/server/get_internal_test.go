@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
+	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/tokenstore"
 	"github.com/suzuki-shunsuke/go-github-device-flow/deviceflow"
 )
 
@@ -655,6 +656,48 @@ func TestServer_handleGet_lockDuringRefresh(t *testing.T) {
 		}
 		if n := st.Len(); n != 0 {
 			t.Fatalf("%d tokens left in the store, want the spent one deleted", n)
+		}
+	})
+}
+
+// TestServer_handleGet_lockAndUnlockDuringRefresh verifies that when the agent is locked
+// and unlocked again while a refresh is in flight, and a fresh token is stored through the
+// new store, cleaning up after the refresh's failed store keeps that fresh token: the token
+// files are shared across stores, so deleting unconditionally would discard it.
+func TestServer_handleGet_lockAndUnlockDuringRefresh(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		dir := t.TempDir()
+		c := New("")
+		c.store = tokenstore.New(testDataKey(t), dir)
+		const clientID = "Iv1.lockunlockduringrefresh"
+		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
+		fresh := fmt.Sprintf(`{"access_token":"fresh","expiration_date":"%s"}`, time.Now().Add(8*time.Hour).Format(time.RFC3339))
+		setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
+			c.handleLock()
+			// Simulate an unlock (the same data key re-derived over the same token files)
+			// followed by a device flow that stores a fresh token.
+			unlocked := tokenstore.New(testDataKey(t), dir)
+			c.mu.Lock()
+			c.store = unlocked
+			c.mu.Unlock()
+			if err := unlocked.Set(clientID, json.RawMessage(fresh)); err != nil {
+				t.Fatal(err)
+			}
+			body := `{"access_token":"new-access","refresh_token":"new-refresh","expires_in":28800,"refresh_token_expires_in":15897600}`
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+		}))
+
+		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
+		if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, got); diff != "" {
+			t.Fatalf("GET locked during refresh (-want +got):\n%s", diff)
+		}
+		raw, ok, err := c.tokenStore().Get(clientID)
+		if err != nil || !ok {
+			t.Fatalf("the fresh token stored after the unlock was lost: ok=%v err=%v", ok, err)
+		}
+		if diff := cmp.Diff(fresh, string(raw)); diff != "" {
+			t.Fatalf("stored token (-want +got):\n%s", diff)
 		}
 	})
 }
