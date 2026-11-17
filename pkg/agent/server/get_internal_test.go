@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	agentapi "github.com/suzuki-shunsuke/ghtkn-go-sdk/ghtkn/backend/agent"
-	"github.com/suzuki-shunsuke/ghtkn/pkg/agent/tokenstore"
 	"github.com/suzuki-shunsuke/go-github-device-flow/deviceflow"
 )
 
@@ -562,34 +562,35 @@ func TestServer_handleGet_queuedAfterFailureWithOtherToken(t *testing.T) {
 }
 
 // TestServer_dropStaleAfterFailedStore verifies the recovery after a refresh whose
-// store write failed: the stale token (still not valid for the request, so carrying a
-// now-spent refresh token) is discarded so the next get re-authenticates, while a token
-// that a concurrent refresh or device flow may have stored (valid for the request) is kept.
+// store write failed: the token carrying the spent refresh token is discarded so the next
+// get re-authenticates, while a token carrying another refresh token (one a concurrent
+// device flow may have stored) is kept.
 func TestServer_dropStaleAfterFailedStore(t *testing.T) {
 	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
 		c := newUnlockedServer(t)
 		now := time.Now()
 
-		// A stale (expired) token is dropped: the next get will re-authenticate instead of
-		// trying its dead refresh token and raising a false incident warning.
+		// The token carrying the spent refresh token is dropped: the next get will
+		// re-authenticate instead of trying the dead refresh token and raising a false
+		// incident warning.
 		const staleID = "Iv1.stale"
 		seedExpiredWithRefresh(t, c, staleID, now.Add(24*time.Hour))
-		c.dropStaleAfterFailedStore(c.store, staleID, 0)
+		c.dropStaleAfterFailedStore(c.store, staleID, "old-refresh")
 		if _, ok, _ := c.store.Get(staleID); ok {
-			t.Fatal("a stale cached token must be dropped after a failed refresh store")
+			t.Fatal("the token carrying the spent refresh token must be dropped after a failed refresh store")
 		}
 
-		// A token still valid for the requirement is kept (stands in for one a concurrent
-		// refresh or device flow stored in the meantime).
+		// A token carrying another refresh token is kept, whatever its expiration.
 		const freshID = "Iv1.fresh"
-		fresh := fmt.Sprintf(`{"access_token":"a","expiration_date":"%s"}`, now.Add(8*time.Hour).Format(time.RFC3339))
+		fresh := fmt.Sprintf(`{"access_token":"a","expiration_date":"%s","refresh_token":"new-refresh","refresh_token_expiration_date":"%s"}`,
+			now.Add(8*time.Hour).Format(time.RFC3339), now.Add(24*time.Hour).Format(time.RFC3339))
 		if err := c.store.Set(freshID, json.RawMessage(fresh)); err != nil {
 			t.Fatal(err)
 		}
-		c.dropStaleAfterFailedStore(c.store, freshID, time.Hour)
+		c.dropStaleAfterFailedStore(c.store, freshID, "old-refresh")
 		if _, ok, _ := c.store.Get(freshID); !ok {
-			t.Fatal("a token still valid for the requirement must be kept")
+			t.Fatal("a token carrying another refresh token must be kept")
 		}
 	})
 }
@@ -633,73 +634,142 @@ func TestServer_handleGet_zeroedStore(t *testing.T) {
 	}
 }
 
+// newKeyedServer returns an agent unlocked through UNLOCK with refresh enabled, so a test
+// can lock it and unlock it again as a user would. The caller must lock it before the test
+// ends, which stops the refresh-token sweep.
+func newKeyedServer(t *testing.T) *Server {
+	t.Helper()
+	c := New("")
+	c.keyFile = filepath.Join(t.TempDir(), "key")
+	c.tokenDir = t.TempDir()
+	unlockWithRefresh(t, c)
+	return c
+}
+
+func unlockWithRefresh(t *testing.T, c *Server) {
+	t.Helper()
+	if resp := c.handleUnlock(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandUnlock, Passphrase: agentapi.SecretBytes("pw"), EnableRefreshToken: true}); !resp.OK {
+		t.Fatalf("UNLOCK failed: %+v", resp)
+	}
+}
+
+// refreshedBody is the token endpoint's response to a successful refresh.
+const refreshedBody = `{"access_token":"new-access","refresh_token":"new-refresh","expires_in":28800,"refresh_token_expires_in":15897600}`
+
+func refreshedResponse() *http.Response {
+	return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(refreshedBody)), Header: make(http.Header)}
+}
+
+// freshTokenJSON is a token stored by a device flow, carrying its own refresh token.
+func freshTokenJSON() string {
+	now := time.Now()
+	return fmt.Sprintf(`{"access_token":"fresh","expiration_date":"%s","refresh_token":"fresh-refresh","refresh_token_expiration_date":"%s"}`,
+		now.Add(8*time.Hour).Format(time.RFC3339), now.Add(24*time.Hour).Format(time.RFC3339))
+}
+
 // TestServer_handleGet_lockDuringRefresh verifies that when the agent is locked while a
 // refresh is in flight, the refreshed token is not handed out (the GET is answered as
-// locked) and the stored token, whose refresh token GitHub has just spent, is deleted, so
-// it cannot raise a false incident warning after the next unlock.
+// locked), and the stored token, whose refresh token GitHub has just spent, is dropped at
+// the next unlock, so it cannot raise a false incident warning.
 func TestServer_handleGet_lockDuringRefresh(t *testing.T) {
 	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
-		c := newUnlockedServer(t)
+		c := newKeyedServer(t)
+		defer c.handleLock()
 		st := c.store
 		const clientID = "Iv1.lockduringrefresh"
 		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
 		setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
 			c.handleLock()
-			body := `{"access_token":"new-access","refresh_token":"new-refresh","expires_in":28800,"refresh_token_expires_in":15897600}`
-			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+			return refreshedResponse(), nil
 		}))
 
 		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
 		if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, got); diff != "" {
 			t.Fatalf("GET locked during refresh (-want +got):\n%s", diff)
 		}
-		if n := st.Len(); n != 0 {
-			t.Fatalf("%d tokens left in the store, want the spent one deleted", n)
+		// The locked agent cannot check the token, so the drop waits for the unlock.
+		if n := st.Len(); n != 1 {
+			t.Fatalf("%d tokens in the store while locked, want the spent one kept until the unlock", n)
+		}
+		unlockWithRefresh(t, c)
+		if n := c.store.Len(); n != 0 {
+			t.Fatalf("%d tokens left in the store after the unlock, want the spent one dropped", n)
 		}
 	})
 }
 
 // TestServer_handleGet_lockAndUnlockDuringRefresh verifies that when the agent is locked
-// and unlocked again while a refresh is in flight, and a fresh token is stored through the
-// new store, cleaning up after the refresh's failed store keeps that fresh token: the token
-// files are shared across stores, so deleting unconditionally would discard it.
+// and unlocked again while a refresh is in flight, and a device flow stores a fresh token
+// through the new store, cleaning up after the refresh's failed store keeps that token: the
+// token files are shared across stores, so deleting unconditionally would discard it. The
+// GET asks for more than a token's lifetime, so a cleanup that judged tokens by the
+// request's MinExpiration would discard it too.
 func TestServer_handleGet_lockAndUnlockDuringRefresh(t *testing.T) {
 	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {
-		dir := t.TempDir()
-		c := New("")
-		c.store = tokenstore.New(testDataKey(t), dir)
+		c := newKeyedServer(t)
+		defer c.handleLock()
 		const clientID = "Iv1.lockunlockduringrefresh"
 		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
-		fresh := fmt.Sprintf(`{"access_token":"fresh","expiration_date":"%s"}`, time.Now().Add(8*time.Hour).Format(time.RFC3339))
+		fresh := freshTokenJSON()
 		setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
 			c.handleLock()
-			// Simulate an unlock (the same data key re-derived over the same token files)
-			// followed by a device flow that stores a fresh token.
-			unlocked := tokenstore.New(testDataKey(t), dir)
-			c.mu.Lock()
-			c.store = unlocked
-			c.mu.Unlock()
-			if err := unlocked.Set(clientID, json.RawMessage(fresh)); err != nil {
+			unlockWithRefresh(t, c)
+			if err := c.tokenStore().Set(clientID, json.RawMessage(fresh)); err != nil {
 				t.Fatal(err)
 			}
-			body := `{"access_token":"new-access","refresh_token":"new-refresh","expires_in":28800,"refresh_token_expires_in":15897600}`
-			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+			return refreshedResponse(), nil
+		}))
+
+		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID, MinExpiration: 9 * time.Hour}, true)
+		if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, got); diff != "" {
+			t.Fatalf("GET locked during refresh (-want +got):\n%s", diff)
+		}
+		assertStoredToken(t, c, clientID, fresh)
+	})
+}
+
+// TestServer_handleGet_relockedDuringRefresh verifies that when the agent is locked,
+// unlocked, given a fresh token, and locked again while a refresh is in flight, the fresh
+// token survives: the cleanup cannot check the token while locked, and the next unlock
+// keeps it because it does not carry the spent refresh token.
+func TestServer_handleGet_relockedDuringRefresh(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		c := newKeyedServer(t)
+		defer c.handleLock()
+		const clientID = "Iv1.relockedduringrefresh"
+		seedExpiredWithRefresh(t, c, clientID, time.Now().Add(24*time.Hour))
+		fresh := freshTokenJSON()
+		setClientTransport(c, roundTripFunc(func(*http.Request) (*http.Response, error) {
+			c.handleLock()
+			unlockWithRefresh(t, c)
+			if err := c.tokenStore().Set(clientID, json.RawMessage(fresh)); err != nil {
+				t.Fatal(err)
+			}
+			c.handleLock()
+			return refreshedResponse(), nil
 		}))
 
 		got := c.handleGet(t.Context(), &agentapi.Request{ProtocolVersion: 1, Command: agentapi.CommandGet, ClientID: clientID}, true)
 		if diff := cmp.Diff(&agentapi.Response{Error: agentapi.RespLocked}, got); diff != "" {
 			t.Fatalf("GET locked during refresh (-want +got):\n%s", diff)
 		}
-		raw, ok, err := c.tokenStore().Get(clientID)
-		if err != nil || !ok {
-			t.Fatalf("the fresh token stored after the unlock was lost: ok=%v err=%v", ok, err)
-		}
-		if diff := cmp.Diff(fresh, string(raw)); diff != "" {
-			t.Fatalf("stored token (-want +got):\n%s", diff)
-		}
+		unlockWithRefresh(t, c)
+		assertStoredToken(t, c, clientID, fresh)
 	})
+}
+
+func assertStoredToken(t *testing.T, c *Server, clientID, want string) {
+	t.Helper()
+	raw, ok, err := c.tokenStore().Get(clientID)
+	if err != nil || !ok {
+		t.Fatalf("the fresh token was lost: ok=%v err=%v", ok, err)
+	}
+	if diff := cmp.Diff(want, string(raw)); diff != "" {
+		t.Fatalf("stored token (-want +got):\n%s", diff)
+	}
 }
 
 // TestServer_handleGet_lockBeforeDeviceFlow verifies that a GET whose refresh fails after
