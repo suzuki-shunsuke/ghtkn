@@ -15,6 +15,7 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"log/slog"
 	"net/http"
 	"runtime"
@@ -68,6 +69,11 @@ type Server struct {
 	// same stored refresh token. Entries are never removed, which is fine since there is
 	// one per configured app.
 	refreshLocks map[string]*refreshLock
+	// pendingDrops maps a client ID to the SHA-256 of a refresh token spent by a refresh
+	// the agent was locked during: its stored token can only be checked with the data key,
+	// so the next unlock drops it if it still carries that refresh token (see
+	// dropStaleAfterLock). Guarded by mu.
+	pendingDrops map[string][sha256.Size]byte
 	// client runs the GitHub device flow (device-code request and access-token poll).
 	client *deviceflow.Client
 	// revoker revokes stored tokens via GitHub's credential revocation API.
@@ -140,6 +146,7 @@ func New(version string) *Server {
 	return &Server{
 		status:       map[string]*deviceFlowState{},
 		refreshLocks: map[string]*refreshLock{},
+		pendingDrops: map[string][sha256.Size]byte{},
 		client:       deviceflow.New(&deviceflow.Input{HTTPClient: httpClient}),
 		revoker:      revoke.New(httpClient),
 		goos:         runtime.GOOS,
