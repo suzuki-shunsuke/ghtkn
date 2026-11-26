@@ -68,6 +68,8 @@ By default the command is not run at all and ghtkn exits `111`.
 
 With `--continue-on-error` the command runs anyway and a warning is logged. The environment variables whose tokens were acquired are still set; the others keep whatever value they had in ghtkn's environment. That last part matters: if `GITHUB_TOKEN` was already set to another credential, the command silently uses it. The warning says so.
 
+`ghtkn info` reports `GH_TOKEN` and `GITHUB_TOKEN` (redacted) whenever they are set, so run it to find out whether such a credential is waiting to be inherited.
+
 ## Exit codes
 
 | Code | Meaning |
