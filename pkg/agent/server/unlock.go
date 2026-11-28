@@ -66,6 +66,9 @@ func (s *Server) handleUnlock(ctx context.Context, req *agentapi.Request) *agent
 		return &agentapi.Response{RefreshTokenRemovalPending: true, Error: errMsgRefreshTokenRemovalPending}
 	}
 	s.store = store
+	// Before any request can use the store, drop the tokens refreshed while the agent was
+	// locked; they carry spent refresh tokens.
+	s.dropPendingLocked(store)
 	// Bind refresh enablement and its TTL to this passphrase-authenticated unlock.
 	s.enableRefreshToken = req.EnableRefreshToken
 	s.refreshTokenTTL = s.resolveRefreshTokenTTL(req.RefreshTokenTTL)
